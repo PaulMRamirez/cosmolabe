@@ -47,6 +47,7 @@ Cosmolabe should be viable as a library that other teams build real apps on top 
 
 - Track and close any remaining gaps versus Cosmographia's full schema
 - Better validation and error messages for malformed catalogs
+- Warn (or throw) at catalog load when a body's resolved `trajectoryFrame` disagrees with its parent's — silently bit Psyche/Voyager demos when J2000 children inherited ECLIPJ2000 parents from the base library and trajectory lines rendered ~12 M km off
 - Authoring helpers (CLI lint, schema for editor autocomplete)
 
 ## Demos, examples, and docs

@@ -262,9 +262,15 @@ function buildModelPacket(info: CesiumModelInfo): Record<string, unknown> {
   return packet;
 }
 
-/** Parse a hex color string like "#ff8800" to an RGBA array. */
-function hexToRgba(hex: string): [number, number, number, number] {
-  const h = hex.replace('#', '');
+/** Parse a hex color string ("#ff8800") or float-RGB array ([r, g, b] in 0-1) to an RGBA byte array. */
+function hexToRgba(color: string | number[]): [number, number, number, number] {
+  if (Array.isArray(color)) {
+    const r = Math.round(Math.max(0, Math.min(1, color[0] ?? 0)) * 255);
+    const g = Math.round(Math.max(0, Math.min(1, color[1] ?? 0)) * 255);
+    const b = Math.round(Math.max(0, Math.min(1, color[2] ?? 0)) * 255);
+    return [r, g, b, 255];
+  }
+  const h = color.replace('#', '');
   return [
     parseInt(h.substring(0, 2), 16),
     parseInt(h.substring(2, 4), 16),

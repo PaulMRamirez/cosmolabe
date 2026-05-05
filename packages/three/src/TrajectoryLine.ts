@@ -41,6 +41,13 @@ export interface TrajectoryLineOptions {
   /** Pre-computed trajectory cache. When provided, samples are extracted from cache
    *  via binary search instead of live SPICE calls. */
   cache?: TrajectoryCache;
+  /**
+   * Treat the trajectory as a closed periodic orbit whose spatial extent doesn't change.
+   * Sample once at first update; never resample. Skip per-frame tail too — the body's
+   * own mesh already marks current position. Cuts resample cost from O(N) per frame
+   * (at fast playback) to O(1) at scene load.
+   */
+  staticOrbit?: boolean;
 }
 
 /** Resolves a body's absolute position (km) at a given time */
@@ -64,6 +71,7 @@ export class TrajectoryLine extends THREE.Object3D {
   private readonly baseColor: THREE.Color;
   private readonly fadeFraction: number;
   private readonly subdivisionPixels: number;
+  private readonly staticOrbit: boolean;
 
   // Full orbit ring (faint)
   private orbitLine: THREE.Line | null = null;
@@ -76,6 +84,11 @@ export class TrajectoryLine extends THREE.Object3D {
   private cachedSamples: Sample[] = [];
   private cachedStartEt = 0;
   private cachedTotalDuration = 0;
+  /** Current ET set at the top of each `update()` — used at draw time to clip
+   * vertices whose times are in the future relative to current et. Without this,
+   * scrubbing backwards across the resample interval would leave stale "future"
+   * vertices visible until the next resample fires. */
+  private _currentEt = 0;
 
   // Set to true when the body's trajectory changes, forcing a full resample
   private _needsResample = false;
@@ -129,10 +142,13 @@ export class TrajectoryLine extends THREE.Object3D {
     this.fadeFraction = options.fadeFraction ?? 1.0;
     this.subdivisionPixels = options.subdivisionPixels ?? 1;
 
-    this.baseColor = body.labelColor
-      ? new THREE.Color(body.labelColor[0], body.labelColor[1], body.labelColor[2])
-      : new THREE.Color(0x4488ff);
-    const colorHex = options.color ?? this.baseColor.getHex();
+    this.baseColor = options.color != null
+      ? new THREE.Color(options.color)
+      : (body.labelColor
+        ? new THREE.Color(body.labelColor[0], body.labelColor[1], body.labelColor[2])
+        : new THREE.Color(0x4488ff));
+    const colorHex = this.baseColor.getHex();
+    this.staticOrbit = options.staticOrbit ?? false;
 
     // Trail line with per-vertex color fade
     this.trailPositions = new Float32Array(this.maxPoints * 3);
@@ -203,6 +219,7 @@ export class TrajectoryLine extends THREE.Object3D {
   update(et: number, scaleFactor: number, resolvePos?: PositionResolver, _camera?: THREE.Camera, _canvasHeight?: number, vertexOffset?: [number, number, number]): void {
     if (!this.userVisible) return;
 
+    this._currentEt = et;
     const resolver = this.fixedResolver ?? resolvePos;
 
     if (this.minTime != null && et < this.minTime) {
@@ -239,21 +256,28 @@ export class TrajectoryLine extends THREE.Object3D {
       // A per-frame tail sample (1 SPICE call) keeps the head position exact.
       // Cap at 3600s so long-period orbits (Jupiter, Saturn) don't accumulate
       // visible straight-line chords between the last sample and the tail.
+      // staticOrbit bodies (closed periodic orbits) sample once and never resample —
+      // the spatial extent of the orbit doesn't change with time, and the body's
+      // own mesh already marks the current position so no tail line is needed.
       const LEGACY_RESAMPLE = Math.min(Math.max(this.trailDuration * 0.01, 60), 3600);
       const needsResample = this._needsResample
         || this.lastComputedEt === -Infinity
-        || Math.abs(et - this.lastComputedEt) >= LEGACY_RESAMPLE;
+        || (!this.staticOrbit && Math.abs(et - this.lastComputedEt) >= LEGACY_RESAMPLE);
       if (needsResample) {
         this._needsResample = false;
         this.lastComputedEt = et;
         this.recomputeSamples(et, resolver);
         this._bufferDirty = true;
       }
-      // Tail sample: 1 SPICE call per frame to reach exact current position
-      let tailEt = et + this.leadDuration;
-      if (this.maxTime != null && tailEt > this.maxTime) tailEt = this.maxTime;
-      const pos = this.resolveAt(tailEt, resolver);
-      this._tailSample = !isNaN(pos[0]) ? { t: tailEt, x: pos[0], y: pos[1], z: pos[2] } : null;
+      if (this.staticOrbit) {
+        this._tailSample = null;
+      } else {
+        // Tail sample: 1 SPICE call per frame to reach exact current position
+        let tailEt = et + this.leadDuration;
+        if (this.maxTime != null && tailEt > this.maxTime) tailEt = this.maxTime;
+        const pos = this.resolveAt(tailEt, resolver);
+        this._tailSample = !isNaN(pos[0]) ? { t: tailEt, x: pos[0], y: pos[1], z: pos[2] } : null;
+      }
       this._bridgeSamples = [];
     }
 
@@ -451,7 +475,13 @@ export class TrajectoryLine extends THREE.Object3D {
     // through to legacy path (handles cache-miss for Builtin trajectories, etc.)
     if (this.cache && this.cacheWindowHi > this.cacheWindowLo) {
       const lo = this.cacheWindowLo;
-      const hi = this.cacheWindowHi;
+      let hi = this.cacheWindowHi;
+      // Clip future vertices when scrubbing backwards across the resample interval
+      // (the cached window's right edge can be ahead of current et). Cache times
+      // are ascending — walk back from hi until we're at or before the cutoff.
+      const cutoffT = this._currentEt + this.leadDuration;
+      const cTimesArr = this.cache.times;
+      while (hi > lo && cTimesArr[hi - 1] > cutoffT) hi--;
       const count = hi - lo;
       if (count <= 0) {
         this.trailLine.geometry.setDrawRange(0, 0);
@@ -486,7 +516,9 @@ export class TrajectoryLine extends THREE.Object3D {
       // Append bridge samples + tail — fills the gap to current time with
       // a smooth curve instead of a single straight-line chord.
       let drawCount = count;
-      const bridgeAndTail = [...this._bridgeSamples];
+      // Bridge samples were generated against the previous resample's endEt and
+      // can sit beyond cutoffT after a backward scrub — drop those before drawing.
+      const bridgeAndTail = this._bridgeSamples.filter(s => s.t <= cutoffT);
       if (this._tailSample) bridgeAndTail.push(this._tailSample);
       for (const s of bridgeAndTail) {
         if (drawCount >= this.maxPoints) break;
@@ -525,8 +557,20 @@ export class TrajectoryLine extends THREE.Object3D {
       return;
     }
 
+    // Clip future vertices when scrubbing backwards across the resample interval.
+    // cachedSamples are ascending in t — find the first index where t > cutoff.
+    const legacyCutoffT = this._currentEt + this.leadDuration;
+    let visibleSampleCount = samples.length;
+    while (visibleSampleCount > 0 && samples[visibleSampleCount - 1].t > legacyCutoffT) {
+      visibleSampleCount--;
+    }
+    if (visibleSampleCount === 0 && !this._tailSample) {
+      this.trailLine.geometry.setDrawRange(0, 0);
+      return;
+    }
+
     if (needsFullWrite) {
-      for (let i = 0; i < samples.length; i++) {
+      for (let i = 0; i < visibleSampleCount; i++) {
         const s = samples[i];
         this.trailPositions[i * 3] = (s.x + offX) * scaleFactor;
         this.trailPositions[i * 3 + 1] = (s.y + offY) * scaleFactor;
@@ -548,7 +592,7 @@ export class TrajectoryLine extends THREE.Object3D {
     }
 
     // Append live tail sample — always updated (6 writes, trivial)
-    let legacyDrawCount = samples.length;
+    let legacyDrawCount = visibleSampleCount;
     if (this._tailSample && legacyDrawCount < this.maxPoints) {
       const s = this._tailSample;
       const i = legacyDrawCount;

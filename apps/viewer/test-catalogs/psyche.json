@@ -1,0 +1,151 @@
+{
+  "name": "Psyche — Asteroid Mission",
+  "version": "1.0",
+  "defaultTime": "2026-05-01T00:00:00Z",
+  "defaultViewpoint": "Psyche Cruise Overview",
+  "require": [
+    "base/sun.json",
+    "base/mercury.json",
+    "base/venus.json",
+    "base/earth-system.json",
+    "base/mars-system.json"
+  ],
+  "spiceKernels": [
+    { "url": "kernels/mar099s.bsp", "label": "Mars + Phobos + Deimos ephemeris", "size": 67000000 },
+
+    "kernels/codes_300ast_20100725.tf",
+    { "url": "kernels/codes_300ast_20100725.bsp", "label": "300 main-belt asteroids", "size": 61864960 },
+
+    "kernels/psyche/psyche_fk_v10.tf",
+    "kernels/psyche/PSYC_255_SCLKSCET.00121.tsc",
+    "kernels/psyche/psyche_imager_v05.ti",
+    "kernels/psyche/psyche_grns_v04.ti",
+    "kernels/psyche/psyche_mag_v04.ti",
+    "kernels/psyche/psyche_struct_v03.ti",
+
+    { "url": "kernels/psyche/psyche_ref_231013-311101_231016_v1_merged.bsp", "label": "Original mission design (launch → end of mission, incl. science orbits)", "size": 29400000 },
+    { "url": "kernels/psyche/psyche_ref_260223-290626_260217_v1.bsp", "label": "Long-arc design (Feb 2026 → Psyche arrival)", "size": 9400000 },
+    { "url": "kernels/psyche/psyche_sc-eph_251014-260801_260331_v1.bsp", "label": "Operational ephemeris (incl. Mars flyby)", "size": 9100000 },
+
+    { "url": "kernels/psyche/psyche_rec_231013-231018_v1.bsp",        "label": "Trajectory (launch week)",   "size": 2900000 },
+    { "url": "kernels/psyche/psyche_rec_231016-231210_231220_v1.bsp", "label": "Trajectory (Oct–Dec 2023)", "size": 4700000 },
+    { "url": "kernels/psyche/psyche_rec_231207-240304_240321_v1.bsp", "label": "Trajectory (Dec 2023–Mar 2024)", "size": 10400000 },
+    { "url": "kernels/psyche/psyche_rec_240301-240514_240530_v1.bsp", "label": "Trajectory (Mar–May 2024)", "size": 16800000 },
+    { "url": "kernels/psyche/psyche_rec_240512-240806_240826_v1.bsp", "label": "Trajectory (May–Aug 2024)", "size": 17900000 },
+    { "url": "kernels/psyche/psyche_rec_240805-241203_241210_v1.bsp", "label": "Trajectory (Aug–Dec 2024)", "size": 12600000 },
+    { "url": "kernels/psyche/psyche_rec_241125-250225_250319_v2.bsp", "label": "Trajectory (Nov 2024–Feb 2025)", "size": 9900000 },
+    { "url": "kernels/psyche/psyche_rec_250225-250617_250624_v1.bsp", "label": "Trajectory (Feb–Jun 2025)", "size": 5200000 },
+    { "url": "kernels/psyche/psyche_rec_250616-250812_250909_v1.bsp", "label": "Trajectory (Jun–Aug 2025)", "size": 8600000 },
+    { "url": "kernels/psyche/psyche_rec_250812-251006_251119_v1.bsp", "label": "Trajectory (Aug–Oct 2025)", "size": 24100000 },
+    { "url": "kernels/psyche/psyche_rec_251005-260223_260309_v1.bsp", "label": "Trajectory (Oct 2025–Feb 2026)", "size": 4700000 }
+  ],
+  "items": [
+    {
+      "name": "Psyche Cruise Overview",
+      "type": "Viewpoint",
+      "center": "Sun",
+      "distance": 800000000,
+      "latitude": 65,
+      "longitude": -30
+    },
+    {
+      "name": "Track Psyche",
+      "type": "Viewpoint",
+      "center": "Psyche",
+      "distance": 0.1,
+      "latitude": 25,
+      "longitude": 0
+    },
+    {
+      "name": "Launch (2023-10-13)",
+      "type": "Viewpoint",
+      "center": "Earth",
+      "distance": 100000,
+      "latitude": 20,
+      "longitude": -30,
+      "time": "2023-10-13T14:19:00Z"
+    },
+    {
+      "name": "Mars Flyby (2026-05-15)",
+      "type": "Viewpoint",
+      "center": "Mars",
+      "distance": 20000,
+      "latitude": 15,
+      "longitude": 45,
+      "time": "2026-05-15T19:28:00Z"
+    },
+    {
+      "name": "Psyche Arrival (2029-08)",
+      "type": "Viewpoint",
+      "center": "16 Psyche",
+      "distance": 1500,
+      "latitude": 30,
+      "longitude": 0,
+      "time": "2029-08-01T00:00:00Z"
+    },
+    {
+      "name": "Science Phase Orbit (2030)",
+      "type": "Viewpoint",
+      "center": "16 Psyche",
+      "distance": 600,
+      "latitude": 20,
+      "longitude": 0,
+      "time": "2030-06-01T00:00:00Z"
+    },
+    {
+      "name": "16 Psyche",
+      "class": "asteroid",
+      "center": "Sun",
+      "trajectoryFrame": "ECLIPJ2000",
+      "trajectory": {
+        "type": "Spice",
+        "target": "2000016",
+        "center": "SUN"
+      },
+      "rotationModel": {
+        "type": "Uniform",
+        "period": "4.196h",
+        "inclination": 95.0,
+        "ascendingNode": 36.0,
+        "meridianAngle": 0.0
+      },
+      "geometry": {
+        "type": "Globe",
+        "radii": [140, 116, 82]
+      },
+      "label": { "color": [0.75, 0.65, 0.55] },
+      "trajectoryPlot": { "color": [0.7, 0.6, 0.5], "fade": 0.4 }
+    },
+    {
+      "name": "Psyche",
+      "class": "spacecraft",
+      "naifId": -255,
+      "center": "Sun",
+      "startTime": "2023-10-13T14:19:00Z",
+      "endTime": "2029-06-26T00:00:00Z",
+      "trajectoryFrame": "ECLIPJ2000",
+      "trajectory": {
+        "type": "Spice",
+        "target": "-255",
+        "center": "SUN"
+      },
+      "rotationModel": {
+        "type": "Nadir",
+        "target": "-255",
+        "center": "10"
+      },
+      "geometry": {
+        "type": "Mesh",
+        "source": "models/psyche.gltf",
+        "size": 0.001
+      },
+      "label": { "color": [1.0, 0.85, 0.4] },
+      "trajectoryPlot": {
+        "color": "#ffaa33",
+        "fade": 0.5,
+        "duration": "6y",
+        "visible": true
+      }
+    }
+  ]
+}

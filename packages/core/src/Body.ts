@@ -10,8 +10,8 @@ export interface TrajectoryPlotConfig {
   lead?: number;
   /** Fade fraction (0-1): portion of oldest trail that fades to transparent */
   fade?: number;
-  /** Trail color as hex string (e.g. "#ffff00") */
-  color?: string;
+  /** Trail color as hex string (e.g. "#ffff00") or RGB float array [r, g, b] (0-1 each) */
+  color?: string | number[];
   /** Overall trail opacity (0-1) */
   opacity?: number;
   /** Whether the trajectory plot is visible */
@@ -30,6 +30,8 @@ export interface BodyProperties {
   mass?: number;           // kg
   mu?: number;             // gravitational parameter km^3/s^2
   labelColor?: [number, number, number];
+  /** If false, the body has no label. Defaults to true. */
+  labelVisible?: boolean;
   classification?: string; // 'planet' | 'moon' | 'spacecraft' | 'barycenter' | 'star' | 'asteroid' | 'comet'
   geometryType?: string;   // 'Globe' | 'Mesh' | 'Axes' | 'Sensor' | etc.
   geometryData?: Record<string, unknown>;
@@ -51,6 +53,7 @@ export class Body {
   readonly mass?: number;
   readonly mu?: number;
   readonly labelColor?: [number, number, number];
+  readonly labelVisible: boolean;
   readonly classification?: string;
   readonly geometryType?: string;
   readonly geometryData?: Record<string, unknown>;
@@ -71,6 +74,7 @@ export class Body {
     this.mass = props.mass;
     this.mu = props.mu;
     this.labelColor = props.labelColor;
+    this.labelVisible = props.labelVisible !== false;
     this.classification = props.classification;
     this.geometryType = props.geometryType;
     this.geometryData = props.geometryData;

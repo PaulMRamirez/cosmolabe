@@ -194,7 +194,7 @@ export class Universe {
   absolutePositionOf(bodyName: string, et: number): [number, number, number] {
     try {
       const body = this.getBody(bodyName);
-      if (!body) return [0, 0, 0];
+      if (!body) return [NaN, NaN, NaN];
 
       const state = body.stateAt(et);
       let x = state.position[0];
@@ -224,7 +224,11 @@ export class Universe {
 
       return [x, y, z];
     } catch {
-      return [0, 0, 0];
+      // SPICE throws "insufficient ephemeris" when a body's position can't be
+      // computed at this epoch. Return NaN so callers — body-mesh placement,
+      // trajectory-line offsets, close-approach finders — can detect this and
+      // skip rather than silently treating the body as if it were at the origin.
+      return [NaN, NaN, NaN];
     }
   }
 

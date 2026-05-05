@@ -1,0 +1,236 @@
+{
+  "name": "Voyager 1 & 2 — Grand Tour",
+  "version": "1.0",
+  "defaultTime": "2026-05-01T00:00:00Z",
+  "defaultViewpoint": "Both Voyagers Today",
+  "require": [
+    "base/sun.json",
+    "base/inner-planets.json",
+    "base/outer-planets.json"
+  ],
+  "spiceKernels": [
+    "kernels/voyager/vg1_v02.tf",
+    "kernels/voyager/vg2_v02.tf",
+    "kernels/voyager/vg100051.tsc",
+    "kernels/voyager/vg200051.tsc",
+
+    { "url": "kernels/jup348.bsp", "label": "Jupiter ephemeris (599)", "size": 60000000 },
+    { "url": "kernels/sat459.bsp", "label": "Saturn ephemeris (699)", "size": 84000000 },
+
+    { "url": "kernels/voyager/Voyager_1.a54206u_V0.2_merged.bsp", "label": "Voyager 1 (launch → 2031, continuous)", "size": 6400000 },
+    { "url": "kernels/voyager/Voyager_2.m05016u.merged.bsp", "label": "Voyager 2 (launch → 2031, continuous)", "size": 6400000 },
+
+    { "url": "kernels/voyager/vgr1.x2100.bsp", "label": "Voyager 1 long arc (post-1980 → 2100)", "size": 16800000 },
+    { "url": "kernels/voyager/vgr2.x2100.bsp", "label": "Voyager 2 long arc (post-1988 → 2100)", "size": 15700000 },
+
+    { "url": "kernels/voyager/vgr1_jup230.bsp", "label": "Voyager 1 Jupiter encounter", "size": 326000 },
+    { "url": "kernels/voyager/vgr1_sat337.bsp", "label": "Voyager 1 Saturn encounter", "size": 749000 },
+    { "url": "kernels/voyager/vgr2_jup230.bsp", "label": "Voyager 2 Jupiter encounter", "size": 331000 },
+    { "url": "kernels/voyager/vgr2_sat337.bsp", "label": "Voyager 2 Saturn encounter", "size": 495000 },
+    { "url": "kernels/voyager/vgr2.ura182.bsp", "label": "Voyager 2 Uranus encounter", "size": 1050000 },
+    { "url": "kernels/voyager/vgr2_nep097.bsp", "label": "Voyager 2 Neptune encounter", "size": 1430000 },
+
+    { "url": "kernels/voyager/vgr1_super_v2.bc", "label": "Voyager 1 attitude (full mission)", "size": 17800000 },
+    { "url": "kernels/voyager/vgr2_super_v2.bc", "label": "Voyager 2 attitude (full mission)", "size": 32500000 }
+  ],
+  "items": [
+    {
+      "name": "Both Voyagers Today",
+      "type": "Viewpoint",
+      "center": "Sun",
+      "distance": 50000000000,
+      "latitude": 35,
+      "longitude": -45
+    },
+    {
+      "name": "Outer Solar System",
+      "type": "Viewpoint",
+      "center": "Sun",
+      "distance": 8000000000,
+      "latitude": 75,
+      "longitude": 0
+    },
+    {
+      "name": "Launch (1977-09-05)",
+      "type": "Viewpoint",
+      "center": "Earth",
+      "distance": 200000,
+      "latitude": 20,
+      "longitude": 30,
+      "time": "1977-09-05T12:56:00Z"
+    },
+    {
+      "name": "V1 Jupiter Flyby (1979-03-05)",
+      "type": "Viewpoint",
+      "center": "Jupiter",
+      "distance": 1500000,
+      "latitude": 15,
+      "longitude": -30,
+      "time": "1979-03-05T12:05:00Z"
+    },
+    {
+      "name": "V2 Jupiter Flyby (1979-07-09)",
+      "type": "Viewpoint",
+      "center": "Jupiter",
+      "distance": 2000000,
+      "latitude": 10,
+      "longitude": 60,
+      "time": "1979-07-09T22:29:00Z"
+    },
+    {
+      "name": "V1 Saturn / Titan (1980-11-12)",
+      "type": "Viewpoint",
+      "center": "Saturn",
+      "distance": 800000,
+      "latitude": 8,
+      "longitude": 0,
+      "time": "1980-11-12T23:46:00Z"
+    },
+    {
+      "name": "V2 Saturn (1981-08-26)",
+      "type": "Viewpoint",
+      "center": "Saturn",
+      "distance": 1200000,
+      "latitude": -10,
+      "longitude": 90,
+      "time": "1981-08-26T03:24:00Z"
+    },
+    {
+      "name": "V2 Uranus (1986-01-24)",
+      "type": "Viewpoint",
+      "center": "Uranus",
+      "distance": 600000,
+      "latitude": 5,
+      "longitude": 0,
+      "time": "1986-01-24T17:59:00Z"
+    },
+    {
+      "name": "V2 Neptune (1989-08-25)",
+      "type": "Viewpoint",
+      "center": "Neptune",
+      "distance": 800000,
+      "latitude": -20,
+      "longitude": 30,
+      "time": "1989-08-25T03:56:00Z"
+    },
+    {
+      "name": "Track Voyager 1",
+      "type": "Viewpoint",
+      "center": "Voyager 1",
+      "distance": 0.05,
+      "latitude": 25,
+      "longitude": 0
+    },
+    {
+      "name": "Track Voyager 2",
+      "type": "Viewpoint",
+      "center": "Voyager 2",
+      "distance": 0.05,
+      "latitude": 25,
+      "longitude": 0
+    },
+    {
+      "name": "Voyager 1",
+      "class": "spacecraft",
+      "naifId": -31,
+      "center": "Sun",
+      "startTime": "1977-09-05T12:56:00Z",
+      "endTime": "2099-12-31T00:00:00Z",
+      "trajectoryFrame": "ECLIPJ2000",
+      "trajectory": {
+        "type": "Spice",
+        "target": "-31",
+        "center": "SUN"
+      },
+      "rotationModel": {
+        "type": "Spice",
+        "bodyFrame": "VG1_SC_BUS"
+      },
+      "geometry": {
+        "type": "Mesh",
+        "size": 0.01,
+        "source": "models/voyager.cmod"
+      },
+      "label": { "color": [1.0, 0.95, 0.7] },
+      "trajectoryPlot": {
+        "color": "#ffd680",
+        "fade": 0.2,
+        "duration": "150y",
+        "visible": true
+      }
+    },
+    {
+      "name": "Voyager 2",
+      "class": "spacecraft",
+      "naifId": -32,
+      "center": "Sun",
+      "startTime": "1977-08-20T14:29:00Z",
+      "endTime": "2099-12-31T00:00:00Z",
+      "trajectoryFrame": "ECLIPJ2000",
+      "trajectory": {
+        "type": "Spice",
+        "target": "-32",
+        "center": "SUN"
+      },
+      "rotationModel": {
+        "type": "Spice",
+        "bodyFrame": "VG2_SC_BUS"
+      },
+      "geometry": {
+        "type": "Mesh",
+        "size": 0.01,
+        "source": "models/voyager.cmod"
+      },
+      "label": { "color": [0.7, 0.95, 1.0] },
+      "trajectoryPlot": {
+        "color": "#80d0ff",
+        "fade": 0.2,
+        "duration": "150y",
+        "visible": true
+      }
+    },
+
+    {
+      "name": "Uranus",
+      "class": "planet",
+      "center": "Sun",
+      "trajectoryFrame": "ECLIPJ2000",
+      "trajectory": {
+        "type": "Spice",
+        "target": "7",
+        "center": "SUN"
+      },
+      "bodyFrame": "EquatorJ2000",
+      "rotationModel": {
+        "type": "Uniform",
+        "period": "17.24h",
+        "inclination": 97.77,
+        "ascendingNode": 167.95,
+        "meridianAngle": 203.81
+      },
+      "geometry": { "type": "Globe", "radii": [25559, 25559, 24973], "baseMap": "textures/uranus.jpg" },
+      "label": { "color": [0.6, 0.85, 0.95] }
+    },
+    {
+      "name": "Neptune",
+      "class": "planet",
+      "center": "Sun",
+      "trajectoryFrame": "ECLIPJ2000",
+      "trajectory": {
+        "type": "Spice",
+        "target": "8",
+        "center": "SUN"
+      },
+      "bodyFrame": "EquatorJ2000",
+      "rotationModel": {
+        "type": "Uniform",
+        "period": "16.11h",
+        "inclination": 28.32,
+        "ascendingNode": 49.24,
+        "meridianAngle": 253.18
+      },
+      "geometry": { "type": "Globe", "radii": [24764, 24764, 24341], "baseMap": "textures/neptune.jpg" },
+      "label": { "color": [0.4, 0.55, 0.95] }
+    }
+  ]
+}

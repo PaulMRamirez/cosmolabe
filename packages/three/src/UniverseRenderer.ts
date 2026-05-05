@@ -1696,6 +1696,21 @@ export class UniverseRenderer {
           // Apply catalog sample count
           if (plotCfg?.sampleCount) trajOpts.maxPoints = plotCfg.sampleCount;
 
+          // Apply catalog color (accepts "#rrggbb", "rrggbb", or [r, g, b] floats 0-1)
+          if (plotCfg?.color != null) {
+            const c = plotCfg.color;
+            if (typeof c === 'string') {
+              const hex = c.startsWith('#') ? c.slice(1) : c;
+              const n = parseInt(hex, 16);
+              if (!Number.isNaN(n)) trajOpts.color = n;
+            } else if (Array.isArray(c) && c.length >= 3) {
+              const r = Math.round(Math.max(0, Math.min(1, c[0])) * 255);
+              const g = Math.round(Math.max(0, Math.min(1, c[1])) * 255);
+              const b = Math.round(Math.max(0, Math.min(1, c[2])) * 255);
+              trajOpts.color = (r << 16) | (g << 8) | b;
+            }
+          }
+
           // Apply catalog opacity
           if (plotCfg?.opacity != null) trajOpts.opacity = plotCfg.opacity;
 
@@ -1708,6 +1723,14 @@ export class UniverseRenderer {
           }
           if (body.trajectory.endTime != null && trajOpts.maxTime == null) {
             trajOpts.maxTime = body.trajectory.endTime;
+          }
+
+          // Periodic orbits whose trail covers roughly one period are spatially
+          // static — sample once at scene load, never resample. Critical for the
+          // 300-asteroid demo: without this, fast time playback would resample
+          // 300 × 500 SPICE calls per frame.
+          if (UniverseRenderer.STATIC_ORBIT_CLASSES.has(body.classification ?? '')) {
+            trajOpts.staticOrbit = true;
           }
 
           const tl = new TrajectoryLine(body, trajOpts);
@@ -1755,7 +1778,7 @@ export class UniverseRenderer {
     if (this.options.showLabels !== false) {
       this.labelManager = new LabelManager(this.labelContainer, this.options.labelOptions);
       for (const bm of this.bodyMeshes.values()) {
-        this.labelManager.addLabel(bm);
+        if (bm.body.labelVisible) this.labelManager.addLabel(bm);
       }
     }
   }
@@ -1944,7 +1967,14 @@ export class UniverseRenderer {
 
   // ─── Trajectory cache helpers ────────────────────────────────────────
 
-  private static readonly CACHE_EXCLUDED = new Set(['planet', 'moon', 'star', 'barycenter']);
+  private static readonly CACHE_EXCLUDED = new Set(['planet', 'moon', 'star', 'barycenter', 'asteroid', 'dwarfPlanet', 'comet']);
+  /** Classifications whose orbit ellipse is fixed in space — sample once, skip resamples.
+   * Scoped to asteroids because the swarm-of-300 demo would otherwise issue
+   * 300 × 500 live SPICE calls per frame at fast playback. Planets/moons use
+   * cheap analytical evaluators (Keplerian, MarsSat, L1, TASS17, Gust86) so
+   * per-frame resampling is fine, and they need a real fading trail rather
+   * than a static full-orbit ring. */
+  private static readonly STATIC_ORBIT_CLASSES = new Set(['asteroid']);
 
   private shouldBuildCache(body: Body, trajOpts: TrajectoryLineOptions): boolean {
     const trailDur = trajOpts.trailDuration ?? 86400;

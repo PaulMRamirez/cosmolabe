@@ -53,6 +53,8 @@ export interface SpiceInstance {
   gfdist(target: string, abcorr: string, observer: string, relate: string, refval: number, adjust: number, step: number, cnfine: TimeWindow[]): TimeWindow[];
   // Coverage
   spkcov(idcode: number): TimeWindow[];
+  /** Return the NAIF IDs of all bodies present in the named SPK kernel. The kernel must be furnished. */
+  spkobj(filename: string): number[];
   // FOV
   getfov(instId: number, maxBounds?: number): InstrumentFov;
   fovray(inst: string, raydir: Vec3, rframe: string, abcorr: AberrationCorrection, observer: string, et: number): boolean;
@@ -632,6 +634,31 @@ export class Spice implements SpiceInstance {
     return windows;
   }
 
+  /**
+   * Enumerate the NAIF IDs of all bodies present in a furnished SPK file.
+   * Useful for bulk catalog import (e.g. main-belt asteroid SPKs).
+   */
+  spkobj(filename: string): number[] {
+    const path = this.fileMap.get(filename) ?? filename;
+    const MAXOBJ = 10000;
+    const cell = this.allocSpiceIntCell(MAXOBJ);
+    try {
+      this.module.ccall('spkobj_c', null, ['string', 'number'], [path, cell.cellPtr]);
+      this.checkError();
+      // Read card from struct (offset 12) — number of valid entries
+      const card = this.module.getValue(cell.cellPtr + 12, 'i32') as number;
+      // Data pointer (offset 32) — start of int data area, past CTRLSZ ints
+      const dataStart = this.module.getValue(cell.cellPtr + 32, 'i32') as number;
+      const ids: number[] = [];
+      for (let i = 0; i < card; i++) {
+        ids.push(this.module.getValue(dataStart + i * INT_SIZE, 'i32') as number);
+      }
+      return ids;
+    } finally {
+      this.freeSpiceCell(cell);
+    }
+  }
+
   // --- SPICE window helpers ---
   //
   // CSPICE cells consist of a SpiceCell struct (9 fields = 36 bytes in WASM32)
@@ -681,6 +708,31 @@ export class Spice implements SpiceInstance {
     // ssize_c validates + syncs the cell
     this.module.ccall('ssize_c', null, ['number', 'number'], [maxSize, cellPtr]);
 
+    return { cellPtr, dataPtr };
+  }
+
+  /** Allocate a SpiceCell of dtype=SPICE_INT (2). Layout is `SpiceInt[CTRLSZ + maxSize]`
+   *  — same struct as a double cell but the data area is ints, not doubles. */
+  private allocSpiceIntCell(maxSize: number): { cellPtr: number; dataPtr: number } {
+    const ctrlsz = Spice.SPICE_CELL_CTRLSZ;
+    const totalInts = ctrlsz + maxSize;
+    const dataPtr = this.module._malloc(INT_SIZE * totalInts);
+    for (let i = 0; i < totalInts; i++) {
+      this.module.setValue(dataPtr + i * INT_SIZE, 0, 'i32');
+    }
+
+    const cellPtr = this.module._malloc(Spice.CELL_STRUCT_SIZE);
+    this.module.setValue(cellPtr + 0, 2, 'i32');       // dtype = SPICE_INT
+    this.module.setValue(cellPtr + 4, 0, 'i32');       // length = 0
+    this.module.setValue(cellPtr + 8, maxSize, 'i32'); // size
+    this.module.setValue(cellPtr + 12, 0, 'i32');      // card = 0
+    this.module.setValue(cellPtr + 16, 1, 'i32');      // isSet = SPICETRUE
+    this.module.setValue(cellPtr + 20, 0, 'i32');      // adjust = SPICEFALSE
+    this.module.setValue(cellPtr + 24, 0, 'i32');      // init = SPICEFALSE
+    this.module.setValue(cellPtr + 28, dataPtr, 'i32');                       // base
+    this.module.setValue(cellPtr + 32, dataPtr + ctrlsz * INT_SIZE, 'i32');  // data
+
+    this.module.ccall('ssize_c', null, ['number', 'number'], [maxSize, cellPtr]);
     return { cellPtr, dataPtr };
   }
 

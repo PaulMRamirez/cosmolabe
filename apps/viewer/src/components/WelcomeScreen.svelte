@@ -34,6 +34,7 @@
         { id: "base/jupiter-system", label: "Jupiter System", desc: "Jupiter + Galileans (L1 analytical)" },
         { id: "base/saturn-system", label: "Saturn System", desc: "Saturn + rings + major moons (TASS17)" },
         { id: "base/small-bodies", label: "Small Bodies", desc: "Dwarf planets, main belt, NEAs, comet 67P" },
+        { id: "base/main-belt-300", label: "Main Belt × 300", desc: "Bulk SPK import: 300 numbered asteroids (no trails — pending swarm plugin)" },
       ],
     },
     {
@@ -49,6 +50,8 @@
         { id: "cassini-soi", label: "Cassini Saturn Tour", desc: "2004 SOI through Enceladus E-2 (~150 MB)" },
         { id: "lro-moon", label: "LRO at the Moon", desc: "Lunar Reconnaissance Orbiter, 2025" },
         { id: "europa-clipper", label: "Europa Clipper", desc: "Jupiter science phase, 2031" },
+        { id: "psyche", label: "Psyche", desc: "Launch → Mars flyby → asteroid arrival 2029 (~125 MB)" },
+        { id: "voyagers", label: "Voyager 1 & 2", desc: "Grand Tour: 1977 launch → interstellar (~85 MB)" },
         { id: "msl-dingo-gap", label: "MSL Curiosity", desc: "Mars surface rover (experimental)" },
       ],
     },

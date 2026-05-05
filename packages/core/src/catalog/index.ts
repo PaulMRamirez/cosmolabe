@@ -8,6 +8,7 @@ export type {
   LabelSpec,
   LoadedCatalog,
   KernelRef,
+  SpkImportSpec,
 } from './CatalogLoader.js';
 export { loadCatalogFromUrl } from './CatalogResolver.js';
 export type { ResolvedCatalog, ResolvedCatalogGraph, ResolvedKernel, CatalogFetcher } from './CatalogResolver.js';

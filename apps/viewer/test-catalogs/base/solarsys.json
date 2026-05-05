@@ -5,7 +5,7 @@
   "require": [
     "inner-planets.json",
     "outer-planets.json",
-    "pluto-system.json"
+    "small-bodies.json"
   ],
   "items": [
     {

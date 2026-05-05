@@ -3,7 +3,7 @@ export type { BodyProperties, TrajectoryPlotConfig, BodyChangeField, BodyChangeC
 export { Universe } from './Universe.js';
 export type { UniverseOptions } from './Universe.js';
 export { CatalogLoader, collectKernelRefs } from './catalog/CatalogLoader.js';
-export type { CatalogJson, CatalogItem, TrajectorySpec, RotationModelSpec, GeometrySpec, LoadedCatalog, CatalogLoaderOptions, ViewpointDefinition, TrajectoryFactory, RotationFactory, TrajectoryFactoryContext, RotationFactoryContext, KernelRef } from './catalog/CatalogLoader.js';
+export type { CatalogJson, CatalogItem, TrajectorySpec, RotationModelSpec, GeometrySpec, LoadedCatalog, CatalogLoaderOptions, ViewpointDefinition, TrajectoryFactory, RotationFactory, TrajectoryFactoryContext, RotationFactoryContext, KernelRef, SpkImportSpec } from './catalog/CatalogLoader.js';
 export { loadCatalogFromUrl } from './catalog/CatalogResolver.js';
 export type { ResolvedCatalog, ResolvedCatalogGraph, ResolvedKernel, CatalogFetcher } from './catalog/CatalogResolver.js';
 

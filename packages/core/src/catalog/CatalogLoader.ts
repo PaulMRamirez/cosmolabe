@@ -27,6 +27,30 @@ import { InterpolatedRotation, parseQFile } from '../rotations/InterpolatedRotat
  */
 export type KernelRef = string | { url: string; size?: number; label?: string };
 
+/**
+ * Bulk-import body items from the contents of an SPK kernel. The loader walks
+ * the kernel via `spkobj_c`, optionally filters by NAIF ID range, and creates
+ * one Body per ID with `defaults` applied. Override-by-name still wins, so a
+ * subsequent item with the same name replaces the auto-generated one.
+ *
+ * Cosmolabe-only extension; Cosmographia ignores it.
+ */
+export interface SpkImportSpec {
+  /** Kernel filename — must match a `spiceKernels` entry that's been furnished. */
+  kernel: string;
+  /** Center body name or NAIF ID for trajectories of imported items. */
+  center: string | number;
+  /** Optional inclusive [low, high] NAIF ID filter. */
+  naifIdRange?: [number, number];
+  /** Body field defaults applied to every imported item (geometry, label, plot, etc.). */
+  defaults?: Partial<CatalogItem>;
+  /**
+   * Optional name template. `{naifId}` and `{name}` are substituted; defaults to
+   * the SPICE-resolved name (via `bodc2n`) or `Body {naifId}` if no name.
+   */
+  nameTemplate?: string;
+}
+
 // Cosmographia catalog JSON schema types
 export interface CatalogJson {
   name?: string;
@@ -38,6 +62,11 @@ export interface CatalogJson {
    * `.tm` meta-kernels are expanded by the viewer pipeline. Cosmographia-native field name.
    */
   spiceKernels?: KernelRef[];
+  /**
+   * Cosmolabe-only: bulk-import items from one or more SPK kernels. Evaluated
+   * after `items` so explicit items take precedence (last-wins by name).
+   */
+  spkImport?: SpkImportSpec[];
   /** Default time to set when loading this catalog (UTC string, e.g. "2004-07-01T02:48:00Z") */
   defaultTime?: string;
   /** Name of a Viewpoint item to apply as the initial camera view when this catalog loads */
@@ -48,7 +77,7 @@ export interface TrajectoryPlotSpec {
   duration?: string;
   lead?: string;
   fade?: number;
-  color?: string;
+  color?: string | number[];
   opacity?: number;
   visible?: string | boolean;
   sampleCount?: number;
@@ -187,6 +216,8 @@ export interface GeometrySpec {
 export interface LabelSpec {
   color?: number[] | string;
   fadeSize?: number;
+  /** If false, no label is created for this body. Defaults to true. */
+  visible?: boolean;
 }
 
 /** A viewpoint definition parsed from a Cosmographia catalog Viewpoint item */
@@ -470,6 +501,18 @@ export class CatalogLoader {
     const bodies: Body[] = [];
     const viewpoints: ViewpointDefinition[] = [];
 
+    // Bulk SPK import — runs BEFORE explicit items so override-by-name still works
+    // (a later loadItem with the same name will replace the auto-generated body).
+    if (json.spkImport && this.spice) {
+      for (const spec of json.spkImport) {
+        try {
+          this.evaluateSpkImport(spec, bodies);
+        } catch (err) {
+          console.warn(`[Cosmolabe] spkImport failed for ${spec.kernel}:`, err);
+        }
+      }
+    }
+
     if (json.items) {
       for (const item of json.items) {
         if (item.type === 'Viewpoint') {
@@ -490,6 +533,51 @@ export class CatalogLoader {
       spiceKernels: kernels.length > 0 ? kernels : undefined,
       defaultViewpoint: json.defaultViewpoint,
     };
+  }
+
+  private evaluateSpkImport(spec: SpkImportSpec, bodies: Body[]): void {
+    if (!this.spice) return;
+    const ids = this.spice.spkobj(spec.kernel);
+    if (ids.length === 0) {
+      console.warn(`[Cosmolabe] spkImport: ${spec.kernel} returned no NAIF IDs (kernel furnished?)`);
+      return;
+    }
+
+    const [lo, hi] = spec.naifIdRange ?? [-Infinity, Infinity];
+    const centerStr = typeof spec.center === 'number' ? String(spec.center) : spec.center;
+
+    for (const naifId of ids) {
+      if (naifId < lo || naifId > hi) continue;
+
+      // Resolve a human-readable name via SPICE if available, else fall back to numeric.
+      let resolvedName: string;
+      try {
+        const n = this.spice.bodc2n(naifId);
+        resolvedName = n ?? `Body ${naifId}`;
+      } catch {
+        resolvedName = `Body ${naifId}`;
+      }
+
+      const finalName = spec.nameTemplate
+        ? spec.nameTemplate.replace('{naifId}', String(naifId)).replace('{name}', resolvedName)
+        : resolvedName;
+
+      // Build a synthetic CatalogItem from defaults + per-import fields, then loadItem
+      // it through the normal pipeline so trajectories/rotation/etc. are uniform.
+      const item: CatalogItem = {
+        ...(spec.defaults ?? {}),
+        name: finalName,
+        naifId,
+        center: centerStr,
+        trajectory: spec.defaults?.trajectory ?? {
+          type: 'Spice',
+          target: String(naifId),
+          center: centerStr,
+        },
+      };
+
+      this.loadItem(item, bodies, undefined);
+    }
   }
 
   private parseViewpoint(item: CatalogItem): ViewpointDefinition {
@@ -539,6 +627,7 @@ export class CatalogLoader {
       mass: typeof item.mass === 'number' ? item.mass : this.parseMass(item.mass),
       classification: item.class,
       labelColor: item.label?.color ? this.parseColor(item.label.color) : undefined,
+      labelVisible: item.label?.visible !== false,
       geometryType: item.geometry?.type,
       geometryData: item.geometry ? { ...item.geometry } : undefined,
       trajectoryPlot,
