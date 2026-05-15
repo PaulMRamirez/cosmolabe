@@ -29,6 +29,7 @@ import type { RendererEventMap } from './events/RendererEventMap.js';
 const _clampTmpVec = /* @__PURE__ */ new THREE.Vector3();
 const _clampTmpVec2 = /* @__PURE__ */ new THREE.Vector3();
 const _clampTmpQuat = /* @__PURE__ */ new THREE.Quaternion();
+const _tmpRingNormal = /* @__PURE__ */ new THREE.Vector3();
 
 export interface SurfacePickResult {
   /** Name of the body that was clicked */
@@ -472,6 +473,10 @@ export class UniverseRenderer {
         // body-fixed equatorial plane)
         ring.quaternion.copy(parentBm.mesh.quaternion);
         ring.applyScale(this.scaleFactor);
+        // Push ring frame to the parent body so its fragment shader can
+        // project ring opacity onto the body as a shadow stripe.
+        _tmpRingNormal.set(0, 1, 0).applyQuaternion(parentBm.mesh.quaternion);
+        parentBm.setRingShadowFrame(parentBm.position, _tmpRingNormal);
       }
     }
 
@@ -1301,13 +1306,21 @@ export class UniverseRenderer {
   /** Recompute eclipse shadow occluder lists for all bodies and push to shader uniforms. */
   private updateShadowOccluders(): void {
     // Eclipse shadows only apply in natural lighting; flood/shadow modes illuminate uniformly.
+    const sunBmAny = this.bodyMeshes.get('Sun');
     if (this._lightingMode !== 'natural') {
       for (const bm of this.bodyMeshes.values()) {
         if (bm.hasShadowReceiving) bm.setShadowOccluders([], new THREE.Vector3(), 0);
       }
+      // Rings keep sun-direction shading but drop the eclipse occluders so the
+      // look stays consistent with the bodies in flood/shadow modes.
+      const sunPosFb = sunBmAny ? sunBmAny.position : new THREE.Vector3();
+      const sunRadiusFb = this._sunRadiusKm * this.scaleFactor;
+      for (const [, { ring }] of this.ringMeshes) {
+        ring.setShadowOccluders([], sunPosFb, sunRadiusFb);
+      }
       return;
     }
-    const sunBm = this.bodyMeshes.get('Sun');
+    const sunBm = sunBmAny;
     if (!sunBm) return;
     const sunPos = sunBm.position;
     const sunRadius = this._sunRadiusKm * this.scaleFactor;
@@ -1348,6 +1361,26 @@ export class UniverseRenderer {
       if (receiver.hasShadowReceiving) {
         receiver.setShadowOccluders(occluders, sunPos, sunRadius);
       }
+    }
+
+    // Rings: top 4 occluders from the ring's perspective. Unlike bodies, the
+    // parent planet is NOT filtered out — it sits at the ring's center and is
+    // the dominant shadow caster (the dark arc on the night-side rings).
+    for (const [, { ring }] of this.ringMeshes) {
+      const ringPos = ring.position;
+      const ringOccluders = candidates
+        .map(c => {
+          const dist = Math.max(c.position.distanceTo(ringPos), 1e-20);
+          return {
+            pos: c.position,
+            radius: c.displayRadius * this.scaleFactor,
+            angularSize: (c.displayRadius * this.scaleFactor) / dist,
+          };
+        })
+        .sort((a, b) => b.angularSize - a.angularSize)
+        .slice(0, 4)
+        .map(({ pos, radius }) => ({ pos, radius }));
+      ring.setShadowOccluders(ringOccluders, sunPos, sunRadius);
     }
   }
 
@@ -1631,18 +1664,32 @@ export class UniverseRenderer {
       if (body.geometryType === 'Rings' && body.geometryData && body.parentName) {
         const inner = body.geometryData.innerRadius as number;
         const outer = body.geometryData.outerRadius as number;
+        const parentName = body.parentName;
         if (inner > 0 && outer > inner) {
           const ring = new RingMesh(inner, outer);
           ring.applyScale(this.scaleFactor);
-          this.ringMeshes.set(body.name, { ring, parentName: body.parentName });
+          this.ringMeshes.set(body.name, { ring, parentName });
           this.scene.add(ring);
 
-          // Load ring texture
+          // Load ring texture; once it lands, also wire ring-shadow-on-body
+          // onto the parent so the rings cast a stripe across the planet.
           const texPath = body.geometryData.texture as string | undefined;
           if (texPath) {
             const resolver = this.options.textureResolver ?? this.options.modelResolver;
             const url = resolver?.(texPath);
-            if (url) ring.loadTexture(url);
+            if (url) {
+              ring.loadTexture(url).then(tex => {
+                if (!tex) return;
+                const parentBm = this.bodyMeshes.get(parentName);
+                if (parentBm) {
+                  parentBm.enableRingShadowReceiving(
+                    tex,
+                    inner * this.scaleFactor,
+                    outer * this.scaleFactor,
+                  );
+                }
+              });
+            }
           }
         }
         continue;

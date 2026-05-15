@@ -7,6 +7,7 @@ import { parseCmod, type CmodTextureResolver } from './CmodLoader.js';
 import { TerrainManager, type TerrainConfig } from './TerrainManager.js';
 import { injectShadowIntoShader, makeShadowUniforms, type ShadowUniforms } from './EclipseShadow.js';
 import { injectAerialPerspectiveIntoShader, type AerialPerspectiveUniforms } from './AerialPerspective.js';
+import { injectRingShadowIntoShader, makeRingShadowUniforms, type RingShadowUniforms } from './RingShadow.js';
 import { BLOOM_LAYER } from './BloomEffect.js';
 import { isLine, isMesh, isSprite } from './internal/three-typeguards.js';
 import { SurfaceTileOverlay, type SurfaceTileConfig } from './SurfaceTileOverlay.js';
@@ -73,6 +74,10 @@ export class BodyMesh extends THREE.Object3D {
   private _rotationFailed = false;
   /** Shared uniform values — patched into every compiled shader by reference */
   private readonly shadowUniforms: ShadowUniforms = makeShadowUniforms();
+  /** Ring-on-body shadow uniforms — only used when this body has rings. */
+  private readonly ringShadowUniforms: RingShadowUniforms = makeRingShadowUniforms();
+  /** Whether ring-shadow receiving has been wired into this body's material. */
+  private ringShadowEnabled = false;
   /**
    * Axis ratios for triaxial ellipsoid in geometry space [geoX, geoY, geoZ].
    * Maps body-fixed [rx, ry, rz] → geometry axes accounting for the Globe pre-rotation
@@ -363,6 +368,50 @@ export class BodyMesh extends THREE.Object3D {
 
     // Forward to terrain tiles if already initialized (or queued for future tiles).
     this.terrainManager?.enableAerialPerspective(uniforms);
+  }
+
+  /**
+   * Enable ring-on-body shadow receiving on this body's placeholder sphere
+   * material. The ring texture, inner/outer radii (in scene units), and a
+   * per-frame frame (center + normal) are sampled in the fragment shader to
+   * project the rings' opacity onto the body as a dark stripe.
+   *
+   * Composes with whatever onBeforeCompile is already installed (eclipse
+   * shadow, aerial perspective). Requires enableShadowReceiving to have run
+   * first because the ring-shadow GLSL reuses SHADOW_FRAG_PARS uniforms.
+   * No-op for stars and emissive bodies.
+   */
+  enableRingShadowReceiving(texture: THREE.Texture, innerRadius: number, outerRadius: number): void {
+    if (this.ringShadowEnabled) return;
+    if (this.body.classification === 'star' || this.body.geometryData?.emissive === true) return;
+    this.ringShadowEnabled = true;
+
+    const u = this.ringShadowUniforms;
+    u.uRingMap.value = texture;
+    u.uRingInnerRadius.value = innerRadius;
+    u.uRingOuterRadius.value = outerRadius;
+
+    const mat = this.mesh.material as THREE.Material & {
+      onBeforeCompile?: (shader: { vertexShader: string; fragmentShader: string; uniforms: Record<string, unknown> }, renderer: unknown) => void;
+      customProgramCacheKey?: () => string;
+      needsUpdate: boolean;
+    };
+
+    const prevOBC = mat.onBeforeCompile?.bind(mat);
+    mat.onBeforeCompile = (shader, renderer) => {
+      prevOBC?.(shader, renderer);
+      injectRingShadowIntoShader(shader, u as unknown as Record<string, { value: unknown }>);
+    };
+    const prevKey = (mat.customProgramCacheKey ?? (() => ''))();
+    mat.customProgramCacheKey = () => prevKey + '_rs_v1';
+    mat.needsUpdate = true;
+  }
+
+  /** Update ring-on-body frame in world space (per-frame). */
+  setRingShadowFrame(centerWorld: THREE.Vector3, normalWorld: THREE.Vector3): void {
+    const u = this.ringShadowUniforms;
+    u.uRingCenterWorld.value.copy(centerWorld);
+    u.uRingNormalWorld.value.copy(normalWorld);
   }
 
   /** Update eclipse shadow occluder uniforms for this frame. Call after body positions are updated. */

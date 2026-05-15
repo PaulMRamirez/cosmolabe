@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 import { DDSLoader } from 'three/examples/jsm/loaders/DDSLoader.js';
+import {
+  injectShadowIntoShader,
+  makeShadowUniforms,
+  type ShadowUniforms,
+} from './EclipseShadow.js';
 
 /** Check if an ArrayBuffer starts with the DDS magic bytes "DDS " (0x44445320) */
 function isDDSMagic(buffer: ArrayBuffer): boolean {
@@ -8,17 +13,45 @@ function isDDSMagic(buffer: ArrayBuffer): boolean {
   return h[0] === 0x44 && h[1] === 0x44 && h[2] === 0x53 && h[3] === 0x20;
 }
 
+// Ring lighting injected after the eclipse-shadow injection. Reuses
+// vShadowWorldPos / uSunWorldPos declared by SHADOW_FRAG_PARS.
+const RING_FRAG_PARS = /* glsl */`
+varying vec3 vRingWorldNormal;
+
+float computeRingLighting() {
+  vec3 N = normalize(vRingWorldNormal);
+  vec3 L = normalize(uSunWorldPos - vShadowWorldPos);
+  vec3 V = normalize(cameraPosition - vShadowWorldPos);
+  // Rings are double-sided — abs() lights both faces.
+  float NdotL = abs(dot(N, L));
+  // When the camera and sun are on the same side of the ring plane, the ring
+  // is seen by reflection (bright). On opposite sides it is seen by
+  // transmission through partially transparent particles (dimmer).
+  float sameSide = step(0.0, dot(N, L) * dot(N, V));
+  // Multi-scatter inside the ring keeps the lit side bright even at oblique
+  // sun angles; back-lit transmission is noticeably dimmer.
+  float refl  = 0.5  + 0.5  * NdotL;
+  float trans = 0.15 + 0.25 * NdotL;
+  return mix(trans, refl, sameSide);
+}
+`;
+
 /**
  * Planetary ring (e.g. Saturn's rings).
  *
  * Creates a flat annulus in the equatorial plane with UV mapping
  * suitable for radial ring textures (U=0 at inner edge, U=1 at outer).
  * The ring inherits orientation from its parent body via SPICE rotation.
+ *
+ * Shading: sun-direction Lambertian (double-sided) plus an eclipse shadow
+ * from the parent body so the planet's shadow falls correctly on the rings.
  */
 export class RingMesh extends THREE.Object3D {
   readonly innerRadius: number;
   readonly outerRadius: number;
   private ringMesh: THREE.Mesh;
+  /** Shared uniforms patched into the compiled program by reference. */
+  private readonly shadowUniforms: ShadowUniforms = makeShadowUniforms();
 
   constructor(innerRadius: number, outerRadius: number) {
     super();
@@ -35,12 +68,79 @@ export class RingMesh extends THREE.Object3D {
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.6,
-      depthWrite: false,
+      // Write depth where alphaTest passes (opaque ring material). This lets
+      // the atmosphere shell — which keeps depthWrite=false — correctly draw
+      // IN FRONT only where it's physically closer than the rings, and BEHIND
+      // where the rings occlude it. Transparent gaps (Cassini Division, etc.)
+      // discard via alphaTest and so don't write depth.
+      depthWrite: true,
     });
+    this.injectRingShading(material);
 
     this.ringMesh = new THREE.Mesh(geometry, material);
     this.ringMesh.frustumCulled = false;
     this.add(this.ringMesh);
+  }
+
+  /** Inject sun illumination + parent-planet eclipse shadow into the ring material. */
+  private injectRingShading(mat: THREE.MeshBasicMaterial): void {
+    const su = this.shadowUniforms;
+    const matExt = mat as THREE.MeshBasicMaterial & {
+      onBeforeCompile: (shader: {
+        vertexShader: string;
+        fragmentShader: string;
+        uniforms: Record<string, unknown>;
+      }) => void;
+      customProgramCacheKey: () => string;
+    };
+    matExt.onBeforeCompile = (shader) => {
+      injectShadowIntoShader(shader, su as unknown as Record<string, { value: unknown }>);
+      // Add ring world-normal varying. injectShadowIntoShader has already
+      // inserted `vShadowWorldPos = ...` after <project_vertex>; append the
+      // normal assignment to the same line so we don't depend on the chunk
+      // tag still being present.
+      shader.vertexShader = 'varying vec3 vRingWorldNormal;\n' +
+        shader.vertexShader.replace(
+          'vShadowWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+          'vShadowWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' +
+          'vRingWorldNormal = normalize(mat3(modelMatrix) * normal);',
+        );
+      // Insert ring lighting AFTER the shadow uniforms (so it sees
+      // uSunWorldPos / vShadowWorldPos) and BEFORE computeEclipseShadow.
+      // Then multiply outgoingLight by it alongside the shadow factor that
+      // injectShadowIntoShader already installed.
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          'float computeEclipseShadow()',
+          RING_FRAG_PARS + '\nfloat computeEclipseShadow()',
+        )
+        .replace(
+          'outgoingLight *= computeEclipseShadow();',
+          'outgoingLight *= computeEclipseShadow() * computeRingLighting();',
+        );
+    };
+    matExt.customProgramCacheKey = () => 'ring_shading_v1';
+    mat.needsUpdate = true;
+  }
+
+  /**
+   * Update eclipse shadow occluder uniforms for this frame.
+   * For rings, the parent body is typically the dominant occluder.
+   */
+  setShadowOccluders(
+    occluders: { pos: THREE.Vector3; radius: number }[],
+    sunPos: THREE.Vector3,
+    sunRadius: number,
+  ): void {
+    const u = this.shadowUniforms;
+    const count = Math.min(occluders.length, 4);
+    u.uShadowOccluderCount.value = count;
+    u.uSunWorldPos.value.copy(sunPos);
+    u.uSunRadius.value = sunRadius;
+    for (let i = 0; i < count; i++) {
+      u.uShadowOccluderPos.value[i].copy(occluders[i].pos);
+      u.uShadowOccluderRadius.value[i] = occluders[i].radius;
+    }
   }
 
   /**
@@ -48,7 +148,7 @@ export class RingMesh extends THREE.Object3D {
    * left edge = inner radius, right edge = outer radius.
    * Alpha channel controls ring transparency (gaps between ring divisions).
    */
-  async loadTexture(url: string): Promise<void> {
+  async loadTexture(url: string): Promise<THREE.Texture | null> {
     try {
       let texture: THREE.Texture;
 
@@ -90,8 +190,10 @@ export class RingMesh extends THREE.Object3D {
       material.alphaTest = 0.01; // Discard fully transparent pixels
       material.needsUpdate = true;
       console.log(`[Cosmolabe] Loaded ring texture: ${url}`);
+      return texture;
     } catch (e) {
       console.warn(`[Cosmolabe] Failed to load ring texture:`, e);
+      return null;
     }
   }
 
