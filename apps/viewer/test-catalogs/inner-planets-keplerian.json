@@ -47,7 +47,7 @@
       "class": "planet",
       "center": "Sun",
       "trajectory": { "type": "Builtin", "name": "Venus" },
-      "geometry": { "type": "Globe", "radius": 6052 },
+      "geometry": { "type": "Globe", "radius": 6052, "atmosphere": "Venus" },
       "label": { "color": [1.0, 0.85, 0.6] },
       "trajectoryPlot": { "color": "#ddb877", "duration": "225d", "fade": 0.4, "visible": true }
     },
@@ -83,7 +83,7 @@
       "class": "planet",
       "center": "Sun",
       "trajectory": { "type": "Builtin", "name": "Mars" },
-      "geometry": { "type": "Globe", "radius": 3389 },
+      "geometry": { "type": "Globe", "radius": 3389, "atmosphere": "Mars" },
       "label": { "color": [1.0, 0.5, 0.3] },
       "trajectoryPlot": { "color": "#cc5533", "duration": "687d", "fade": 0.4, "visible": true }
     }

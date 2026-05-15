@@ -214,7 +214,7 @@
         "ascendingNode": 358.05,
         "meridianAngle": 284.95
       },
-      "geometry": { "type": "Globe", "radii": [71492, 71492, 66854], "baseMap": "textures/jupiter.dds" },
+      "geometry": { "type": "Globe", "radii": [71492, 71492, 66854], "baseMap": "textures/jupiter.dds", "atmosphere": "Jupiter" },
       "label": { "color": [0.8, 0.7, 0.5] }
     },
     {
@@ -230,7 +230,7 @@
         "ascendingNode": 130.589,
         "meridianAngle": 38.90
       },
-      "geometry": { "type": "Globe", "radii": [60268, 60268, 54364], "baseMap": "textures/saturn.jpg" },
+      "geometry": { "type": "Globe", "radii": [60268, 60268, 54364], "baseMap": "textures/saturn.jpg", "atmosphere": "Saturn" },
       "label": { "color": [0.9, 0.8, 0.5] }
     },
     {
