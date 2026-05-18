@@ -3,7 +3,7 @@ import { TilesRenderer } from '3d-tiles-renderer/three';
 import { injectShadowIntoShader, type ShadowUniforms } from './EclipseShadow.js';
 import { injectAerialPerspectiveIntoShader, type AerialPerspectiveUniforms } from './AerialPerspective.js';
 import { isMesh, isMeshBasicMaterial } from './internal/three-typeguards.js';
-import { QuantizedMeshPlugin, ImageOverlayPlugin, XYZTilesOverlay, WMSTilesOverlay, WMTSTilesOverlay, TMSTilesOverlay, TilesFadePlugin, DebugTilesPlugin, XYZTilesPlugin, WMTSTilesPlugin, WMTSCapabilitiesLoader } from '3d-tiles-renderer/three/plugins';
+import { QuantizedMeshPlugin, ImageOverlayPlugin, XYZTilesOverlay, WMSTilesOverlay, WMTSTilesOverlay, TMSTilesOverlay, TilesFadePlugin, DebugTilesPlugin, XYZTilesPlugin, WMTSTilesPlugin, WMTSCapabilitiesLoader, type WMTSCapabilitiesResult } from '3d-tiles-renderer/three/plugins';
 
 export interface TerrainImageryConfig {
   /** Imagery source type. Default 'xyz'.
@@ -58,6 +58,22 @@ export interface TerrainImageryConfig {
    *  you'd rather see the underlying body sphere at the polar cap than a smear of
    *  the highest-latitude mercator pixel row. Only meaningful for mercator content. */
   endCaps?: boolean;
+  /** Layer opacity 0..1. Default 1. Applied to ImageOverlayPlugin overlays; ignored
+   *  for the first imagery in an imagery-only array (which generates geometry, not
+   *  an overlay). Useful for semi-transparent layers like cloud cover. */
+  opacity?: number;
+  /** Layer tint color (hex int or any three.js Color value). Default 0xffffff
+   *  (no tint). Multiplied per-pixel with the layer texture in the overlay
+   *  shader. Mostly useful for diagnostics ("does the overlay render at all?"
+   *  — set a wild color) but also for stylized basemaps. Applied to overlays
+   *  only; ignored for the geometry-generating first imagery. */
+  color?: number;
+  /** ISO date string `YYYY-MM-DD` for time-dimensioned services (NASA GIBS).
+   *  The literal string `'yesterday'` resolves to today-UTC minus one day —
+   *  matches the typical 24h publishing lag of daily imagery products like
+   *  VIIRS/MODIS true-color reflectance. When set, the resolved date replaces
+   *  the `default` time segment in the WMTS tile URL path. */
+  time?: string | 'yesterday';
 }
 
 export interface TerrainConfig {
@@ -109,6 +125,30 @@ export interface TerrainConfig {
  * Instead, return a transparent PNG that decodes successfully and contributes nothing visually.
  */
 const SKIP_TILE_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+/** Resolve a `time` config value to an ISO date string `YYYY-MM-DD`.
+ *  Supports the literal `'yesterday'` to mean today-UTC minus one day —
+ *  matches the 24h publishing lag of daily GIBS reflectance products.
+ *  Returns undefined for unset input. */
+function resolveTime(spec: string | undefined): string | undefined {
+  if (!spec) return undefined;
+  if (spec === 'yesterday') {
+    return new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  }
+  return spec;
+}
+
+/** Substitute the resolved date into a GIBS-style REST URL. GIBS WMTS REST
+ *  URLs follow `/{Layer}/{Style}/{Time}/{TileMatrixSet}/...`; the upstream
+ *  WMTSImageSource bakes the capabilities' time-dimension default into the
+ *  URL template at init (`{Time}` → `2026-05-18` or whatever), so by the
+ *  time `preprocessURL` runs the date is already a path segment, not
+ *  `default`. Match that ISO-date segment between style and TMS and swap
+ *  it for the user-requested date. Services with a custom style or a
+ *  non-date time format fall through unchanged. */
+function timeSubstitutedURL(url: string, resolvedTime: string): string {
+  return url.replace(/\/default\/\d{4}-\d{2}-\d{2}\//, `/default/${resolvedTime}/`);
+}
 
 /** Create the appropriate imagery overlay based on config type. */
 function createImageryOverlay(img: TerrainImageryConfig): XYZTilesOverlay | WMSTilesOverlay | WMTSTilesOverlay | TMSTilesOverlay {
@@ -206,6 +246,13 @@ export class TerrainManager {
   /** Group to add to the scene. Positioned at body center, transforms meters→km and Z-up→Y-up. */
   readonly group: THREE.Group;
   private readonly isImageryOnly: boolean;
+  /** True when more than one imagery layer was configured — `ImageOverlayPlugin`
+   *  is registered to composite the extras. Used to gate the imagery-only
+   *  MeshBasicMaterial → MeshStandardMaterial swap in `customizeTileMaterial`:
+   *  the swap discards `ImageOverlayPlugin`'s shader wrap (it lives on the
+   *  original material instance via `onBeforeCompile`), so when overlays are
+   *  present we keep the original material instead. */
+  private readonly hasOverlays: boolean;
   /** False while we're still waiting on an async plugin registration (e.g.
    *  wmts-capabilities fetch). tiles.update() crashes on a TilesRenderer with
    *  no URL and no plugin (tries to fetch a null tileset URL), so the render
@@ -250,11 +297,12 @@ export class TerrainManager {
   constructor(config: TerrainConfig, bodyRadiusKm: number, renderer: THREE.WebGLRenderer) {
     this.bodyRadiusKm = bodyRadiusKm;
     this.isImageryOnly = config.type === 'imagery';
+    this.hasOverlays = Array.isArray(config.imagery) && config.imagery.length > 1;
     this.preloadAtPixels = config.preloadAtPixels ?? 40;
     this.showAtPixels = config.showAtPixels ?? 80;
 
     // For imagery-only mode, no tileset URL needed — XYZTilesPlugin generates geometry.
-    // For terrain modes, QuantizedMeshPlugin needs the base URL (it fetches layer.json).
+    // For quantized-mesh / 3dtiles, the URL points at the tileset's layer.json / tileset.json.
     this.tiles = new TilesRenderer(this.isImageryOnly ? undefined : config.url);
 
     // Upstream bug guard: multiple plugins (QuantizedMeshPlugin, ImageOverlayPlugin)
@@ -268,53 +316,129 @@ export class TerrainManager {
     } as any);
 
     if (this.isImageryOnly) {
-      // Imagery-only mode: XYZTilesPlugin or WMTSTilesPlugin generates ellipsoid
-      // geometry with draped image tiles. No terrain mesh needed — imagery is
-      // projected directly onto the ellipsoid surface.
+      // Imagery-only mode: the first imagery config generates ellipsoid tile
+      // geometry (XYZTilesPlugin or WMTSTilesPlugin); any additional configs
+      // get draped on top as ImageOverlayPlugin overlays. Mirrors the
+      // terrain-mesh branch's overlay handling (line ~360) so multi-layer
+      // composition works regardless of which TerrainConfig.type is in use.
+      //
+      // Setup is async whenever any layer uses wmts-capabilities (the
+      // GetCapabilities fetch). We dedupe by URL so multiple GIBS layers that
+      // all point at the same WMTSCapabilities.xml only fetch once and share
+      // the parsed document — tile-grid alignment between base and overlays
+      // depends on them seeing the same capabilities. `_pluginReady` gates
+      // tiles.update() until everything is registered (calling update() on a
+      // TilesRenderer with no plugin crashes inside fetch(null)).
+      this._pluginReady = false;
       const imgArr = Array.isArray(config.imagery) ? config.imagery : [config.imagery!];
-      const img = imgArr[0];
+      const baseImg = imgArr[0];
+      const overlayImgs = imgArr.slice(1);
 
-      // Common options passed through to whichever plugin we register.
-      const pluginOpts = {
+      const basePluginOpts = {
         shape: 'ellipsoid' as const,
         useRecommendedSettings: true,
-        // Mercator end caps stretch the top/bottom tile row to ±90°. Useful when
-        // there's no underlying sphere, awkward when there is one (the smeared
-        // ocean color of the southernmost mercator row covers the body's static
-        // baseMap at the polar cap). Default true upstream; respect explicit
-        // false to fall through to the body's sphere at the cap.
-        ...(img.endCaps === false ? { endCaps: false } : {}),
+        // Mercator end caps stretch the top/bottom tile row to ±90°. Useful
+        // when there's no underlying sphere, awkward when there is one (the
+        // smeared southernmost mercator row covers the body's static baseMap
+        // at the polar cap). Only applied to the base layer — overlays follow
+        // the base's geometry.
+        ...(baseImg.endCaps === false ? { endCaps: false } : {}),
       };
 
-      if (img.type === 'wmts-capabilities') {
-        // WMTS capabilities discovery — required for services with non-standard
-        // tile grids (e.g. NASA GIBS' EPSG:4326 endpoint uses 2/3/5/10/20/40
-        // columns per level). Fetch + parse XML, then register WMTSTilesPlugin
-        // which reads matrixWidth/matrixHeight per level from the document.
-        // Async: the static sphere is visible until the plugin is registered.
-        // Until then, _pluginReady is false so update() skips tiles.update() —
-        // calling it on a TilesRenderer with no URL and no plugin crashes inside
-        // fetch(null) trying to load the root tileset.
-        this._pluginReady = false;
-        const loader = new WMTSCapabilitiesLoader();
-        loader.loadAsync(img.url).then((capabilities) => {
-          this.tiles.registerPlugin(new WMTSTilesPlugin({
+      // Per-URL capabilities cache so base + overlays sharing one GIBS
+      // GetCapabilities endpoint only fetch the doc once.
+      const capabilitiesCache = new Map<string, Promise<WMTSCapabilitiesResult>>();
+      const fetchCapabilities = (url: string): Promise<WMTSCapabilitiesResult> => {
+        let p = capabilitiesCache.get(url);
+        if (!p) {
+          p = new WMTSCapabilitiesLoader().loadAsync(url) as Promise<WMTSCapabilitiesResult>;
+          capabilitiesCache.set(url, p);
+        }
+        return p;
+      };
+
+      // Base layer setup — synchronous for XYZ, async for wmts-capabilities.
+      // Resolves to a 0-arg function that actually registers the plugin so we
+      // can sequence base before overlays in the final Promise.all callback.
+      const baseReady: Promise<() => void> = baseImg.type === 'wmts-capabilities'
+        ? fetchCapabilities(baseImg.url).then((capabilities) => () => {
+            this.tiles.registerPlugin(new WMTSTilesPlugin({
+              capabilities,
+              layer: baseImg.layer,
+              tileMatrixSet: baseImg.tileMatrixSet,
+              ...basePluginOpts,
+            }));
+          })
+        : Promise.resolve(() => {
+            this.tiles.registerPlugin(new XYZTilesPlugin({
+              url: baseImg.url,
+              levels: baseImg.levels ?? 8,
+              ...basePluginOpts,
+            }));
+          });
+
+      // Base layer time substitution. The WMTSTilesPlugin / XYZTilesPlugin
+      // construction pipeline (ImageFormatPlugin in 3d-tiles-renderer) calls
+      // `tiles.invokeAllPlugins(plugin => preprocessURL?.(...))` to massage
+      // tile URLs — so registering a plain plugin object with a preprocessURL
+      // is enough. ImageOverlayPlugin uses its OWN per-overlay preprocessURL
+      // (not this chain), so this hook never affects overlay URLs.
+      const baseTime = resolveTime(baseImg.time);
+      if (baseTime) {
+        this.tiles.registerPlugin({
+          preprocessURL: (url: string) => timeSubstitutedURL(url, baseTime),
+        } as { preprocessURL: (url: string) => string });
+      }
+
+      // Overlay layer setup — each one builds an ImageOverlay instance,
+      // resolved after any required capabilities fetches.
+      const overlaysReady: Promise<unknown>[] = overlayImgs.map(async (img) => {
+        const opacity = img.opacity ?? 1;
+        const color = img.color ?? 0xffffff;
+        const time = resolveTime(img.time);
+        const preprocessURL = time
+          ? (url: string) => timeSubstitutedURL(url, time)
+          : undefined;
+
+        if (img.type === 'wmts-capabilities') {
+          const capabilities = await fetchCapabilities(img.url);
+          return new WMTSTilesOverlay({
             capabilities,
             layer: img.layer,
             tileMatrixSet: img.tileMatrixSet,
-            ...pluginOpts,
+            color,
+            opacity,
+            ...(preprocessURL ? { preprocessURL } : {}),
+          } as ConstructorParameters<typeof WMTSTilesOverlay>[0]);
+        }
+
+        const overlay = createImageryOverlay(img);
+        (overlay as { opacity: number }).opacity = opacity;
+        (overlay as { color: number }).color = color;
+        if (preprocessURL) {
+          (overlay as { preprocessURL?: (url: string) => string }).preprocessURL = preprocessURL;
+        }
+        return overlay;
+      });
+
+      Promise.all([baseReady, Promise.all(overlaysReady)]).then(([registerBase, overlays]) => {
+        registerBase();
+        if (overlays.length > 0) {
+          this.tiles.registerPlugin(new ImageOverlayPlugin({
+            overlays: overlays as ConstructorParameters<typeof ImageOverlayPlugin>[0]['overlays'],
+            renderer,
+            // Upstream default — let the plugin subdivide base tiles when an
+            // overlay has higher-resolution data. The terrain-mesh branch
+            // sets this to false because the terrain mesh already provides
+            // the splitting strategy; in imagery-only mode the WMTS-generated
+            // base tiles need the plugin's splitter to composite correctly.
+            enableTileSplitting: true,
           }));
-          this._pluginReady = true;
-        }).catch((err) => {
-          console.error(`[TerrainManager] Failed to load WMTS capabilities from ${img.url}:`, err);
-        });
-      } else {
-        this.tiles.registerPlugin(new XYZTilesPlugin({
-          url: img.url,
-          levels: img.levels ?? 8,
-          ...pluginOpts,
-        }));
-      }
+        }
+        this._pluginReady = true;
+      }).catch((err) => {
+        console.error('[TerrainManager] Failed to set up imagery layers:', err);
+      });
     } else {
       if (config.type === 'quantized-mesh') {
         this.tiles.registerPlugin(new QuantizedMeshPlugin({
@@ -852,22 +976,53 @@ export class TerrainManager {
       if (!isMesh(child) || !child.material) return;
       const material = child.material as THREE.Material;
 
+      // Three.js shadow-map receiving for tile geometry. Lets the sun
+      // DirectionalLight's shadow map (cast by helicopters / drones) darken
+      // the terrain underneath. Independent of the analytical eclipse shadow.
+      child.receiveShadow = true;
+
       // Imagery-only tiles use MeshBasicMaterial (unlit). Swap to MeshStandardMaterial
       // to match the placeholder sphere's lighting response.
-      if (this.isImageryOnly && isMeshBasicMaterial(material) && material.map) {
+      //
+      // When ImageOverlayPlugin has already wrapped this MeshBasicMaterial
+      // (multi-layer config), preserve its wrap: the wrap is an
+      // `onBeforeCompile` closure over IOP's shared `params` object (which
+      // holds `layerMaps` / `layerInfo` uniform refs) plus a couple of
+      // `defines` (`LAYER_COUNT` etc.). Copying those over to the new
+      // MeshStandardMaterial keeps overlay composition working — IOP's
+      // per-frame `meshParams.get(mesh)` writes land on the new material
+      // because it reads `mesh.material` dynamically, not a cached ref.
+      if (isMeshBasicMaterial(material) && material.map) {
         const basic = material;
+        const overlayOnBeforeCompile = basic.onBeforeCompile;
+        const overlayDefines = basic.defines ? { ...basic.defines } : null;
+        const hasOverlayWrap = this.hasOverlays && overlayDefines && 'LAYER_COUNT' in overlayDefines;
+
         const mat = new THREE.MeshStandardMaterial({
           map: basic.map,
           transparent: false,
           metalness: 0,
           roughness: 0.85,
         });
-        if (su || apu) {
-          mat.onBeforeCompile = (shader) => {
+        if (hasOverlayWrap) {
+          // Bring the LAYER_COUNT (+ LAYER_N_EXISTS etc.) defines across so the
+          // overlay shader chunks compile in. IOP updates these each frame.
+          mat.defines = { ...(mat.defines ?? {}), ...overlayDefines };
+        }
+        // Chain shader injections: IOP wrap first (overlay compositing on top
+        // of `diffuseColor`), then cosmolabe's eclipse-shadow + aerial-
+        // perspective passes. Order matters — overlays should land before
+        // shadow/atmosphere darken the result.
+        const cacheKeySuffix = (hasOverlayWrap ? '_overlay_v1' : '');
+        if (su || apu || hasOverlayWrap) {
+          mat.onBeforeCompile = (shader, renderer) => {
+            if (hasOverlayWrap && overlayOnBeforeCompile) {
+              (overlayOnBeforeCompile as (s: typeof shader, r: typeof renderer) => void)(shader, renderer);
+            }
             if (su) injectShadowIntoShader(shader, su);
             if (apu) injectAerialPerspectiveIntoShader(shader, apu as unknown as Record<string, { value: unknown }>);
           };
-          mat.customProgramCacheKey = () => cacheKey;
+          mat.customProgramCacheKey = () => cacheKey + cacheKeySuffix;
         }
         child.material = mat;
         basic.dispose();

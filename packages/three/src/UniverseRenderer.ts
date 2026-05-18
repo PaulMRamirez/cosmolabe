@@ -1088,6 +1088,24 @@ export class UniverseRenderer {
     this.labelManager?.setAllVisible(visible);
   }
 
+  /**
+   * Pin or unpin a body's label. Pinned labels survive the screen-space
+   * collision pass and skip the NASA-Eyes self-size fade — they always
+   * render unless geometrically occluded. Typical use: pin the currently
+   * selected and camera-tracked bodies so the user's focus reads even when
+   * a higher-priority planet would otherwise win collision arbitration, and
+   * even when the body has grown large enough on screen that the self-size
+   * fade would normally drop the label. Pass the body's display name.
+   */
+  setLabelPinned(name: string, pinned: boolean): void {
+    this.labelManager?.setLabelPinned(name, pinned);
+  }
+
+  /** Unpin all labels (e.g. on selection clear). */
+  clearPinnedLabels(): void {
+    this.labelManager?.clearPinnedLabels();
+  }
+
   /** Place (or clear) a constant screen-space dot at a picked surface point. */
   setPickMarker(result: SurfacePickResult | null): void {
     // Remove old marker

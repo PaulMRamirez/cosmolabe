@@ -43,6 +43,15 @@ export class BodyMesh extends THREE.Object3D {
   displayRadius: number;
   /** Container for loaded 3D model (replaces placeholder sphere) */
   modelContainer: THREE.Object3D | null = null;
+  /**
+   * Local-space bbox of the loaded model BEFORE `modelBaseScale` is applied
+   * to `modelContainer`. Used by LabelManager to project the model's actual
+   * silhouette to screen pixels (so labels clear thin protrusions like solar
+   * panels and booms that aren't captured by `displayRadius`). Combined with
+   * `modelContainer.matrixWorld` (which already bakes in scale + rotation)
+   * gives the up-to-date world-space corners each frame.
+   */
+  modelLocalBox: THREE.Box3 | null = null;
   private loadedModel = false;
   /** Base scale applied to the model container (before dynamic sizing) */
   private modelBaseScale = 1;
@@ -237,6 +246,8 @@ export class BodyMesh extends THREE.Object3D {
     const objectSize = new THREE.Vector3();
     box.getSize(objectSize);
     const maxExtent = Math.max(objectSize.x, objectSize.y, objectSize.z);
+    // Cache for LabelManager screen-silhouette projection.
+    this.modelLocalBox = box.clone();
 
     // Analyze model geometry: identify key features and suggest meshRotation
     this.analyzeModelGeometry(object, box);
