@@ -6,6 +6,17 @@ export interface TrajectoryArc {
   endTime: number;
   /** Center body name for this arc (positions are relative to this body) */
   centerName?: string;
+  /** Suppress the trajectory line for this arc while still using its
+   *  samples for body positioning. Useful for landed / surface-locked
+   *  arcs where the inertial-frame samples trace a body-rotation circle
+   *  even though the spacecraft is stationary in the body-fixed frame —
+   *  drawing that circle visually contradicts the "this thing is parked"
+   *  story. Default true (line is drawn). */
+  showLine?: boolean;
+  /** Override the default sample count for the trajectory line. Useful
+   *  for long-duration cruise arcs where the auto-derived count
+   *  (clamped to 500) produces a faceted polygon at high eccentricity. */
+  numKeySamples?: number;
 }
 
 export class CompositeTrajectory implements Trajectory {

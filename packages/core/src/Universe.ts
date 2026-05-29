@@ -202,10 +202,22 @@ export class Universe {
       let z = state.position[2];
       if (isNaN(x)) return [NaN, NaN, NaN];
 
-      // Walk up the parent chain, resolving composite trajectory centers at each step
-      let currentParent = body.parentName;
-      if (!currentParent && body.trajectory instanceof CompositeTrajectory) {
-        currentParent = body.trajectory.arcAt(et).centerName;
+      // Walk up the parent chain, resolving composite trajectory centers at
+      // each step. For composite trajectories the ARC's centerName is the
+      // authoritative parent for the body's current state — the arc's
+      // positions are expressed relative to that body, regardless of any
+      // static parentName on the body itself. This matches what
+      // UniverseRenderer's trajectory-line code already does (arc center
+      // first, parentName as fallback) — without this the line drew
+      // correctly but the body marker was placed using the wrong parent
+      // chain (e.g. a multi-phase mission that switches Earth → Moon for
+      // a lunar segment would have its marker added to Earth's position
+      // while the line correctly anchored to the Moon).
+      let currentParent: string | undefined;
+      if (body.trajectory instanceof CompositeTrajectory) {
+        currentParent = body.trajectory.arcAt(et).centerName ?? body.parentName;
+      } else {
+        currentParent = body.parentName;
       }
 
       // Body-fixed trajectories (e.g. FixedSpherical for surface points) output
