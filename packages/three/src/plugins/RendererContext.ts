@@ -22,4 +22,12 @@ export interface RendererContext {
   getTrajectoryLine(name: string): TrajectoryLine | undefined;
   /** Attach a Three.js object to a body. Renderer manages positioning each frame. */
   attachToBody(bodyName: string, object: THREE.Object3D, options?: AttachOptions): AttachedVisual;
+  /**
+   * Trigger a full multi-pass render synchronously. Useful for capture features
+   * (screenshot, video frame) so the canvas backing store reflects the complete
+   * composite (bodies + tiles + models + markers + bloom) at the time of capture,
+   * rather than a single-pass `webglRenderer.render(scene, camera)` which would
+   * overwrite the multi-pass result with just Pass 1.
+   */
+  renderFrame(): void;
 }

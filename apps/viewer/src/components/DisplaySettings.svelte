@@ -1,8 +1,10 @@
 <script lang="ts">
   import { vs, setDisplayOption, setLighting, setCameraMode } from '../lib/viewer-state.svelte';
   import { getRenderer } from '../lib/viewer-state.svelte';
+  import { exportCameraView, importCameraViewFromFile } from '../lib/camera-view-io';
+  import { takeScreenshot, isRecordingVideo, toggleVideoRecording } from '../lib/capture';
   import { CameraModeName } from '@cosmolabe/three';
-  import { X, Save, Navigation } from 'lucide-svelte';
+  import { X, Save, Navigation, Download, Upload, Camera, Video, Square } from 'lucide-svelte';
   import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
   import Separator from '$lib/components/ui/separator/separator.svelte';
 
@@ -19,6 +21,7 @@
   let vpCounter = $state(0);
   let sensors = $state<string[]>([]);
   let activeInstrument = $state('');
+  let recording = $state(false);
 
   $effect(() => {
     const r = getRenderer();
@@ -27,6 +30,7 @@
     viewpoints = r.cameraController.getViewpoints().map(v => ({ name: v.name }));
     sensors = r.getSensorNames();
     activeInstrument = r.activeInstrumentView ?? '';
+    recording = isRecordingVideo(r);
   });
 
   function onFovInput(e: Event) {
@@ -113,51 +117,82 @@
     <!-- Viewpoints -->
     {#if viewpoints.length > 0}
       <Separator class="my-1" />
-      <div class="flex items-center gap-2 px-3 py-1 text-[12px]">
-        <span class="flex-1 text-text-primary">Viewpoint</span>
-        <select
-          class="bg-surface-3 text-text-primary border border-border rounded px-1.5 py-0.5 text-[11px] cursor-pointer outline-none max-w-28"
-          bind:value={selectedViewpoint}
-          onchange={() => {
-            if (!selectedViewpoint) return;
+      <div class="px-3 py-1 text-[12px]">
+        <div class="text-text-primary mb-1">Viewpoint</div>
+        <div class="mb-1">
+          <select
+            class="w-full bg-surface-3 text-text-primary border border-border rounded px-1.5 py-0.5 text-[11px] cursor-pointer outline-none"
+            bind:value={selectedViewpoint}
+            onchange={() => {
+              if (!selectedViewpoint) return;
+              const r = getRenderer();
+              if (!r) return;
+              const vp = r.cameraController.getViewpoint(selectedViewpoint);
+              if (!vp) return;
+              if (vp.trackBody) {
+                const bm = r.getBodyMesh(vp.trackBody);
+                if (bm) {
+                  r.cameraController.track(bm);
+                  r.cameraController.applyViewpoint(vp);
+                  if (vp.target.lengthSq() > 1e-30) r.cameraController.track(null);
+                }
+              } else {
+                r.cameraController.goToViewpoint(selectedViewpoint, 1.0);
+              }
+            }}
+          >
+            <option value="">-- select --</option>
+            {#each viewpoints as vp}<option value={vp.name}>{vp.name}</option>{/each}
+          </select>
+        </div>
+        <div class="grid grid-cols-4 gap-1">
+          <button class="flex items-center justify-center h-6 text-text-secondary bg-surface-3 border border-border rounded cursor-pointer hover:bg-border-active hover:text-text-primary transition-colors" title="Save current view to session" onclick={() => {
+            const r = getRenderer();
+            if (r) {
+              vpCounter++;
+              const name = `Saved ${vpCounter}`;
+              r.cameraController.saveViewpoint(name);
+              viewpoints = r.cameraController.getViewpoints().map(v => ({ name: v.name }));
+              selectedViewpoint = name;
+            }
+          }}><Save size={12} /></button>
+          <button class="flex items-center justify-center h-6 text-text-secondary bg-surface-3 border border-border rounded cursor-pointer hover:bg-border-active hover:text-text-primary transition-colors" title="Fly to tracked body" onclick={() => {
+            const r = getRenderer();
+            const tracked = r?.cameraController.trackedBody;
+            if (r && tracked) r.cameraController.flyTo(tracked, { scaleFactor: 1e-6 });
+          }}><Navigation size={12} /></button>
+          <button class="flex items-center justify-center h-6 text-text-secondary bg-surface-3 border border-border rounded cursor-pointer hover:bg-border-active hover:text-text-primary transition-colors" title="Download current view as JSON" onclick={() => {
+            const r = getRenderer();
+            if (r) exportCameraView(r);
+          }}><Download size={12} /></button>
+          <button class="flex items-center justify-center h-6 text-text-secondary bg-surface-3 border border-border rounded cursor-pointer hover:bg-border-active hover:text-text-primary transition-colors" title="Load view from JSON file" onclick={async () => {
             const r = getRenderer();
             if (!r) return;
-            const vp = r.cameraController.getViewpoint(selectedViewpoint);
-            if (!vp) return;
-            if (vp.trackBody) {
-              const bm = r.getBodyMesh(vp.trackBody);
-              if (bm) {
-                r.cameraController.track(bm);
-                r.cameraController.applyViewpoint(vp);
-                if (vp.target.lengthSq() > 1e-30) r.cameraController.track(null);
-              }
-            } else {
-              r.cameraController.goToViewpoint(selectedViewpoint, 1.0);
-            }
-          }}
-        >
-          <option value="">-- select --</option>
-          {#each viewpoints as vp}<option value={vp.name}>{vp.name}</option>{/each}
-        </select>
-      </div>
-      <div class="flex gap-1 px-3 py-1">
-        <button class="inline-flex items-center gap-1 text-[11px] text-text-secondary bg-surface-3 border border-border rounded px-2 py-0.5 cursor-pointer hover:bg-border-active hover:text-text-primary transition-colors" onclick={() => {
-          const r = getRenderer();
-          if (r) {
-            vpCounter++;
-            const name = `Saved ${vpCounter}`;
-            r.cameraController.saveViewpoint(name);
+            await importCameraViewFromFile(r);
             viewpoints = r.cameraController.getViewpoints().map(v => ({ name: v.name }));
-            selectedViewpoint = name;
-          }
-        }}><Save size={11} /> Save</button>
-        <button class="inline-flex items-center gap-1 text-[11px] text-text-secondary bg-surface-3 border border-border rounded px-2 py-0.5 cursor-pointer hover:bg-border-active hover:text-text-primary transition-colors" onclick={() => {
-          const r = getRenderer();
-          const tracked = r?.cameraController.trackedBody;
-          if (r && tracked) r.cameraController.flyTo(tracked, { scaleFactor: 1e-6 });
-        }}><Navigation size={11} /> Fly to</button>
+          }}><Upload size={12} /></button>
+        </div>
       </div>
     {/if}
+
+    <!-- Capture -->
+    <Separator class="my-1" />
+    <div class="px-3 py-1 text-[12px]">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="flex-1 text-text-primary">Capture</span>
+        {#if recording}<span class="flex items-center gap-1 text-[10px] text-red-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>REC</span>{/if}
+      </div>
+      <div class="grid grid-cols-2 gap-1">
+        <button class="flex items-center justify-center gap-1 h-6 text-[11px] text-text-secondary bg-surface-3 border border-border rounded cursor-pointer hover:bg-border-active hover:text-text-primary transition-colors" title="Save screenshot (PNG)" onclick={() => {
+          const r = getRenderer();
+          if (r) takeScreenshot(r);
+        }}><Camera size={12} /> Screenshot</button>
+        <button class="flex items-center justify-center gap-1 h-6 text-[11px] border rounded cursor-pointer transition-colors {recording ? 'text-red-300 bg-red-900/30 border-red-700 hover:bg-red-900/50' : 'text-text-secondary bg-surface-3 border-border hover:bg-border-active hover:text-text-primary'}" title={recording ? 'Stop recording (download webm)' : 'Start recording video'} onclick={() => {
+          const r = getRenderer();
+          if (r) recording = toggleVideoRecording(r);
+        }}>{#if recording}<Square size={11} /> Stop{:else}<Video size={12} /> Record{/if}</button>
+      </div>
+    </div>
 
     <!-- Instruments -->
     {#if sensors.length > 0}

@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { Universe, loadCatalogFromUrl, type ResolvedCatalogGraph, type ResolvedKernel } from '@cosmolabe/core';
 import { Spice, type SpiceInstance } from '@cosmolabe/spice';
-import { UniverseRenderer, SpiceCacheWorker, ScreenshotPlugin, OrbitalInfoPlugin } from '@cosmolabe/three';
+import { UniverseRenderer, SpiceCacheWorker, ScreenshotPlugin, VideoRecordPlugin, OrbitalInfoPlugin } from '@cosmolabe/three';
 import SpiceCacheRelayWorker from '../workers/spice-cache-relay.ts?worker';
 import { parseMetaKernel } from './metakernel';
 import {
@@ -414,6 +414,7 @@ function initScene(
 
   // Register stock plugins
   renderer.use(new ScreenshotPlugin());
+  renderer.use(new VideoRecordPlugin());
   renderer.use(new OrbitalInfoPlugin());
 
   // Double-click a body → fly to it + select it for the info panel

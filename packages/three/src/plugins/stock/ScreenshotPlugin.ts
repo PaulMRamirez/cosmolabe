@@ -15,21 +15,17 @@ export class ScreenshotPlugin implements RendererPlugin {
         label: 'Save screenshot',
         category: 'Capture',
         execute: (ctx) => {
-          const canvas = ctx.canvas;
-          const renderer = ctx.webglRenderer;
-
-          // Force a render to ensure the canvas has current content
-          renderer.render(ctx.scene, ctx.camera);
-
-          canvas.toBlob((blob) => {
-            if (!blob) return;
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `cosmolabe-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }, 'image/png');
+          // Do a full multi-pass render right now so the canvas backing store
+          // holds the complete composite (bodies + tiles + models + markers +
+          // bloom). Then immediately read pixels via the synchronous
+          // toDataURL — async toBlob is unsafe without preserveDrawingBuffer,
+          // since the next rAF can clear the buffer before encoding reads it.
+          ctx.renderFrame();
+          const dataUrl = ctx.canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = `cosmolabe-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+          a.click();
         },
       },
     ],

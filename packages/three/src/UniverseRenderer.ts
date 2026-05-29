@@ -241,6 +241,7 @@ export class UniverseRenderer {
       state: this.universe.state,
       getBodyMesh: (name: string) => this.bodyMeshes.get(name),
       getTrajectoryLine: (name: string) => this.trajectoryLines.get(name),
+      renderFrame: () => this.renderFrame(),
       attachToBody: (bodyName: string, object: THREE.Object3D, options?: AttachOptions): AttachedVisual => {
         this.scene.add(object);
         const entry = {

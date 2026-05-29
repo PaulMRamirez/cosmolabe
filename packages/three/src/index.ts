@@ -73,6 +73,7 @@ export type { ManeuverEvent } from './plugins/stock/ManeuverVectorPlugin.js';
 export { CommLinkPlugin } from './plugins/stock/CommLinkPlugin.js';
 export type { CommLink } from './plugins/stock/CommLinkPlugin.js';
 export { ScreenshotPlugin } from './plugins/stock/ScreenshotPlugin.js';
+export { VideoRecordPlugin } from './plugins/stock/VideoRecordPlugin.js';
 export { OrbitalInfoPlugin } from './plugins/stock/OrbitalInfoPlugin.js';
 export { AsteroidSwarmPlugin } from './plugins/AsteroidSwarmPlugin.js';
 export type { AsteroidSwarmPluginOptions } from './plugins/AsteroidSwarmPlugin.js';

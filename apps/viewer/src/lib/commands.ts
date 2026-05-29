@@ -8,6 +8,7 @@ import {
   vs, togglePlay, reverse, faster, slower, stepForward, stepBackward,
   setDisplayOption, cycleCamera, flyToTracked, resetCamera, getRenderer,
 } from './viewer-state.svelte';
+import { exportCameraView, importCameraViewFromFile } from './camera-view-io';
 
 export interface Command {
   id: string;
@@ -32,6 +33,8 @@ function getBuiltinCommands(): Command[] {
     { id: 'cam:fly-to', label: 'Fly to tracked body', shortcut: 'F', category: 'Camera', execute: () => flyToTracked() },
     { id: 'cam:cycle', label: 'Cycle camera mode', shortcut: 'M', category: 'Camera', execute: () => cycleCamera() },
     { id: 'cam:reset', label: 'Reset to Free Orbit', shortcut: 'Esc', category: 'Camera', execute: () => resetCamera() },
+    { id: 'cam:export', label: 'Export camera view (download JSON)', category: 'Camera', execute: (r) => exportCameraView(r) },
+    { id: 'cam:import', label: 'Import camera view (from file)', category: 'Camera', execute: (r) => { void importCameraViewFromFile(r); } },
 
     // Display
     { id: 'disp:traj', label: vs.showTrajectories ? 'Hide trajectories' : 'Show trajectories', shortcut: 'T', category: 'Display', execute: () => setDisplayOption('trajectories', !vs.showTrajectories) },
