@@ -238,12 +238,16 @@ function createImageryOverlay(img: TerrainImageryConfig): XYZTilesOverlay | WMST
       });
     case 'wmts': {
       const preprocessURL = buildWmtsOverlayPreprocessURL(resolveTime(img.time));
+      // The 3d-tiles-renderer 0.4.24 TS defs made `tileMatrices` required even
+      // for the url-only overlay shape — the JS constructor still accepts the
+      // old form (it derives matrices from the WMTS URL pattern), so cast
+      // through `unknown` to keep the simpler call site.
       const overlay = new WMTSTilesOverlay({
         url: img.url,
         color: 0xffffff,
         opacity: 1,
         ...(preprocessURL ? { preprocessURL } : {}),
-      });
+      } as unknown as ConstructorParameters<typeof WMTSTilesOverlay>[0]);
       if (img.minZoom != null) clampOverlayMinLevel(overlay, img.minZoom);
       return overlay;
     }
@@ -297,7 +301,7 @@ function createImageryOverlay(img: TerrainImageryConfig): XYZTilesOverlay | WMST
       return new XYZTilesOverlay({
         url: img.url,
         levels: img.levels ?? 8,
-        dimension: img.dimension ?? 256,
+        tileDimension: img.dimension ?? 256,
         projection: img.projection ?? 'EPSG:4326',
         color: 0xffffff,
         opacity: 1,
@@ -450,12 +454,15 @@ export class TerrainManager {
       // can sequence base before overlays in the final Promise.all callback.
       const baseReady: Promise<() => void> = baseImg.type === 'wmts-capabilities'
         ? fetchCapabilities(baseImg.url).then((capabilities) => () => {
+            // `capabilities` is the deprecated-but-still-runtime-supported shape
+            // (0.4.24 changelog). TS defs now require `tileMatrices` directly;
+            // cast through `unknown` to preserve the simpler runtime call.
             this.tiles.registerPlugin(new WMTSTilesPlugin({
               capabilities,
               layer: baseImg.layer,
               tileMatrixSet: baseImg.tileMatrixSet,
               ...basePluginOpts,
-            }));
+            } as unknown as ConstructorParameters<typeof WMTSTilesPlugin>[0]));
           })
         : Promise.resolve(() => {
             this.tiles.registerPlugin(new XYZTilesPlugin({
@@ -494,7 +501,7 @@ export class TerrainManager {
             color,
             opacity,
             ...(preprocessURL ? { preprocessURL } : {}),
-          } as ConstructorParameters<typeof WMTSTilesOverlay>[0]);
+          } as unknown as ConstructorParameters<typeof WMTSTilesOverlay>[0]);
           if (img.minZoom != null) clampOverlayMinLevel(overlay, img.minZoom);
           return overlay;
         }

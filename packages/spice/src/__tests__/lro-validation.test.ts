@@ -8,10 +8,25 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { Spice } from '../Spice.js';
 
 const KERNEL_DIR = join(__dirname, '../../../../apps/viewer/test-catalogs/kernels');
+
+/** Read a kernel file; transparently decompress if it's stored gzipped on
+ *  disk. The viewer's mission-specific kernels (LRO, etc.) ship as .gz to
+ *  cut the repo checkout size — the catalog loader decompresses at load
+ *  time. Tests need the same handling. */
+function readKernel(relPath: string): Buffer {
+  const fullPath = join(KERNEL_DIR, relPath);
+  try {
+    return readFileSync(fullPath);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    return gunzipSync(readFileSync(`${fullPath}.gz`));
+  }
+}
 
 describe('LRO position validation', () => {
   let spice: Spice;
@@ -21,17 +36,17 @@ describe('LRO position validation', () => {
     spice = await Spice.init();
 
     // Load generic kernels
-    const lsk = readFileSync(join(KERNEL_DIR, 'naif0012.tls'));
-    const pck = readFileSync(join(KERNEL_DIR, 'pck00011.tpc'));
-    const spk = readFileSync(join(KERNEL_DIR, 'de440s.bsp'));
+    const lsk = readKernel('naif0012.tls');
+    const pck = readKernel('pck00011.tpc');
+    const spk = readKernel('de440s.bsp');
 
     await spice.furnish({ type: 'buffer', data: lsk.buffer, filename: 'naif0012.tls' });
     await spice.furnish({ type: 'buffer', data: pck.buffer, filename: 'pck00011.tpc' });
     await spice.furnish({ type: 'buffer', data: spk.buffer, filename: 'de440s.bsp' });
 
     // Load LRO kernels
-    const lroSpk = readFileSync(join(KERNEL_DIR, 'lro/lrorg_2024350_2025074_v01.bsp'));
-    const lroFrames = readFileSync(join(KERNEL_DIR, 'lro/lro_frames_2014049_v01.tf'));
+    const lroSpk = readKernel('lro/lrorg_2024350_2025074_v01.bsp');
+    const lroFrames = readKernel('lro/lro_frames_2014049_v01.tf');
 
     await spice.furnish({ type: 'buffer', data: lroSpk.buffer, filename: 'lrorg_2024350_2025074_v01.bsp' });
     await spice.furnish({ type: 'buffer', data: lroFrames.buffer, filename: 'lro_frames_2014049_v01.tf' });
