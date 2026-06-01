@@ -1,0 +1,1219 @@
+{
+  "name": "MoonFall at Shackleton",
+  "defaultTime": "2028-12-15T10:30:00Z",
+  "defaultViewpoint": "Shackleton Overview",
+  "items": [
+    {
+      "name": "Shackleton Overview",
+      "type": "Viewpoint",
+      "center": "Moon",
+      "distance": 60,
+      "latitude": -89.6,
+      "longitude": 0
+    },
+    {
+      "name": "Polaris-A Close-up",
+      "type": "Viewpoint",
+      "center": "Polaris-A",
+      "distance": 0.05,
+      "latitude": 25,
+      "longitude": 90
+    },
+    {
+      "name": "PSR Floor View",
+      "type": "Viewpoint",
+      "center": "Moon",
+      "distance": 20,
+      "latitude": -89.7,
+      "longitude": -10
+    },
+    {
+      "name": "Sun",
+      "class": "star",
+      "trajectory": {
+        "type": "FixedPoint",
+        "position": [
+          0,
+          0,
+          0
+        ]
+      },
+      "geometry": {
+        "type": "Globe",
+        "radius": 695000
+      },
+      "label": {
+        "color": [
+          1,
+          0.9,
+          0.3
+        ]
+      }
+    },
+    {
+      "name": "Earth",
+      "class": "planet",
+      "center": "Sun",
+      "trajectory": {
+        "type": "Builtin",
+        "name": "Earth"
+      },
+      "geometry": {
+        "type": "Globe",
+        "radius": 6378,
+        "baseMap": "textures/earth-5k.jpg",
+        "atmosphere": "Earth"
+      },
+      "label": {
+        "color": [
+          0.4,
+          0.6,
+          1
+        ]
+      }
+    },
+    {
+      "name": "Moon",
+      "class": "moon",
+      "center": "Earth",
+      "trajectory": {
+        "type": "Builtin",
+        "name": "Moon"
+      },
+      "rotationModel": {
+        "type": "Builtin",
+        "name": "IAU_MOON"
+      },
+      "geometry": {
+        "type": "Globe",
+        "radius": 1737.4,
+        "baseMap": "textures/moon-16k.jpg",
+        "normalMap": "textures/moon-normal-16k.jpg",
+        "displacementMap": "textures/moon-displacement-2k.jpg",
+        "displacementScale": 20,
+        "displacementBias": -9,
+        "terrain": {
+          "type": "quantized-mesh",
+          "url": "https://marshub.s3.amazonaws.com/moon_v14/",
+          "imagery": {
+            "url": "https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/{z}/{y}/{x}.jpg",
+            "levels": 8
+          }
+        }
+      },
+      "label": {
+        "color": [
+          0.7,
+          0.7,
+          0.7
+        ]
+      },
+      "items": [
+        {
+          "name": "Polaris-A",
+          "class": "spacecraft",
+          "trajectoryFrame": "BodyFixed",
+          "arcs": [
+            {
+              "startTime": "2028-12-15T10:00:00Z",
+              "endTime": "2028-12-15T10:07:10.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-15T10:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 25,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "80m"
+                  },
+                  {
+                    "t": 90,
+                    "lat": -89.62,
+                    "lon": -30,
+                    "alt": "140m"
+                  },
+                  {
+                    "t": 160,
+                    "lat": -89.69,
+                    "lon": -10,
+                    "alt": "90m"
+                  },
+                  {
+                    "t": 200,
+                    "lat": -89.71,
+                    "lon": -2,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 260,
+                    "lat": -89.71,
+                    "lon": -2,
+                    "alt": "90m"
+                  },
+                  {
+                    "t": 330,
+                    "lat": -89.62,
+                    "lon": -30,
+                    "alt": "140m"
+                  },
+                  {
+                    "t": 400,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 430,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-15T10:07:10.000Z",
+              "endTime": "2028-12-17T22:00:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-15T10:07:10.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 215570,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-17T22:00:00Z",
+              "endTime": "2028-12-17T22:09:00.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-17T22:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 25,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "70m"
+                  },
+                  {
+                    "t": 110,
+                    "lat": -89.65,
+                    "lon": -35,
+                    "alt": "110m"
+                  },
+                  {
+                    "t": 180,
+                    "lat": -89.72,
+                    "lon": -25,
+                    "alt": "40m"
+                  },
+                  {
+                    "t": 240,
+                    "lat": -89.78,
+                    "lon": -15,
+                    "alt": "40m"
+                  },
+                  {
+                    "t": 300,
+                    "lat": -89.78,
+                    "lon": -15,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 360,
+                    "lat": -89.78,
+                    "lon": -15,
+                    "alt": "70m"
+                  },
+                  {
+                    "t": 440,
+                    "lat": -89.65,
+                    "lon": -35,
+                    "alt": "130m"
+                  },
+                  {
+                    "t": 510,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 540,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-17T22:09:00.000Z",
+              "endTime": "2028-12-22T14:00:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-17T22:09:00.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 402660,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-22T14:00:00Z",
+              "endTime": "2028-12-22T14:08:10.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-22T14:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 30,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "90m"
+                  },
+                  {
+                    "t": 100,
+                    "lat": -89.52,
+                    "lon": -55,
+                    "alt": "180m"
+                  },
+                  {
+                    "t": 170,
+                    "lat": -89.5,
+                    "lon": -65,
+                    "alt": "240m"
+                  },
+                  {
+                    "t": 230,
+                    "lat": -89.5,
+                    "lon": -65,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 320,
+                    "lat": -89.5,
+                    "lon": -65,
+                    "alt": "240m"
+                  },
+                  {
+                    "t": 390,
+                    "lat": -89.52,
+                    "lon": -55,
+                    "alt": "180m"
+                  },
+                  {
+                    "t": 460,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 490,
+                    "lat": -89.55,
+                    "lon": -45,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            }
+          ],
+          "rotationModel": {
+            "type": "SurfaceUp"
+          },
+          "geometry": {
+            "type": "Mesh",
+            "source": "models/Ingenuity.glb",
+            "size": 0.0015,
+            "radii": [
+              0.00075,
+              0.00075,
+              0.00075
+            ],
+            "surfaceLock": "aboveTerrain",
+            "meshRotation": [
+              0.7071,
+              0,
+              0,
+              -0.7071
+            ],
+            "castShadow": true
+          },
+          "label": {
+            "color": [
+              0.4,
+              0.85,
+              1
+            ]
+          }
+        },
+        {
+          "name": "Polaris-B",
+          "class": "spacecraft",
+          "trajectoryFrame": "BodyFixed",
+          "arcs": [
+            {
+              "startTime": "2028-12-15T18:30:00Z",
+              "endTime": "2028-12-15T18:38:10.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-15T18:30:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 25,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "80m"
+                  },
+                  {
+                    "t": 110,
+                    "lat": -89.42,
+                    "lon": 55,
+                    "alt": "110m"
+                  },
+                  {
+                    "t": 200,
+                    "lat": -89.45,
+                    "lon": 85,
+                    "alt": "110m"
+                  },
+                  {
+                    "t": 240,
+                    "lat": -89.45,
+                    "lon": 85,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 310,
+                    "lat": -89.45,
+                    "lon": 85,
+                    "alt": "90m"
+                  },
+                  {
+                    "t": 380,
+                    "lat": -89.42,
+                    "lon": 55,
+                    "alt": "130m"
+                  },
+                  {
+                    "t": 460,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 490,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-15T18:38:10.000Z",
+              "endTime": "2028-12-19T06:00:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-15T18:38:10.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 300110,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-19T06:00:00Z",
+              "endTime": "2028-12-19T06:07:10.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-19T06:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 30,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 90,
+                    "lat": -89.36,
+                    "lon": 20,
+                    "alt": "220m"
+                  },
+                  {
+                    "t": 150,
+                    "lat": -89.34,
+                    "lon": 10,
+                    "alt": "220m"
+                  },
+                  {
+                    "t": 190,
+                    "lat": -89.34,
+                    "lon": 10,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 260,
+                    "lat": -89.34,
+                    "lon": 10,
+                    "alt": "220m"
+                  },
+                  {
+                    "t": 330,
+                    "lat": -89.38,
+                    "lon": 25,
+                    "alt": "160m"
+                  },
+                  {
+                    "t": 400,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 430,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-19T06:07:10.000Z",
+              "endTime": "2028-12-26T11:00:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-19T06:07:10.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 622370,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-26T11:00:00Z",
+              "endTime": "2028-12-26T11:07:00.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-26T11:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 30,
+                    "lat": -89.4,
+                    "lon": 30,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 150,
+                    "lat": -89.36,
+                    "lon": 60,
+                    "alt": "160m"
+                  },
+                  {
+                    "t": 280,
+                    "lat": -89.32,
+                    "lon": 95,
+                    "alt": "200m"
+                  },
+                  {
+                    "t": 380,
+                    "lat": -89.3,
+                    "lon": 120,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 420,
+                    "lat": -89.3,
+                    "lon": 120,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            }
+          ],
+          "rotationModel": {
+            "type": "SurfaceUp"
+          },
+          "geometry": {
+            "type": "Mesh",
+            "source": "models/Ingenuity.glb",
+            "size": 0.0015,
+            "radii": [
+              0.00075,
+              0.00075,
+              0.00075
+            ],
+            "surfaceLock": "aboveTerrain",
+            "meshRotation": [
+              0.7071,
+              0,
+              0,
+              -0.7071
+            ],
+            "castShadow": true
+          },
+          "label": {
+            "color": [
+              1,
+              0.65,
+              0.3
+            ]
+          }
+        },
+        {
+          "name": "Polaris-C",
+          "class": "spacecraft",
+          "trajectoryFrame": "BodyFixed",
+          "arcs": [
+            {
+              "startTime": "2028-12-16T09:00:00Z",
+              "endTime": "2028-12-16T09:08:20.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-16T09:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 25,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "80m"
+                  },
+                  {
+                    "t": 100,
+                    "lat": -89.75,
+                    "lon": 75,
+                    "alt": "110m"
+                  },
+                  {
+                    "t": 180,
+                    "lat": -89.73,
+                    "lon": 50,
+                    "alt": "80m"
+                  },
+                  {
+                    "t": 240,
+                    "lat": -89.73,
+                    "lon": 50,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 310,
+                    "lat": -89.73,
+                    "lon": 50,
+                    "alt": "90m"
+                  },
+                  {
+                    "t": 390,
+                    "lat": -89.75,
+                    "lon": 75,
+                    "alt": "130m"
+                  },
+                  {
+                    "t": 470,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 500,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-16T09:08:20.000Z",
+              "endTime": "2028-12-20T15:00:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-16T09:08:20.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 366700,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-20T15:00:00Z",
+              "endTime": "2028-12-20T15:08:30.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-20T15:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 25,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "70m"
+                  },
+                  {
+                    "t": 110,
+                    "lat": -89.75,
+                    "lon": 60,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 190,
+                    "lat": -89.72,
+                    "lon": 30,
+                    "alt": "40m"
+                  },
+                  {
+                    "t": 240,
+                    "lat": -89.72,
+                    "lon": 30,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 320,
+                    "lat": -89.72,
+                    "lon": 30,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 400,
+                    "lat": -89.75,
+                    "lon": 60,
+                    "alt": "90m"
+                  },
+                  {
+                    "t": 480,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 510,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-20T15:08:30.000Z",
+              "endTime": "2028-12-25T02:00:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-20T15:08:30.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 384690,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-25T02:00:00Z",
+              "endTime": "2028-12-25T02:10:10.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-25T02:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 30,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "90m"
+                  },
+                  {
+                    "t": 130,
+                    "lat": -89.8,
+                    "lon": 130,
+                    "alt": "130m"
+                  },
+                  {
+                    "t": 240,
+                    "lat": -89.78,
+                    "lon": 170,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 280,
+                    "lat": -89.78,
+                    "lon": 170,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 360,
+                    "lat": -89.78,
+                    "lon": 170,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 470,
+                    "lat": -89.8,
+                    "lon": 130,
+                    "alt": "150m"
+                  },
+                  {
+                    "t": 580,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 610,
+                    "lat": -89.78,
+                    "lon": 90,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            }
+          ],
+          "rotationModel": {
+            "type": "SurfaceUp"
+          },
+          "geometry": {
+            "type": "Mesh",
+            "source": "models/Ingenuity.glb",
+            "size": 0.0015,
+            "radii": [
+              0.00075,
+              0.00075,
+              0.00075
+            ],
+            "surfaceLock": "aboveTerrain",
+            "meshRotation": [
+              0.7071,
+              0,
+              0,
+              -0.7071
+            ],
+            "castShadow": true
+          },
+          "label": {
+            "color": [
+              0.85,
+              0.4,
+              1
+            ]
+          }
+        },
+        {
+          "name": "Polaris-D",
+          "class": "spacecraft",
+          "trajectoryFrame": "BodyFixed",
+          "arcs": [
+            {
+              "startTime": "2028-12-16T20:00:00Z",
+              "endTime": "2028-12-16T20:13:00.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-16T20:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 30,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 160,
+                    "lat": -89.4,
+                    "lon": -150,
+                    "alt": "250m"
+                  },
+                  {
+                    "t": 320,
+                    "lat": -89.2,
+                    "lon": -160,
+                    "alt": "250m"
+                  },
+                  {
+                    "t": 380,
+                    "lat": -89.1,
+                    "lon": -160,
+                    "alt": "40m"
+                  },
+                  {
+                    "t": 420,
+                    "lat": -89.1,
+                    "lon": -160,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 490,
+                    "lat": -89.1,
+                    "lon": -160,
+                    "alt": "80m"
+                  },
+                  {
+                    "t": 620,
+                    "lat": -89.3,
+                    "lon": -155,
+                    "alt": "200m"
+                  },
+                  {
+                    "t": 750,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 780,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-16T20:13:00.000Z",
+              "endTime": "2028-12-21T07:30:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-16T20:13:00.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 386220,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-21T07:30:00Z",
+              "endTime": "2028-12-21T07:39:20.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-21T07:30:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 30,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "80m"
+                  },
+                  {
+                    "t": 120,
+                    "lat": -89.6,
+                    "lon": -120,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 220,
+                    "lat": -89.68,
+                    "lon": -100,
+                    "alt": "40m"
+                  },
+                  {
+                    "t": 270,
+                    "lat": -89.68,
+                    "lon": -100,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 340,
+                    "lat": -89.68,
+                    "lon": -100,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 440,
+                    "lat": -89.6,
+                    "lon": -120,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 530,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 560,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-21T07:39:20.000Z",
+              "endTime": "2028-12-27T18:00:00Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-21T07:39:20.000Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 555640,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            },
+            {
+              "startTime": "2028-12-27T18:00:00Z",
+              "endTime": "2028-12-27T18:15:10.000Z",
+              "trajectory": {
+                "type": "Waypoints",
+                "referenceRadius": 1737.4,
+                "epoch": "2028-12-27T18:00:00Z",
+                "waypoints": [
+                  {
+                    "t": 0,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  },
+                  {
+                    "t": 30,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "120m"
+                  },
+                  {
+                    "t": 180,
+                    "lat": -89.3,
+                    "lon": -125,
+                    "alt": "280m"
+                  },
+                  {
+                    "t": 350,
+                    "lat": -88.85,
+                    "lon": -110,
+                    "alt": "280m"
+                  },
+                  {
+                    "t": 430,
+                    "lat": -88.65,
+                    "lon": -100,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 480,
+                    "lat": -88.65,
+                    "lon": -100,
+                    "alt": "5m"
+                  },
+                  {
+                    "t": 560,
+                    "lat": -88.65,
+                    "lon": -100,
+                    "alt": "100m"
+                  },
+                  {
+                    "t": 720,
+                    "lat": -89.15,
+                    "lon": -120,
+                    "alt": "250m"
+                  },
+                  {
+                    "t": 880,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "60m"
+                  },
+                  {
+                    "t": 910,
+                    "lat": -89.5,
+                    "lon": -135,
+                    "alt": "1m"
+                  }
+                ]
+              }
+            }
+          ],
+          "rotationModel": {
+            "type": "SurfaceUp"
+          },
+          "geometry": {
+            "type": "Mesh",
+            "source": "models/Ingenuity.glb",
+            "size": 0.0015,
+            "radii": [
+              0.00075,
+              0.00075,
+              0.00075
+            ],
+            "surfaceLock": "aboveTerrain",
+            "meshRotation": [
+              0.7071,
+              0,
+              0,
+              -0.7071
+            ],
+            "castShadow": true
+          },
+          "label": {
+            "color": [
+              0.4,
+              1,
+              0.5
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
