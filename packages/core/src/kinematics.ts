@@ -20,6 +20,9 @@ export type Vec3 = [number, number, number];
 const OBLIQUITY_J2000_RAD = (23.4392911 * Math.PI) / 180;
 const OBLIQUITY_COS = Math.cos(OBLIQUITY_J2000_RAD);
 const OBLIQUITY_SIN = Math.sin(OBLIQUITY_J2000_RAD);
+// Half-angle terms for the equivalent quaternion form (see frameAlignmentQuat).
+const OBLIQUITY_HALF_COS = Math.cos(OBLIQUITY_J2000_RAD / 2);
+const OBLIQUITY_HALF_SIN = Math.sin(OBLIQUITY_J2000_RAD / 2);
 
 /** Synonym set for the J2000-equatorial frame as it appears across
  *  cosmolabe call sites (Cosmographia / IAU / SPICE / app-config name
@@ -117,4 +120,72 @@ export function rotateVecByQuat(v: Vec3, q: Quaternion): Vec3 {
     vy + w * ty + (z * tx - x * tz),
     vz + w * tz + (x * ty - y * tx),
   ];
+}
+
+/** Hamilton product of two `[w, x, y, z]` quaternions (a applied second,
+ *  b first — i.e. the rotation `a ∘ b`). Matches `THREE.Quaternion.multiply`. */
+export function multiplyQuat(a: Quaternion, b: Quaternion): Quaternion {
+  const [aw, ax, ay, az] = a;
+  const [bw, bx, by, bz] = b;
+  return [
+    aw * bw - ax * bx - ay * by - az * bz,
+    aw * bx + ax * bw + ay * bz - az * by,
+    aw * by - ax * bz + ay * bw + az * bx,
+    aw * bz + ax * by - ay * bx + az * bw,
+  ];
+}
+
+/** Quaternion `[w, x, y, z]` that rotates a vector FROM a named inertial frame
+ *  INTO `worldFrame` (cosmolabe's canonical EclipticJ2000 by default). This is
+ *  the quaternion analogue of `alignPositionToFrame` — the two MUST encode the
+ *  same rotation (pinned by the obliquity-consistency test), since one drives
+ *  body orientation (BodyMesh) and the other drives body position (Universe).
+ *
+ *  Returns identity for same-frame, same-family-different-spelling, and
+ *  unhandled (SPICE-named) frames — matching `alignPositionToFrame`'s
+ *  pass-through semantics. Only the EquatorJ2000 ↔ EclipticJ2000 obliquity
+ *  rotation is composed analytically. */
+export function frameAlignmentQuat(
+  sourceFrame: InertialFrameName,
+  worldFrame: InertialFrameName = 'EclipticJ2000',
+): Quaternion {
+  if (sourceFrame === worldFrame) return [1, 0, 0, 0];
+  if (isEquatorJ2000(sourceFrame) && isEclipticJ2000(worldFrame)) {
+    // R_x(-ε): EquatorJ2000 → EclipticJ2000. Quaternion of a rotation by -ε
+    // about +X is [cos(ε/2), -sin(ε/2), 0, 0].
+    return [OBLIQUITY_HALF_COS, -OBLIQUITY_HALF_SIN, 0, 0];
+  }
+  if (isEclipticJ2000(sourceFrame) && isEquatorJ2000(worldFrame)) {
+    // R_x(+ε): EclipticJ2000 → EquatorJ2000 (inverse of the above).
+    return [OBLIQUITY_HALF_COS, OBLIQUITY_HALF_SIN, 0, 0];
+  }
+  // Synonymous aliases or no known conversion — identity (pass-through).
+  return [1, 0, 0, 0];
+}
+
+/** Compose a body's full body→world orientation quaternion `[w, x, y, z]`.
+ *
+ *  `rotationQuat` is `RotationModel.rotationAt(et)` — the rotation FROM the
+ *  model's `sourceFrame` TO the body-fixed frame. We conjugate it (body→source)
+ *  then pre-multiply by the source→world frame alignment, giving body→world:
+ *    frameAlign(source→world) ∘ conjugate(rotationQuat)
+ *
+ *  This is the single source of truth for the orientation composition that was
+ *  previously duplicated inside `BodyMesh.updatePosition` (`frameToEclipticQuat`).
+ *  The Three.js-specific model-axis convention (`meshRotationQ`) is intentionally
+ *  NOT folded in here — callers in the renderer post-multiply that themselves. */
+export function composeBodyToWorldQuat(
+  rotationQuat: Quaternion,
+  sourceFrame: InertialFrameName,
+  worldFrame: InertialFrameName = 'EclipticJ2000',
+): Quaternion {
+  // rotationAt returns source→body; conjugate [w,-x,-y,-z] gives body→source.
+  const bodyToSource: Quaternion = [
+    rotationQuat[0],
+    -rotationQuat[1],
+    -rotationQuat[2],
+    -rotationQuat[3],
+  ];
+  const frameAlign = frameAlignmentQuat(sourceFrame, worldFrame);
+  return multiplyQuat(frameAlign, bodyToSource);
 }

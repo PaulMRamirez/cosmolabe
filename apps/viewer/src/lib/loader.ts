@@ -32,6 +32,12 @@ const workerKernelUrls: string[] = [];
 /** URLs of kernels already furnished in this session — prevents redundant fetch + furnish across demos. */
 const furnishedKernels = new Set<string>();
 
+/** Visual-regression test mode — set via `?test=1`. Strips GPU-variant noise
+ *  (antialias / bloom / starfield) and installs the `window.__cosmolabe`
+ *  deterministic-capture hook. Never true in normal use. */
+const TEST_MODE =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).has('test');
+
 const KERNEL_EXTENSIONS = new Set([
   '.bsp', '.tls', '.tpc', '.tf', '.tsc', '.ti', '.ck', '.bc', '.bpc', '.spk', '.pck', '.fk', '.tm',
 ]);
@@ -385,10 +391,14 @@ function initScene(
     }
   }
 
-  // Create cache worker
+  // Create cache worker. Skipped in TEST_MODE: with no worker, long-duration
+  // spacecraft trajectory caches build SYNCHRONOUSLY during scene init
+  // (UniverseRenderer.buildCacheSync) instead of popping in async a second
+  // later — so a capture is deterministic and includes every trail (e.g.
+  // Cassini's), with no timing/settle race.
   cacheWorker?.dispose();
   cacheWorker = null;
-  if (workerKernelUrls.length > 0) {
+  if (!TEST_MODE && workerKernelUrls.length > 0) {
     try {
       cacheWorker = new SpiceCacheWorker(new SpiceCacheRelayWorker());
       cacheWorker.loadKernels([...workerKernelUrls]).catch((err) => {
@@ -400,20 +410,26 @@ function initScene(
     }
   }
 
+  // Visual-regression test mode (`?test=1`): strip GPU-variant noise so
+  // screenshots are stable across machines — no antialias, no bloom, no
+  // starfield, DPR pinned to 1 (applied below). Never affects normal use.
   renderer = new UniverseRenderer(canvas, universe, {
     scaleFactor: 1e-6,
     showTrajectories: true,
     showLabels: true,
-    showStars: true,
+    showStars: !TEST_MODE,
     starFieldOptions: { catalogUrl: `${import.meta.env.BASE_URL}stars.bin` },
     trajectoryOptions: { trailDuration: 86400 * 30 },
     minBodyPixels: 0,
+    antialias: !TEST_MODE,
     cacheWorker: cacheWorker ?? undefined,
     modelResolver: modelFiles?.size
       ? (source: string) => findInMap(modelFiles, source)
       : (source: string) => `./${source}`,
-    bloom: { enabled: true },
+    bloom: { enabled: !TEST_MODE },
   });
+  // DPR is pinned to 1 for capture via the browser context (Playwright
+  // deviceScaleFactor: 1) — the renderer already follows window.devicePixelRatio.
 
   renderer.camera.position.set(0, 300, 500);
   renderer.camera.lookAt(0, 0, 0);
@@ -523,6 +539,40 @@ function initScene(
 
   // Expose for console-based tuning during development.
   (window as unknown as { renderer: UniverseRenderer }).renderer = renderer;
+
+  // Visual-regression capture hook (`?test=1` only). Lets the offscreen driver
+  // (scripts/visual-regression.mjs) seek to a fixed epoch, apply a named
+  // catalog viewpoint, render exactly one synchronous frame, and read the
+  // canvas back as a PNG data URL — the same render-then-toDataURL flow
+  // ScreenshotPlugin uses (safe without preserveDrawingBuffer).
+  if (TEST_MODE) {
+    const r = renderer;
+    const u = universe;
+    (window as unknown as { __cosmolabe: unknown }).__cosmolabe = {
+      ready: true,
+      viewpoints: () => u.viewpoints.map((v) => v.name),
+      /** Seek to a UTC ISO epoch (no-op if SPICE/LSK unavailable). */
+      seek: (iso: string) => {
+        if (!spice) return false;
+        try { u.setTime(spice.str2et(iso)); return true; } catch { return false; }
+      },
+      /** Apply a named viewpoint, render one frame, return a PNG data URL. */
+      capture: (viewpointName?: string) => {
+        if (viewpointName) {
+          const vp = r.cameraController.getViewpoint(viewpointName);
+          if (vp) {
+            if (vp.trackBody) {
+              const bm = r.getBodyMesh(vp.trackBody);
+              if (bm) r.cameraController.track(bm);
+            }
+            r.cameraController.applyViewpoint(vp);
+          }
+        }
+        r.renderFrame();
+        return (canvas as HTMLCanvasElement).toDataURL('image/png');
+      },
+    };
+  }
 }
 
 // ── Public API for components ──

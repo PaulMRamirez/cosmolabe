@@ -159,6 +159,11 @@
 
   onMount(() => {
     onResize();
+    // Visual-regression / deep-link entry: `?catalog=<name>` auto-loads a demo
+    // (combine with `?test=1` for deterministic offscreen capture — see
+    // scripts/visual-regression.mjs).
+    const catalogParam = new URLSearchParams(location.search).get('catalog');
+    if (catalogParam) loadDemo(canvas, catalogParam);
     window.addEventListener('resize', onResize);
     // Capture phase so we see right-clicks before CameraController stops propagation
     window.addEventListener('mousedown', onWindowMouseDown, true);

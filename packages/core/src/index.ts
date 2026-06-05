@@ -46,7 +46,14 @@ export type { OrientationRecord } from './rotations/InterpolatedRotation.js';
 // that build their own body-fixed math (sub-points for 2D ground tracks,
 // surface velocities for custom HUDs) should reach for these rather than
 // reinvent the obliquity rotation and quaternion-rotate-vec primitives.
-export { alignPositionToFrame, bodyTrajectoryFrameName, rotateVecByQuat } from './kinematics.js';
+export {
+  alignPositionToFrame,
+  bodyTrajectoryFrameName,
+  rotateVecByQuat,
+  multiplyQuat,
+  frameAlignmentQuat,
+  composeBodyToWorldQuat,
+} from './kinematics.js';
 export type { Vec3 } from './kinematics.js';
 
 // Frames

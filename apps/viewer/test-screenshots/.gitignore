@@ -1,0 +1,4 @@
+# Transient capture artifacts from a failing visual-regression run.
+# Goldens (__goldens__/) and README.md are committed; these are not.
+*-actual.png
+*-diff.png
