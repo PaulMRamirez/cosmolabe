@@ -260,12 +260,24 @@ export class Universe {
       // tilt Saturn's moon orbits out of the ring plane (was masked
       // pre-Phase-3 by a matching rotation-side bug that cancelled).
       let accumFrameName: InertialFrameName = bodyTrajectoryFrameName(body);
-      // If we did the body-fixed unwrap above, the accumulated position is
-      // now in the parent's inertial frame (= parent.trajectoryFrame), so
-      // reset accumFrameName to track that.
+      // If we did the body-fixed unwrap above, the accumulated position now
+      // lives in the PARENT'S ROTATION SOURCE FRAME — not its
+      // `trajectoryFrame`. The two only coincide when the parent's rotation
+      // and trajectory share an inertial frame; for Earth post-Phase-3 they
+      // don't (UniformRotation = EquatorJ2000, but Earth's Builtin
+      // trajectory defaults to EclipticJ2000). Picking the wrong frame here
+      // skips the subsequent obliquity rotation in the chain walk and
+      // visibly mis-places body-fixed children (ground stations on Earth
+      // were ~23.4° off after Phase 3 until this was fixed). Falls back to
+      // the parent's trajectoryFrame when the parent has no rotation
+      // registered.
       if (body.trajectoryFrame === 'body-fixed' && currentParent) {
         const firstParent = this.getBody(currentParent);
-        if (firstParent) accumFrameName = bodyTrajectoryFrameName(firstParent);
+        if (firstParent) {
+          accumFrameName =
+            firstParent.rotation?.sourceFrame ??
+            bodyTrajectoryFrameName(firstParent);
+        }
       }
 
       while (currentParent) {

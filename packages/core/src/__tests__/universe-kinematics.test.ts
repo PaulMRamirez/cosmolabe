@@ -233,6 +233,69 @@ describe('Universe.absolutePositionOf — per-leg frame composition', () => {
     expect(pos[2]).toBeCloseTo(expectedZ, 0);
   });
 
+  it('rotates a body-fixed child by the parent rotation source frame, not trajectoryFrame', () => {
+    // Ground-station case: Earth's rotation lives in EquatorJ2000
+    // (J2000-anchored pole RA/Dec) but Earth's trajectory defaults to
+    // EclipticJ2000. After the body-fixed unwrap a station's position is
+    // in EquatorJ2000 — the chain walk must rotate it to EclipticJ2000
+    // before summing Earth's ecliptic position. Pre-fix this step was
+    // skipped because the code marked the accumulated position as already
+    // being in EclipticJ2000.
+    //
+    // Identity rotation in EquatorJ2000 keeps the math simple: the
+    // body-fixed unwrap is a no-op, so any subsequent obliquity rotation
+    // is purely the chain walk's frame conversion.
+    const u = new Universe();
+    const sun = new Body({
+      name: 'Sun',
+      trajectory: new FixedPointTrajectory([0, 0, 0]),
+    });
+    const earth = new Body({
+      name: 'Earth',
+      trajectory: new FixedPointTrajectory([0, 0, 0]),
+      rotation: new IdentityRotation('EquatorJ2000'),
+      parentName: 'Sun',
+    });
+    // Station along Earth's body-fixed +X (a point on the equator at the
+    // prime meridian, modulo whatever the identity rotation aligns to).
+    const equatorial = new Body({
+      name: 'EquatorGS',
+      trajectory: new FixedPointTrajectory([6378, 0, 0]),
+      parentName: 'Earth',
+      trajectoryFrame: 'body-fixed',
+    });
+    // Polar station along body-fixed +Z (pole at altitude).
+    const polar = new Body({
+      name: 'PolarGS',
+      trajectory: new FixedPointTrajectory([0, 0, 6378]),
+      parentName: 'Earth',
+      trajectoryFrame: 'body-fixed',
+    });
+    u.addBody(sun);
+    u.addBody(earth);
+    u.addBody(equatorial);
+    u.addBody(polar);
+
+    const eps = (23.4392911 * Math.PI) / 180;
+
+    // Equatorial station: body-fixed [6378, 0, 0] → identity-unwrap →
+    // EquatorJ2000 [6378, 0, 0]. R_x(-ε) leaves +X (the equinox)
+    // unchanged → EclipticJ2000 [6378, 0, 0].
+    const equatorialPos = u.absolutePositionOf('EquatorGS', 0);
+    expect(equatorialPos[0]).toBeCloseTo(6378, 3);
+    expect(equatorialPos[1]).toBeCloseTo(0, 3);
+    expect(equatorialPos[2]).toBeCloseTo(0, 3);
+
+    // Polar station: body-fixed [0, 0, 6378] → EquatorJ2000 [0, 0, 6378].
+    // R_x(-ε) maps [0, 0, 6378] → [0, 6378·sin(ε), 6378·cos(ε)] in
+    // EclipticJ2000. Pre-fix this step was missed entirely and the
+    // station rendered ~23.4° off-axis.
+    const polarPos = u.absolutePositionOf('PolarGS', 0);
+    expect(polarPos[0]).toBeCloseTo(0, 3);
+    expect(polarPos[1]).toBeCloseTo(6378 * Math.sin(eps), 3);
+    expect(polarPos[2]).toBeCloseTo(6378 * Math.cos(eps), 3);
+  });
+
   it('is a no-op when all parent-chain frames match', () => {
     const u = new Universe();
     const sun = new Body({

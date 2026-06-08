@@ -483,6 +483,32 @@ const BUILTIN_KEPLERIAN: Record<string, FallbackOrbit> = {
   },
 };
 
+/**
+ * IAU 2009 / WGCCRE rotational parameters for major bodies — pole RA/Dec at
+ * J2000 in EquatorJ2000, prime meridian angle W0 at J2000, and sidereal
+ * period in seconds. Used as a fallback when SPICE isn't available, so
+ * `rotationModel: { type: 'Builtin' }` still produces a working analytical
+ * body-fixed → inertial rotation in SPICE-free demos. SPICE (when loaded)
+ * supplies the same nominal model plus libration / nutation / precession
+ * corrections; this table is the constant-rate baseline that's good enough
+ * for surface viz on multi-day timescales.
+ *
+ * Sources: NASA TRS WGCCRE 2009 report. Sidereal periods from JPL
+ * planetary ephemerides documentation.
+ */
+const BUILTIN_IAU_ROTATIONS: Record<string, { poleRaDeg: number; poleDecDeg: number; W0Deg: number; periodSec: number }> = {
+  MERCURY: { poleRaDeg: 281.0097, poleDecDeg:  61.4143, W0Deg: 329.5469, periodSec: 5067031.68 },     // 58.6462 d sidereal
+  VENUS:   { poleRaDeg: 272.76,   poleDecDeg:  67.16,   W0Deg: 160.20,   periodSec: -20996817.6 },    // -243.0185 d (retrograde)
+  EARTH:   { poleRaDeg:   0.00,   poleDecDeg:  90.00,   W0Deg: 190.147,  periodSec: 86164.0905 },     // 23h56m04.0905s
+  MOON:    { poleRaDeg: 269.9949, poleDecDeg:  66.5392, W0Deg:  38.3213, periodSec: 2360584.685 },    // 27.32166 d synchronous
+  MARS:    { poleRaDeg: 317.68143,poleDecDeg:  52.88650,W0Deg: 176.630,  periodSec: 88642.6632 },     // 24h37m22.6632s
+  JUPITER: { poleRaDeg: 268.056595,poleDecDeg: 64.495303,W0Deg:284.95,   periodSec: 35729.856 },      // 9h55m29.856s (System III)
+  SATURN:  { poleRaDeg:  40.589,  poleDecDeg:  83.537,  W0Deg:  38.90,   periodSec: 38362.4 },        // 10h39m22.4s (System III)
+  URANUS:  { poleRaDeg: 257.311,  poleDecDeg: -15.175,  W0Deg: 203.81,   periodSec: -62063.712 },     // -17h14m23.712s (retrograde)
+  NEPTUNE: { poleRaDeg: 299.36,   poleDecDeg:  43.46,   W0Deg: 253.18,   periodSec: 57996 },          // 16h6m36s (System II)
+  SUN:     { poleRaDeg: 286.13,   poleDecDeg:  63.87,   W0Deg:  84.176,  periodSec: 2192832 },        // ~25.38 d (sidereal at equator)
+};
+
 /** Context passed to custom trajectory factories. */
 export interface TrajectoryFactoryContext {
   readonly spice?: SpiceInstance;
@@ -997,7 +1023,6 @@ export class CatalogLoader {
       }
 
       case 'Builtin': {
-        if (!this.spice) return undefined;
         const frameName = spec.name ?? `IAU_${item.name.toUpperCase()}`;
         // "IAU Moon" → "IAU_MOON"
         const normalized = frameName.replace(/\s+/g, '_').toUpperCase();
@@ -1005,7 +1030,32 @@ export class CatalogLoader {
         // Without this, a body with trajectoryFrame=J2000 but rotation in ECLIPJ2000
         // creates a ~23.4° offset (ecliptic obliquity).
         const inertialFrame = item.trajectoryFrame ?? 'ECLIPJ2000';
-        return new SpiceRotation(this.spice, normalized, inertialFrame);
+        if (this.spice) {
+          return new SpiceRotation(this.spice, normalized, inertialFrame);
+        }
+        // Fallback: hardcoded IAU 2009 pole + spin for major bodies, when no
+        // SPICE is loaded. This lets SPICE-free demos still get correct
+        // body-fixed rotation. Without this, a body-fixed child (lander/heli)
+        // gets placed in raw body-fixed coords because Universe.absolutePositionOf
+        // can't find a parent rotation to compose. Returns undefined for bodies
+        // not in the table — caller already handles undefined.
+        const builtin = BUILTIN_IAU_ROTATIONS[item.name.toUpperCase()];
+        if (builtin) {
+          // IAU pole tables are J2000-equatorial (EquatorJ2000), regardless of
+          // the catalog's trajectory frame. UniformRotation handles the
+          // sourceFrame; BodyMesh + Universe.absolutePositionOf compose the
+          // obliquity rotation as needed when sourceFrame != ECLIPJ2000.
+          console.log(`[Cosmolabe] ${item.name}: using analytical IAU rotation (no SPICE)`);
+          return new UniformRotation(
+            builtin.periodSec,
+            0,                                  // epoch et=0 (J2000)
+            builtin.W0Deg * Math.PI / 180,      // prime meridian angle at J2000
+            builtin.poleRaDeg * Math.PI / 180,
+            builtin.poleDecDeg * Math.PI / 180,
+            'EquatorJ2000',
+          );
+        }
+        return undefined;
       }
 
       case 'Spice':
