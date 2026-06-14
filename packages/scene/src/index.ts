@@ -4,6 +4,15 @@
 
 export { SolarSystemScene, type Km3 } from './three-scene.ts';
 export { INNER_SYSTEM, type PlanetDef } from './planets.ts';
+export {
+  SCALE,
+  KM_PER_UNIT,
+  coneTriangleVertices,
+  fanTriangleVertices,
+  centroidOf,
+  cameraRelativeOffset,
+  dskTriangleVertices,
+} from './geometry-builders.ts';
 
 /** Camera modes the controller supports (SPEC 5.3). */
 export type CameraMode = 'orbit' | 'center' | 'track';

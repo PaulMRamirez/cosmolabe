@@ -18,6 +18,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  type Object3D,
   PerspectiveCamera,
   PointLight,
   RGBAFormat,
@@ -28,10 +29,14 @@ import {
 } from 'three';
 import type { PlanetDef } from './planets.ts';
 
-const KM_PER_UNIT = 1_000_000;
-const SCALE = 1 / KM_PER_UNIT;
+import {
+  SCALE,
+  coneTriangleVertices,
+  fanTriangleVertices,
+  type Km3,
+} from './geometry-builders.ts';
 
-export type Km3 = readonly [number, number, number];
+export type { Km3 };
 
 function bodyTexture(color: readonly [number, number, number]): DataTexture {
   const w = 32;
@@ -80,6 +85,12 @@ export class SolarSystemScene {
   private fovCone: Mesh | null = null;
   private footprint: Mesh | null = null;
   private footprintAnchor = 'Saturn';
+  // Reference-frame axis triads (Batch B, Task 9) and star field (Task 15) attach
+  // here; the visibility seams below already gate them so toggles work once added.
+  private readonly axes = new Map<string, Object3D>();
+  private axesVisible = true;
+  private starField: Object3D | null = null;
+  private starFieldVisible = true;
 
   private focus = 'Sun';
   private azimuth = 0.6;
@@ -161,17 +172,8 @@ export class SolarSystemScene {
       this.fovCone = null;
       return;
     }
-    const tris: number[] = [];
-    const push = (p: Km3): void => {
-      tris.push(p[0] * SCALE, p[1] * SCALE, p[2] * SCALE);
-    };
-    for (let i = 0; i < rim.length; i++) {
-      push(apex);
-      push(rim[i]!);
-      push(rim[(i + 1) % rim.length]!);
-    }
     const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(tris), 3));
+    geometry.setAttribute('position', new Float32BufferAttribute(coneTriangleVertices(apex, rim), 3));
     geometry.computeVertexNormals();
     const material = new MeshBasicMaterial({
       color: new Color(color),
@@ -199,25 +201,10 @@ export class SolarSystemScene {
       this.footprint = null;
       return;
     }
-    const centroid: Km3 = [
-      points.reduce((s, p) => s + p[0], 0) / points.length,
-      points.reduce((s, p) => s + p[1], 0) / points.length,
-      points.reduce((s, p) => s + p[2], 0) / points.length,
-    ];
     // Lift the patch a little above the surface (relative to the anchor centre) so
     // it does not z-fight the globe, and draw it on top so it reads as a highlight.
-    const LIFT = 1.02;
-    const tris: number[] = [];
-    const push = (p: Km3): void => {
-      tris.push(p[0] * LIFT * SCALE, p[1] * LIFT * SCALE, p[2] * LIFT * SCALE);
-    };
-    for (let i = 0; i < points.length; i++) {
-      push(centroid);
-      push(points[i]!);
-      push(points[(i + 1) % points.length]!);
-    }
     const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(tris), 3));
+    geometry.setAttribute('position', new Float32BufferAttribute(fanTriangleVertices(points, SCALE, 1.02), 3));
     this.footprint = new Mesh(
       geometry,
       new MeshBasicMaterial({
@@ -243,6 +230,37 @@ export class SolarSystemScene {
         this.spacecraft.mesh.position.set(pos[0] * SCALE, pos[1] * SCALE, pos[2] * SCALE);
       }
     }
+  }
+
+  /** Toggle a body or spacecraft node visibility (and its trajectory). */
+  setVisible(name: string, visible: boolean): void {
+    const body = this.bodies.get(name);
+    if (body) body.mesh.visible = visible;
+    if (this.spacecraft && this.spacecraft.name === name) {
+      this.spacecraft.mesh.visible = visible;
+    }
+  }
+
+  setTrajectoryVisible(visible: boolean): void {
+    if (this.trajectory) this.trajectory.visible = visible;
+  }
+
+  setFovVisible(visible: boolean): void {
+    if (this.fovCone) this.fovCone.visible = visible;
+  }
+
+  setFootprintVisible(visible: boolean): void {
+    if (this.footprint) this.footprint.visible = visible;
+  }
+
+  setAxesVisible(visible: boolean): void {
+    this.axesVisible = visible;
+    for (const group of this.axes.values()) group.visible = visible;
+  }
+
+  setStarFieldVisible(visible: boolean): void {
+    this.starFieldVisible = visible;
+    if (this.starField) this.starField.visible = visible;
   }
 
   centerOn(name: string): void {

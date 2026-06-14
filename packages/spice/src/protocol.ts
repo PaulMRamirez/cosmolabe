@@ -3,7 +3,9 @@
 
 import type {
   AberrationCorrection,
+  DskShape,
   FovResult,
+  IluminResult,
   InterceptResult,
   Mat3,
   PositionResult,
@@ -65,6 +67,18 @@ export type SpiceWorkerRequest =
       abcorr: AberrationCorrection;
       observer: string;
     }
+  | {
+      id: number;
+      method: 'ilumin';
+      surfaceMethod: string;
+      target: string;
+      et: number;
+      fixref: string;
+      abcorr: AberrationCorrection;
+      observer: string;
+      point: Vec3;
+    }
+  | { id: number; method: 'readDsk'; name: string; bytes: Uint8Array }
   | { id: number; method: 'tkvrsn' };
 
 export type SpiceWorkerResultMap = {
@@ -84,6 +98,8 @@ export type SpiceWorkerResultMap = {
   sxform: number[];
   sincpt: InterceptResult;
   subpnt: SubPointResult;
+  ilumin: IluminResult;
+  readDsk: DskShape;
   tkvrsn: string;
 };
 

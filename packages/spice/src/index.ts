@@ -85,7 +85,39 @@ export interface SpiceEngine {
     observer: string,
   ): Promise<SubPointResult>;
 
+  /** Illumination angles (phase, incidence, emission) at a surface point. */
+  ilumin(
+    method: string,
+    target: string,
+    et: number,
+    fixref: string,
+    abcorr: AberrationCorrection,
+    observer: string,
+    point: Vec3,
+  ): Promise<IluminResult>;
+
+  /** Read a DSK type-2 shape model (vertices km, 0-based plate indices). */
+  readDsk(name: string, bytes: Uint8Array): Promise<DskShape>;
+
   tkvrsn(): Promise<string>;
+}
+
+export interface IluminResult {
+  /** Solar phase angle at the point, radians. */
+  readonly phase: number;
+  /** Solar incidence angle, radians. */
+  readonly incidence: number;
+  /** Emission angle to the observer, radians. */
+  readonly emission: number;
+  readonly trgepc: number;
+  readonly srfvec: Vec3;
+}
+
+export interface DskShape {
+  /** Flat vertex coordinates in km in the body-fixed frame, length 3 * nv. */
+  readonly vertices: number[];
+  /** Flat triangle vertex indices, 0-based, length 3 * np. */
+  readonly plates: number[];
 }
 
 /** Row-major 3x3 rotation matrix. */

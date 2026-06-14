@@ -4,7 +4,9 @@
 import {
   SpiceError,
   type AberrationCorrection,
+  type DskShape,
   type FovResult,
+  type IluminResult,
   type InterceptResult,
   type Mat3,
   type PositionResult,
@@ -83,6 +85,18 @@ export function createSpiceWorkerClient(worker: Worker): SpiceEngine {
         abcorr,
         observer,
       }),
+    ilumin: (method, target, et, fixref, abcorr: AberrationCorrection, observer, point) =>
+      send<IluminResult>({
+        method: 'ilumin',
+        surfaceMethod: method,
+        target,
+        et,
+        fixref,
+        abcorr,
+        observer,
+        point,
+      }),
+    readDsk: (name, bytes) => send<DskShape>({ method: 'readDsk', name, bytes }),
     tkvrsn: () => send<string>({ method: 'tkvrsn' }),
   };
 }

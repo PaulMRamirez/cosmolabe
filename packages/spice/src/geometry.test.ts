@@ -76,4 +76,24 @@ describe('@bessel/spice geometry surface', () => {
     expect(r).toBeGreaterThan(54000);
     expect(r).toBeLessThan(60600);
   });
+
+  it('computes illumination angles (phase, incidence, emission) via ilumin', async () => {
+    const sub = await spice.subpnt('NEAR POINT/ELLIPSOID', 'SATURN', et, 'IAU_SATURN', 'NONE', 'CASSINI');
+    const ill = await spice.ilumin(
+      'ELLIPSOID',
+      'SATURN',
+      et,
+      'IAU_SATURN',
+      'NONE',
+      'CASSINI',
+      sub.point,
+    );
+    for (const angle of [ill.phase, ill.incidence, ill.emission]) {
+      expect(Number.isFinite(angle)).toBe(true);
+      expect(angle).toBeGreaterThanOrEqual(0);
+      expect(angle).toBeLessThanOrEqual(Math.PI);
+    }
+    // At the sub-spacecraft point the emission angle is near zero (observer at nadir).
+    expect(ill.emission).toBeLessThan(0.2);
+  });
 });

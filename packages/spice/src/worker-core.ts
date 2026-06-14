@@ -61,6 +61,18 @@ export async function dispatchSpice(engine: SpiceEngine, req: SpiceWorkerRequest
         req.abcorr,
         req.observer,
       );
+    case 'ilumin':
+      return engine.ilumin(
+        req.surfaceMethod,
+        req.target,
+        req.et,
+        req.fixref,
+        req.abcorr,
+        req.observer,
+        req.point,
+      );
+    case 'readDsk':
+      return engine.readDsk(req.name, req.bytes);
     case 'tkvrsn':
       return engine.tkvrsn();
   }

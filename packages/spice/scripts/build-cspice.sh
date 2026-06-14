@@ -44,7 +44,10 @@ EXPORTS='[
   "_vnorm_c","_vsep_c","_vdist_c","_recrad_c","_reclat_c","_recsph_c","_convrt_c",
   "_dpr_c","_rpd_c","_spd_c","_clight_c","_georec_c","_latrec_c",
   "_dafopr_c","_dafcls_c","_dafbfs_c","_daffna_c","_dafgs_c","_dafgn_c","_dafus_c",
-  "_spkopn_c","_spksub_c","_spkcls_c"
+  "_spkopn_c","_spksub_c","_spkcls_c",
+  "_dasopr_c","_dascls_c","_dlabfs_c","_dlafns_c",
+  "_dskobj_c","_dsksrf_c","_dskgd_c","_dskz02_c","_dskv02_c","_dskp02_c","_dskb02_c",
+  "_dskw02_c","_dskmi2_c","_dskrb2_c"
 ]'
 
 RUNTIME_METHODS='["FS","ccall","cwrap","getValue","setValue","UTF8ToString","stringToUTF8","lengthBytesUTF8","writeArrayToMemory"]'

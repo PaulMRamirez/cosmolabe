@@ -65,6 +65,12 @@ export async function createSpiceEngine(options?: SpiceEngineOptions): Promise<S
     async subpnt(method, target, et, fixref, abcorr: AberrationCorrection, observer) {
       return bindings.subpnt(method, target, et, fixref, abcorr, observer);
     },
+    async ilumin(method, target, et, fixref, abcorr: AberrationCorrection, observer, point) {
+      return bindings.ilumin(method, target, et, fixref, abcorr, observer, point);
+    },
+    async readDsk(name, bytes) {
+      return bindings.readDsk(name, bytes);
+    },
     async tkvrsn() {
       return bindings.tkvrsn();
     },

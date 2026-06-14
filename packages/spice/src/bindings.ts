@@ -8,7 +8,9 @@ import type { CSpiceModule } from '@bessel/spice/wasm/cspice.mjs';
 import {
   SpiceError,
   type AberrationCorrection,
+  type DskShape,
   type FovResult,
+  type IluminResult,
   type InterceptResult,
   type PositionResult,
   type StateVector,
@@ -309,6 +311,121 @@ export class SpiceBindings {
     };
     [dvecPtr, spoint, trgepc, srfvec, found].forEach((p) => this.mod._free(p));
     return result;
+  }
+
+  ilumin(
+    method: string,
+    target: string,
+    et: number,
+    fixref: string,
+    abcorr: AberrationCorrection,
+    observer: string,
+    point: Vec3,
+  ): IluminResult {
+    const spoint = this.mod._malloc(24);
+    this.mod.setValue(spoint, point.x, 'double');
+    this.mod.setValue(spoint + 8, point.y, 'double');
+    this.mod.setValue(spoint + 16, point.z, 'double');
+    const trgepc = this.mod._malloc(8);
+    const srfvec = this.mod._malloc(24);
+    const phase = this.mod._malloc(8);
+    const incdnc = this.mod._malloc(8);
+    const emissn = this.mod._malloc(8);
+    this.call(
+      'ilumin_c',
+      this.str(method),
+      this.str(target),
+      et,
+      this.str(fixref),
+      this.str(abcorr),
+      this.str(observer),
+      spoint,
+      trgepc,
+      srfvec,
+      phase,
+      incdnc,
+      emissn,
+    );
+    this.checkFailed();
+    const result: IluminResult = {
+      phase: this.readDouble(phase),
+      incidence: this.readDouble(incdnc),
+      emission: this.readDouble(emissn),
+      trgepc: this.readDouble(trgepc),
+      srfvec: this.readVec3(srfvec),
+    };
+    [spoint, trgepc, srfvec, phase, incdnc, emissn].forEach((p) => this.mod._free(p));
+    return result;
+  }
+
+  /** Read a DSK type-2 shape model by staging bytes and using DAS-level readers. */
+  readDsk(name: string, bytes: Uint8Array): DskShape {
+    const path = `${KERNEL_DIR}/${name}`;
+    this.mod.FS.writeFile(path, bytes);
+    const handlePtr = this.mod._malloc(4);
+    this.call('dasopr_c', this.str(path), handlePtr);
+    this.checkFailed();
+    const handle = this.readInt(handlePtr);
+
+    const descr = this.mod._malloc(8 * 4); // SpiceDLADescr: 8 ints
+    const found = this.mod._malloc(4);
+    this.call('dlabfs_c', handle, descr, found);
+    this.checkFailed();
+    if (this.readInt(found) === 0) {
+      this.call('dascls_c', handle);
+      throw new SpiceError(`DSK "${name}" has no segments`);
+    }
+
+    const nvPtr = this.mod._malloc(4);
+    const npPtr = this.mod._malloc(4);
+    this.call('dskz02_c', handle, descr, nvPtr, npPtr);
+    this.checkFailed();
+    const nv = this.readInt(nvPtr);
+    const np = this.readInt(npPtr);
+
+    const vertices = this.readDskChunked(nv, 3, 8, (start, room, nPtr, buf) =>
+      this.call('dskv02_c', handle, descr, start, room, nPtr, buf),
+    );
+    const platesRaw = this.readDskChunked(np, 3, 4, (start, room, nPtr, buf) =>
+      this.call('dskp02_c', handle, descr, start, room, nPtr, buf),
+    );
+
+    this.call('dascls_c', handle);
+    this.checkFailed();
+    [handlePtr, descr, found, nvPtr, npPtr].forEach((p) => this.mod._free(p));
+
+    // Plate vertex indices are 1-based in CSPICE; convert to 0-based.
+    const plates = platesRaw.map((i) => i - 1);
+    return { vertices, plates };
+  }
+
+  /** Read count rows of `cols` values (`bytes` each: 8 double, 4 int) in chunks. */
+  private readDskChunked(
+    count: number,
+    cols: number,
+    bytes: number,
+    fetch: (start: number, room: number, nPtr: number, buf: number) => number,
+  ): number[] {
+    const CHUNK = 1000;
+    const nPtr = this.mod._malloc(4);
+    const buf = this.mod._malloc(CHUNK * cols * bytes);
+    const out: number[] = [];
+    const isDouble = bytes === 8;
+    let start = 1;
+    while (start <= count) {
+      const room = Math.min(CHUNK, count - start + 1);
+      fetch(start, room, nPtr, buf);
+      this.checkFailed();
+      const n = this.readInt(nPtr);
+      if (n <= 0) break;
+      for (let i = 0; i < n * cols; i++) {
+        out.push(isDouble ? this.readDouble(buf + i * 8) : this.readInt(buf + i * 4));
+      }
+      start += n;
+    }
+    this.mod._free(nPtr);
+    this.mod._free(buf);
+    return out;
   }
 
   subpnt(

@@ -43,5 +43,11 @@ fetch "$NAIF/CASSINI/kernels/spk/040701AP_SCPSE_04173_04236.bsp" "cassini_scpse_
 # Cassini ISS instrument kernel, for getfov field-of-view geometry (Phase 1).
 fetch "$NAIF/CASSINI/kernels/ik/cas_iss_v10.ti" "cas_iss_v10.ti"
 
+# A small type-2 DSK shape model for Phase 3 DSK rendering. The Cassini Saturn-
+# system DSKs (Phoebe, Phobos) are tens of MB; the New Horizons MU69 (Arrokoth)
+# low-poly model is 84 KB and exercises the same DSK type-2 reader, so it is the
+# committed DSK fixture (off the Cassini theme, noted as a deviation).
+fetch "$NAIF/pds/data/nh-j_p_ss-spice-6-v1.0/nhsp_1000/data/dsk/mu69_fr2kf_lopoly_spice_v01.bds" "mu69_lopoly.bds"
+
 echo "done. kernels in $DATA:"
 ls -la "$DATA"
