@@ -40,3 +40,4 @@ export {
   type InspectorField,
 } from './ObjectInspector.tsx';
 export { CatalogLoader, type CatalogLoaderProps } from './CatalogLoader.tsx';
+export { MeasurePanel, type MeasurePanelProps } from './MeasurePanel.tsx';

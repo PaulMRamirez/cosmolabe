@@ -519,6 +519,24 @@ button[aria-pressed='true'] {
   display: none;
 }
 
+/* Measurement ------------------------------------------------------------ */
+
+.bessel-measure-pair {
+  color: var(--text-1);
+  font-size: 0.78rem;
+}
+
+.bessel-measure-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  margin-top: 0.1rem;
+}
+
+.bessel-measure-empty {
+  color: var(--text-1);
+  margin: 0;
+}
+
 /* Utilities -------------------------------------------------------------- */
 
 .bessel-visually-hidden {

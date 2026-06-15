@@ -130,9 +130,38 @@ export class BesselEngine {
     if (this.readoutAccum > 0.3) {
       this.readoutAccum = 0;
       pushReadouts(e.spice, this.store, e.scene.focusBody, now, this.isDisposed);
+      this.updateMeasurement(now);
     }
     this.raf = requestAnimationFrame(this.frame);
   };
+
+  // Distance between the first two selected objects, when both have ephemerides.
+  // Updated on the readout throttle; only written when it changes meaningfully so
+  // a paused scene does not re-render every tick.
+  private updateMeasurement(et: number): void {
+    const e = this.core;
+    if (!e) return;
+    const sel = this.store.getState().selection;
+    const current = this.store.getState().measurement;
+    if (sel.length < 2 || !e.table.byBody.has(sel[0]!) || !e.table.byBody.has(sel[1]!)) {
+      if (current) this.store.setState({ measurement: null });
+      return;
+    }
+    const from = sel[0]!;
+    const to = sel[1]!;
+    const a = positionAt(e.table, from, et);
+    const b = positionAt(e.table, to, et);
+    const distanceKm = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    if (
+      current &&
+      current.from === from &&
+      current.to === to &&
+      Math.abs(current.distanceKm - distanceKm) < 1
+    ) {
+      return;
+    }
+    this.store.setState({ measurement: { from, to, distanceKm } });
+  }
 
   // Pointer-drag orbit, wheel zoom, and click-to-pick. Returns a cleanup function.
   attachPointer(): () => void {

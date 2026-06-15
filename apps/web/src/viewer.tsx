@@ -9,6 +9,7 @@ import {
   CaptureControls,
   CatalogLoader,
   KeyboardHelp,
+  MeasurePanel,
   ObjectBrowser,
   ObjectInspector,
   PanelContainer,
@@ -62,6 +63,7 @@ export function BesselViewer(): JSX.Element {
   const objects = useStore(store, (s) => s.objects);
   const loadedName = useStore(store, (s) => s.loadedName);
   const loadError = useStore(store, (s) => s.loadError);
+  const measurement = useStore(store, (s) => s.measurement);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -192,6 +194,13 @@ export function BesselViewer(): JSX.Element {
       <PanelContainer title="Selection" testId="panel-selection">
         <ObjectInspector name={focus} kind={focusEntry?.kind} fields={inspectorFields} />
         <ReadoutPanel target={focus} readouts={readouts} />
+      </PanelContainer>
+      <PanelContainer title="Measure" testId="panel-measure">
+        <MeasurePanel
+          from={measurement?.from ?? null}
+          to={measurement?.to ?? null}
+          distanceKm={measurement?.distanceKm ?? null}
+        />
       </PanelContainer>
       <PanelContainer title="Capture" testId="panel-capture">
         <CaptureControls

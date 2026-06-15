@@ -7,6 +7,7 @@ import { PanelContainer } from './PanelContainer.tsx';
 import { Tooltip } from './Tooltip.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ObjectInspector } from './ObjectInspector.tsx';
+import { MeasurePanel } from './MeasurePanel.tsx';
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]): string => renderToStaticMarkup(el);
 
@@ -97,5 +98,22 @@ describe('@bessel/ui ObjectInspector', () => {
     expect(out).toContain('Saturn');
     expect(out).toContain('SPICE id');
     expect(out).toContain('699');
+  });
+});
+
+describe('@bessel/ui MeasurePanel', () => {
+  it('prompts when fewer than two objects are selected', () => {
+    const out = html(createElement(MeasurePanel, { from: null, to: null, distanceKm: null }));
+    expect(out).toContain('Select two objects to measure');
+  });
+
+  it('formats the distance with commas and an AU value when large', () => {
+    const out = html(
+      createElement(MeasurePanel, { from: 'Saturn', to: 'Earth', distanceKm: 1_500_000_000 }),
+    );
+    expect(out).toContain('data-testid="measure-distance"');
+    expect(out).toContain('1,500,000,000 km');
+    expect(out).toContain('AU');
+    expect(out).toContain('Saturn');
   });
 });

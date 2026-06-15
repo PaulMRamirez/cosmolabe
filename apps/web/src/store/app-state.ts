@@ -38,6 +38,14 @@ export interface AppState {
   objects: readonly CatalogEntry[];
   loadedName: string | null;
   loadError: string | null;
+  // Measurement: distance between the first two selected objects.
+  measurement: Measurement | null;
+}
+
+export interface Measurement {
+  readonly from: string;
+  readonly to: string;
+  readonly distanceKm: number;
 }
 
 export const initialAppState: AppState = {
@@ -77,6 +85,7 @@ export const initialAppState: AppState = {
   objects: DEFAULT_OBJECT_ENTRIES,
   loadedName: null,
   loadError: null,
+  measurement: null,
 };
 
 export type AppStore = Store<AppState>;

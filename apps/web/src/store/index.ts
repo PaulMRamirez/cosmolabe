@@ -5,5 +5,6 @@ export {
   initialAppState,
   type AppState,
   type AppStore,
+  type Measurement,
 } from './app-state.ts';
 export { useStore } from './use-store.ts';
