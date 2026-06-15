@@ -52,6 +52,14 @@ test('poc-cassini renders the trajectory and the timeline changes the frame', as
   expect(sizing.cssW).toBeGreaterThan(0);
   expect(sizing.bufW / sizing.bufH).toBeCloseTo(sizing.cssW / sizing.cssH, 2);
 
+  // The neutral scene draws planet orbit paths (toggleable) and offers a top-down
+  // view; neither is Cassini-specific.
+  await expect(page.getByTestId('setting-orbits')).toBeChecked();
+  await expect(page.getByTestId('view-top-down')).toBeVisible();
+  await page.getByTestId('view-top-down').click();
+  await page.waitForTimeout(300);
+  expect((await frameStats(viewport)).nonBackground).toBeGreaterThan(200);
+
   await loadCassiniSample(page);
 
   // The trajectory and Saturn render: the frame is not empty.

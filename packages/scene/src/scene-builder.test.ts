@@ -15,6 +15,7 @@ function recordingTarget(): SceneTarget & { calls: Record<string, unknown[][]> }
     setBodies: record('setBodies') as SceneTarget['setBodies'],
     setSpacecraft: record('setSpacecraft') as SceneTarget['setSpacecraft'],
     setTrajectory: record('setTrajectory') as SceneTarget['setTrajectory'],
+    setOrbits: record('setOrbits') as SceneTarget['setOrbits'],
     setStarField: record('setStarField') as SceneTarget['setStarField'],
     setRings: record('setRings') as SceneTarget['setRings'],
     setAxisTriad: record('setAxisTriad') as SceneTarget['setAxisTriad'],

@@ -359,6 +359,13 @@ export class BesselEngine {
     this.viewAlong([-focusPos[0], -focusPos[1], -focusPos[2]]);
   }
 
+  // Look straight down onto the ecliptic plane (top-down), so orbits read face-on.
+  // The look direction is the ecliptic south pole in J2000 equatorial coords
+  // (obliquity 23.4366 deg), placing the camera over the ecliptic north pole.
+  viewTopDown(): void {
+    this.viewAlong([0, 0.397777, -0.917482]);
+  }
+
   // Look down-track along the spacecraft velocity, if the mission has a spacecraft.
   viewAlongVelocity(): void {
     const e = this.core;
@@ -483,6 +490,7 @@ export class BesselEngine {
     const scene = this.core?.scene;
     if (!scene) return;
     if (key === 'trajectory') scene.setTrajectoryVisible(value);
+    else if (key === 'orbits') scene.setOrbitsVisible(value);
     else if (key === 'labels') scene.setLabelsVisible(value);
     else if (key === 'fov') scene.setFovVisible(value);
     else if (key === 'footprint') scene.setFootprintVisible(value);

@@ -1,30 +1,19 @@
 // The app's mission catalog, backed by the @bessel/catalog PluginRegistry so the
-// registry is surfaced in the shell. Each plugin lazily fetches and parses its
-// native catalog the first time it is activated.
+// registry is surfaced in the shell. The app ships no bundled missions; a host
+// or plugin registers MissionPlugins here (each lazily fetches and parses its
+// native catalog when activated). Users load their own catalogs via the Mission
+// panel (file picker or drag and drop).
 
 import { PluginRegistry, parseBesselCatalog, type BesselCatalog } from '@bessel/catalog';
 
-async function fetchCatalog(url: string): Promise<BesselCatalog> {
+/** Fetch and parse a native catalog from a URL, for plugins that register one. */
+export async function fetchCatalog(url: string): Promise<BesselCatalog> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Mission catalog not found at ${url} (${res.status})`);
   return parseBesselCatalog(await res.json());
 }
 
-/** Build the registry of bundled sample missions. */
+/** Build the (initially empty) mission registry. */
 export function createMissionRegistry(): PluginRegistry {
-  const registry = new PluginRegistry();
-  registry.register({
-    id: 'cassini-saturn',
-    name: 'Cassini at Saturn',
-    kernels: [
-      'naif0012.tls',
-      'pck00011.tpc',
-      'cas_iss_v10.ti',
-      'de440s-inner-cassini.bsp',
-      'cassini-soi.bsp',
-    ],
-    frames: ['IAU_SATURN'],
-    loadCatalog: () => fetchCatalog('/samples/cassini-saturn.json'),
-  });
-  return registry;
+  return new PluginRegistry();
 }

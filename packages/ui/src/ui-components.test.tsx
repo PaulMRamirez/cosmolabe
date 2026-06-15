@@ -64,6 +64,7 @@ describe('@bessel/ui SettingsPanel', () => {
   it('renders a labelled checkbox per setting', () => {
     const settings = {
       trajectory: true,
+      orbits: true,
       labels: true,
       fov: false,
       footprint: true,

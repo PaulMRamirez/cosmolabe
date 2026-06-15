@@ -3,6 +3,7 @@
 
 export interface VisualizationSettings {
   readonly trajectory: boolean;
+  readonly orbits: boolean;
   readonly labels: boolean;
   readonly fov: boolean;
   readonly footprint: boolean;
@@ -21,6 +22,7 @@ export interface SettingsPanelProps {
 
 const LABELS: Record<SettingKey, string> = {
   trajectory: 'Trajectory',
+  orbits: 'Orbits',
   labels: 'Labels',
   fov: 'Sensor FOV',
   footprint: 'Footprint',

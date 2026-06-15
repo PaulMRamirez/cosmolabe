@@ -1,23 +1,21 @@
 import { test, expect } from '@playwright/test';
+import { loadCassiniSample } from './sample.ts';
 
-// The Operations panel surfaces three core capabilities in the shell: the plugin
-// registry (a missions list), the telemetry adapter (a predicted-versus-actual
-// residual), and the scripting API (a guided tour).
+// The Operations panel surfaces core capabilities in the shell: the telemetry
+// adapter (a predicted-versus-actual residual) and the scripting API (a guided
+// tour). No mission is bundled, so the missions list shows an empty state until
+// the user loads a catalog.
 
-test('operations panel: registry mission load, telemetry residual, and guided tour', async ({
-  page,
-}) => {
+test('operations panel: empty missions, telemetry residual, and guided tour', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
 
-  // Plugin registry: loading the Cassini mission from the registry rebuilds the
-  // scene (the spacecraft appears).
+  // No bundled missions, and no telemetry until a spacecraft mission is loaded.
+  await expect(page.getByTestId('panel-ops')).toContainText('none bundled');
   await expect(page.getByTestId('telemetry-residual')).toHaveText('Telemetry: none');
-  await page.getByTestId('mission-cassini-saturn').click();
-  await expect(page.getByTestId('select-Cassini')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 30_000 });
 
-  // Telemetry adapter: a predicted-versus-actual residual is published.
+  // Load a mission (the sample), then telemetry publishes a residual.
+  await loadCassiniSample(page);
   await expect(page.getByTestId('telemetry-residual')).toContainText('km', { timeout: 10_000 });
 
   // Scripting API: the guided tour starts playback (Play becomes Pause).

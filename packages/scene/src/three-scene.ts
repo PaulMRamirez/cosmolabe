@@ -97,6 +97,8 @@ export class SolarSystemScene {
   private spacecraft: { name: string; mesh: Object3D; radius: number } | null = null;
   private trajectory: Line | null = null;
   private trajectoryAnchor = 'Sun';
+  private readonly orbits: Line[] = [];
+  private orbitsVisible = true;
   private fovCone: Mesh | null = null;
   private footprint: Mesh | null = null;
   private footprintAnchor = 'Saturn';
@@ -211,6 +213,42 @@ export class SolarSystemScene {
     }
     this.trajectory = new Line(geometry, material);
     this.world.add(this.trajectory);
+  }
+
+  /** Draw orbit path polylines (km, relative to each orbit's central body). */
+  setOrbits(
+    specs: readonly { id: string; anchorBody: string; points: readonly Km3[]; color?: number }[],
+  ): void {
+    for (const line of this.orbits) {
+      this.replaceAnchored(line, null, '');
+      line.geometry.dispose();
+    }
+    this.orbits.length = 0;
+    for (const spec of specs) {
+      if (spec.points.length < 2) continue;
+      const coords = new Float32Array(spec.points.length * 3);
+      spec.points.forEach((p, i) => {
+        coords[i * 3] = p[0] * SCALE;
+        coords[i * 3 + 1] = p[1] * SCALE;
+        coords[i * 3 + 2] = p[2] * SCALE;
+      });
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute(coords, 3));
+      const material = new LineBasicMaterial({
+        color: new Color(spec.color ?? 0x3a5a96),
+        transparent: true,
+        opacity: 0.45,
+      });
+      const line = new Line(geometry, material);
+      line.visible = this.orbitsVisible;
+      this.replaceAnchored(null, line, spec.anchorBody);
+      this.orbits.push(line);
+    }
+  }
+
+  setOrbitsVisible(visible: boolean): void {
+    this.orbitsVisible = visible;
+    for (const line of this.orbits) line.visible = visible;
   }
 
   /**
@@ -708,6 +746,8 @@ export class SolarSystemScene {
     this.spacecraftAttitudeTarget = null;
     drop(this.trajectory);
     this.trajectory = null;
+    for (const line of this.orbits) drop(line);
+    this.orbits.length = 0;
     drop(this.fovCone);
     this.fovCone = null;
     drop(this.footprint);

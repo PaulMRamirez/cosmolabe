@@ -9,6 +9,8 @@ export interface ViewControlsProps {
   readonly onViewFromSun?: () => void;
   /** Set the view looking down the spacecraft velocity, if any. */
   readonly onViewAlongVelocity?: () => void;
+  /** Set a top-down view looking onto the ecliptic plane. */
+  readonly onViewTopDown?: () => void;
 }
 
 export function ViewControls(props: ViewControlsProps): JSX.Element {
@@ -26,6 +28,16 @@ export function ViewControls(props: ViewControlsProps): JSX.Element {
           {body}
         </button>
       ))}
+      {props.onViewTopDown ? (
+        <button
+          type="button"
+          onClick={props.onViewTopDown}
+          data-testid="view-top-down"
+          title="Look straight down onto the ecliptic plane"
+        >
+          Top down
+        </button>
+      ) : null}
       {props.onViewFromSun ? (
         <button
           type="button"

@@ -1,4 +1,4 @@
-// The Cassini-at-Saturn viewer on the modern shell. It owns the state store and
+// The mission viewer on the modern shell. It owns the state store and
 // the BesselEngine, subscribes to store slices, and lays its controls out into
 // the app shell's dock regions: objects on the left, the viewport in the center,
 // tools on the right, the timeline along the bottom. The component stays
@@ -30,10 +30,9 @@ import { useBesselEngine } from './engine/index.ts';
 import { createMissionRegistry } from './missions.ts';
 import { AppShell } from './shell/index.ts';
 
-const SPICE_IDS: Readonly<Record<string, string>> = {
-  ...Object.fromEntries(INNER_SYSTEM.map((p) => [p.name, p.spiceId])),
-  Cassini: '-82',
-};
+const SPICE_IDS: Readonly<Record<string, string>> = Object.fromEntries(
+  INNER_SYSTEM.map((p) => [p.name, p.spiceId]),
+);
 
 export function BesselViewer(): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -127,8 +126,6 @@ export function BesselViewer(): JSX.Element {
       <PanelContainer title="Mission" testId="panel-mission">
         <CatalogLoader
           onLoad={(file) => void engine?.loadCatalog(file)}
-          samples={[{ label: 'Load Cassini at Saturn', url: '/samples/cassini-saturn.json' }]}
-          onLoadSample={(url) => void engine?.loadCatalogUrl(url)}
           status={loadedName ? `Loaded ${loadedName}: ${objects.length} objects` : null}
           error={loadError}
         />
@@ -148,6 +145,7 @@ export function BesselViewer(): JSX.Element {
           bodies={centerTargets}
           focus={focus}
           onCenter={(b) => engine?.centerOn(b)}
+          onViewTopDown={() => engine?.viewTopDown()}
           onViewFromSun={() => engine?.viewFromSun()}
           onViewAlongVelocity={() => engine?.viewAlongVelocity()}
         />
@@ -190,7 +188,7 @@ export function BesselViewer(): JSX.Element {
           aria-pressed={track}
           data-testid="toggle-track"
         >
-          {track ? 'Stop tracking' : 'Track Cassini'}
+          {track ? 'Stop tracking' : 'Track spacecraft'}
         </button>
         <button type="button" onClick={() => void engine?.share()} data-testid="share">
           Share view
@@ -275,7 +273,7 @@ export function BesselViewer(): JSX.Element {
   return (
     <AppShell
       title="Bessel"
-      subtitle="Cassini at Saturn"
+      subtitle={loadedName ?? undefined}
       actions={actions}
       left={left}
       center={center}

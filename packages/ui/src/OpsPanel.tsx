@@ -21,16 +21,20 @@ export function OpsPanel(props: OpsPanelProps): JSX.Element {
     <section className="bessel-ops" aria-label="Operations">
       <div className="bessel-ops-missions" role="group" aria-label="Missions">
         <span>Missions:</span>
-        {props.missions.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => props.onLoadMission(m.id)}
-            data-testid={`mission-${m.id}`}
-          >
-            {m.name}
-          </button>
-        ))}
+        {props.missions.length === 0 ? (
+          <span className="bessel-ops-empty">none bundled (load a catalog)</span>
+        ) : (
+          props.missions.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => props.onLoadMission(m.id)}
+              data-testid={`mission-${m.id}`}
+            >
+              {m.name}
+            </button>
+          ))
+        )}
       </div>
       <button type="button" onClick={props.onRunTour} data-testid="run-tour">
         Guided tour

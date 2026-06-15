@@ -30,6 +30,15 @@ export interface TrajectorySpec {
   readonly colors?: readonly Rgb01[];
 }
 
+export interface OrbitSpec {
+  readonly id: string;
+  /** Central body the orbit is drawn around (the orbit points are relative to it). */
+  readonly anchorBody: string;
+  readonly points: readonly Km3[];
+  /** Line color (hex), defaulting to a faint blue. */
+  readonly color?: number;
+}
+
 export interface RingSpec {
   readonly body: string;
   readonly innerKm: number;
@@ -106,6 +115,7 @@ export interface SceneSpec {
   readonly bodies: readonly PlanetDef[];
   readonly spacecraft?: SpacecraftSpec;
   readonly trajectory?: TrajectorySpec;
+  readonly orbits?: readonly OrbitSpec[];
   readonly starField?: readonly Star[];
   readonly rings?: readonly RingSpec[];
   readonly axisTriads?: readonly AxisTriadSpec[];

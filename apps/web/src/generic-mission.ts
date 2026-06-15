@@ -13,12 +13,14 @@
 import {
   INNER_SYSTEM,
   loadSpacecraftModel,
+  orbitEllipse,
   parseStarCatalog,
   type PlanetDef,
   type SceneSpec,
   type Km3,
   type Star,
   type RingSpec,
+  type OrbitSpec,
   type AtmosphereSpec,
   type AxisTriadSpec,
   type DirectionVectorsSpec,
@@ -43,6 +45,9 @@ import { STEPS, FOCUS_DISTANCE, DEFAULT_FOCUS_DISTANCE } from './engine/constant
 
 /** Default sampling window (UTC) for a neutral mission with no spacecraft arc. */
 const DEFAULT_WINDOW: readonly [string, string] = ['2004-06-22T00:00:00', '2004-08-22T00:00:00'];
+
+/** Sun gravitational parameter (km^3/s^2), the fallback when PCK GM is unavailable. */
+const GM_SUN = 1.32712440018e11;
 
 /** How the spacecraft model is oriented each frame, from the catalog. */
 export type AttitudeSpec =
@@ -199,6 +204,7 @@ export function assembleSceneSpec(input: {
   readonly trajectoryColors?: readonly (readonly [number, number, number])[];
   readonly trajectoryAnchor: string;
   readonly stars?: readonly Star[];
+  readonly orbits?: readonly OrbitSpec[];
   readonly rings: readonly RingSpec[];
   readonly atmospheres?: readonly AtmosphereSpec[];
   readonly axisTriads?: readonly AxisTriadSpec[];
@@ -228,6 +234,7 @@ export function assembleSceneSpec(input: {
         }
       : {}),
     ...(input.stars ? { starField: input.stars } : {}),
+    ...(input.orbits && input.orbits.length > 0 ? { orbits: input.orbits } : {}),
     rings: input.rings,
     ...(input.atmospheres && input.atmospheres.length > 0 ? { atmospheres: input.atmospheres } : {}),
     ...(input.axisTriads && input.axisTriads.length > 0 ? { axisTriads: input.axisTriads } : {}),
@@ -326,6 +333,10 @@ export async function buildCatalogMissionScene(
     }
   }
 
+  // Orbit paths: each body's osculating ellipse around the Sun, from one state
+  // vector (so a full orbit draws without ephemeris over the whole period).
+  const orbits = await buildOrbits(spice, bodies, et0);
+
   // A direction vector toward the Sun (the heliocentric origin) for the spacecraft.
   const directionVectors: DirectionVectorsSpec[] = [];
   if (spacecraft) {
@@ -346,6 +357,7 @@ export async function buildCatalogMissionScene(
     ...(trajectoryColors ? { trajectoryColors } : {}),
     trajectoryAnchor: centerBody,
     ...(stars ? { stars } : {}),
+    orbits,
     rings,
     atmospheres,
     axisTriads,
@@ -390,6 +402,47 @@ async function resolveAttitude(
     return { kind: 'uniform', axis: o.axis, ratePerSec: o.ratePerSec, epochEt };
   }
   return undefined;
+}
+
+/** Osculating orbit ellipse (around the Sun) for each body except the Sun. */
+async function buildOrbits(
+  spice: SpiceEngine,
+  bodies: readonly PlanetDef[],
+  et0: number,
+): Promise<OrbitSpec[]> {
+  let mu = GM_SUN;
+  try {
+    const gm = await spice.bodvrd('SUN', 'GM');
+    if (gm && gm.length > 0 && Number.isFinite(gm[0])) mu = gm[0]!;
+  } catch {
+    // Use the constant fallback.
+  }
+  const orbits: OrbitSpec[] = [];
+  for (const b of bodies) {
+    if (b.name.toLowerCase() === 'sun' || b.spiceId === '10') continue;
+    try {
+      const st = await spice.spkezr(b.spiceId, et0, 'J2000', 'NONE', '10');
+      const points = orbitEllipse(
+        [st.position.x, st.position.y, st.position.z],
+        [st.velocity.x, st.velocity.y, st.velocity.z],
+        mu,
+      );
+      if (points.length > 1) {
+        orbits.push({ id: `${b.name}-orbit`, anchorBody: 'Sun', points, color: dimColor(b.color) });
+      }
+    } catch {
+      // No usable state for this body (e.g. outside the loaded ephemeris): skip it.
+    }
+  }
+  return orbits;
+}
+
+/** A dim hex color from a body's base RGB, for the faint orbit line. */
+function dimColor(color: readonly [number, number, number]): number {
+  const r = Math.round(Math.min(1, color[0] * 0.8) * 255);
+  const g = Math.round(Math.min(1, color[1] * 0.8) * 255);
+  const b = Math.round(Math.min(1, color[2] * 0.9) * 255);
+  return (r << 16) | (g << 8) | b;
 }
 
 /** Body-fixed rotation (pxform frame -> J2000) when the body declares a Spice frame. */
