@@ -85,6 +85,20 @@ export interface KeplerianSwarmSpec {
   readonly rotationRowMajor3x3?: Rotation3x3;
 }
 
+export interface TimeSwitchedSegmentSpec {
+  readonly start: number;
+  readonly end: number;
+  readonly color: string;
+  readonly radiusKm?: number;
+}
+
+export interface TimeSwitchedSpec {
+  readonly id: string;
+  readonly anchorBody: string;
+  readonly offsetKm?: number;
+  readonly segments: readonly TimeSwitchedSegmentSpec[];
+}
+
 /** Everything needed to populate a SolarSystemScene, as inert data. */
 export interface SceneSpec {
   readonly bodies: readonly PlanetDef[];
@@ -97,6 +111,7 @@ export interface SceneSpec {
   readonly directionVectors?: readonly DirectionVectorsSpec[];
   readonly particleSystems?: readonly ParticleSystemSpec[];
   readonly keplerianSwarms?: readonly KeplerianSwarmSpec[];
+  readonly timeSwitched?: readonly TimeSwitchedSpec[];
   readonly labels?: readonly LabelSpec[];
   readonly camera?: CameraSpec;
 }

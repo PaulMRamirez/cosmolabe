@@ -45,9 +45,12 @@ export {
   type LabelSpec,
   type ParticleSystemSpec,
   type KeplerianSwarmSpec,
+  type TimeSwitchedSpec,
+  type TimeSwitchedSegmentSpec,
   type Rotation3x3,
   type Rgb01,
 } from './scene-spec.ts';
+export { activeSegment, type TimeSegment } from './time-switched.ts';
 export { buildScene, type SceneTarget } from './scene-builder.ts';
 export { pickObjectId, pointerToNdc } from './picking.ts';
 export { LabelLayer, projectToScreen, type LabelTarget } from './labels.ts';

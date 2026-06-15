@@ -88,6 +88,7 @@ export class BesselEngine {
       positions.set(name, positionAt(e.table, name, now));
     }
     e.scene.setPositions(positions);
+    e.scene.updateTimeSwitched(now);
 
     // Track-along-trajectory camera: follow Cassini down its velocity.
     if (s.track) {

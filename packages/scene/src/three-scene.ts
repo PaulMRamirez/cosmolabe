@@ -33,6 +33,7 @@ import { pickObjectId } from './picking.ts';
 import { LabelLayer } from './labels.ts';
 import { buildParticleSystem, type ParticleSystemParams } from './particle-system.ts';
 import { buildKeplerianSwarm, type KeplerianSwarmParams } from './keplerian-swarm.ts';
+import { activeSegment, type TimeSegment } from './time-switched.ts';
 
 import {
   SCALE,
@@ -116,6 +117,10 @@ export class SolarSystemScene {
   private rings: Object3D | null = null;
   private readonly particleSystems = new Map<string, Object3D>();
   private readonly swarms = new Map<string, Object3D>();
+  private readonly timeSwitched = new Map<
+    string,
+    { group: Object3D; markers: Object3D[]; segments: TimeSegment[] }
+  >();
   private particlesVisible = true;
   private swarmsVisible = true;
   private directionVectors: Object3D | null = null;
@@ -390,6 +395,53 @@ export class SolarSystemScene {
   setKeplerianSwarmsVisible(visible: boolean): void {
     this.swarmsVisible = visible;
     for (const obj of this.swarms.values()) obj.visible = visible;
+  }
+
+  /**
+   * Replace the time-switched markers. Each spec is a stack of colored markers
+   * (one per time segment) offset above a body; updateTimeSwitched shows only the
+   * marker whose segment is active at the current epoch.
+   */
+  setTimeSwitched(
+    specs: readonly {
+      id: string;
+      anchorBody: string;
+      offsetKm?: number;
+      segments: readonly { start: number; end: number; color: string; radiusKm?: number }[];
+    }[],
+  ): void {
+    for (const entry of this.timeSwitched.values()) this.replaceAnchored(entry.group, null, '');
+    this.timeSwitched.clear();
+    for (const spec of specs) {
+      const group = new Group();
+      const markers: Object3D[] = [];
+      const segments: TimeSegment[] = [];
+      const offset = (spec.offsetKm ?? 0) * SCALE;
+      for (const seg of spec.segments) {
+        const radius = (seg.radiusKm ?? 15000) * SCALE;
+        const marker = new Mesh(
+          new SphereGeometry(radius, 12, 8),
+          new MeshBasicMaterial({ color: new Color(seg.color) }),
+        );
+        marker.position.set(0, offset, 0);
+        marker.visible = false;
+        group.add(marker);
+        markers.push(marker);
+        segments.push({ start: seg.start, end: seg.end });
+      }
+      this.replaceAnchored(null, group, spec.anchorBody);
+      this.timeSwitched.set(spec.id, { group, markers, segments });
+    }
+  }
+
+  /** Show only the marker whose segment contains et (called each frame). */
+  updateTimeSwitched(et: number): void {
+    for (const entry of this.timeSwitched.values()) {
+      const idx = activeSegment(entry.segments, et);
+      entry.markers.forEach((marker, i) => {
+        marker.visible = i === idx;
+      });
+    }
   }
 
   /** Render an atmosphere limb-glow shell anchored at a body. */

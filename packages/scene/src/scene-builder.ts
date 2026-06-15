@@ -7,7 +7,12 @@ import type { Km3 } from './geometry-builders.ts';
 import type { PlanetDef } from './planets.ts';
 import type { Star } from './star-catalog.ts';
 import type { DirectionSpec } from './direction-vectors.ts';
-import type { SceneSpec, ParticleSystemSpec, KeplerianSwarmSpec } from './scene-spec.ts';
+import type {
+  SceneSpec,
+  ParticleSystemSpec,
+  KeplerianSwarmSpec,
+  TimeSwitchedSpec,
+} from './scene-spec.ts';
 
 export interface SceneTarget {
   setBodies(defs: readonly PlanetDef[]): void;
@@ -40,6 +45,7 @@ export interface SceneTarget {
   setDirectionVectors(anchorBody: string, specs: readonly DirectionSpec[], lengthKm: number): void;
   setParticleSystems(specs: readonly ParticleSystemSpec[]): void;
   setKeplerianSwarms(specs: readonly KeplerianSwarmSpec[]): void;
+  setTimeSwitched(specs: readonly TimeSwitchedSpec[]): void;
   setLabels(specs: readonly { id: string; text: string; anchorBody: string }[]): void;
   centerOn(name: string): void;
   setView(azimuth: number, elevation: number, distance: number): void;
@@ -91,6 +97,10 @@ export function buildScene(target: SceneTarget, spec: SceneSpec): void {
 
   if (spec.keplerianSwarms) {
     target.setKeplerianSwarms(spec.keplerianSwarms);
+  }
+
+  if (spec.timeSwitched) {
+    target.setTimeSwitched(spec.timeSwitched);
   }
 
   if (spec.labels) {

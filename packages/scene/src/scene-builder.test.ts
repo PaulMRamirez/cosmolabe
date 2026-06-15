@@ -23,6 +23,7 @@ function recordingTarget(): SceneTarget & { calls: Record<string, unknown[][]> }
     setDirectionVectors: record('setDirectionVectors') as SceneTarget['setDirectionVectors'],
     setParticleSystems: record('setParticleSystems') as SceneTarget['setParticleSystems'],
     setKeplerianSwarms: record('setKeplerianSwarms') as SceneTarget['setKeplerianSwarms'],
+    setTimeSwitched: record('setTimeSwitched') as SceneTarget['setTimeSwitched'],
     setLabels: record('setLabels') as SceneTarget['setLabels'],
     centerOn: record('centerOn') as SceneTarget['centerOn'],
     setView: record('setView') as SceneTarget['setView'],

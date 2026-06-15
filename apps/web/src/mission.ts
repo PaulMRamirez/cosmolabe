@@ -110,6 +110,19 @@ export async function buildMissionScene(
         },
       },
     ],
+    // A TimeSwitched phase marker above Saturn: green during approach, cyan after
+    // Saturn orbit insertion, demonstrating the TimeSwitched geometry type.
+    timeSwitched: [
+      {
+        id: 'saturn-phase',
+        anchorBody: 'Saturn',
+        offsetKm: 200000,
+        segments: [
+          { start: et0, end: et0 + 0.15 * (et1 - et0), color: '#7cfc00', radiusKm: 22000 },
+          { start: et0 + 0.15 * (et1 - et0), end: et1, color: '#33ccff', radiusKm: 22000 },
+        ],
+      },
+    ],
     labels: [
       ...INNER_SYSTEM.map((p) => ({ id: p.name, text: p.name, anchorBody: p.name })),
       { id: spacecraftName, text: spacecraftName, anchorBody: spacecraftName },
