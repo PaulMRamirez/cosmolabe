@@ -33,3 +33,15 @@ export {
   computeOrbitCameraPosition,
   type CameraMode,
 } from './camera-modes.ts';
+export {
+  type SceneSpec,
+  type SpacecraftSpec,
+  type TrajectorySpec,
+  type RingSpec,
+  type AxisTriadSpec,
+  type AtmosphereSpec,
+  type DirectionVectorsSpec,
+  type CameraSpec,
+  type Rotation3x3,
+} from './scene-spec.ts';
+export { buildScene, type SceneTarget } from './scene-builder.ts';
