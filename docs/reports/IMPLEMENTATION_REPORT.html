@@ -1,364 +1,285 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bessel Implementation Report: Independent Cross-Check</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bessel Implementation Report: Independent Re-Verification (Phase 0-3 Closure)</title>
 <style>
   :root {
-    --bg: #ffffff;
-    --fg: #1b1f24;
-    --muted: #5a6470;
-    --line: #d7dce2;
-    --head: #0b3d63;
     --pass: #1a7f37;
-    --fail: #b42318;
-    --partial: #b06f00;
-    --missing: #8a8f98;
-    --pass-bg: #e8f5ec;
-    --fail-bg: #fdeceb;
-    --partial-bg: #fbf3e2;
-    --missing-bg: #f0f1f3;
-    --code-bg: #f4f6f8;
+    --fail: #cf222e;
+    --warn: #9a6700;
+    --na: #57606a;
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --head: #f6f8fa;
+    --accent: #0a3069;
   }
   * { box-sizing: border-box; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     color: var(--fg);
     background: var(--bg);
-    line-height: 1.5;
     margin: 0;
-    padding: 2rem 1.5rem 4rem;
+    padding: 2rem 1.25rem 4rem;
+    line-height: 1.5;
     max-width: 1100px;
     margin-left: auto;
     margin-right: auto;
   }
-  h1 { font-size: 1.9rem; color: var(--head); margin-bottom: 0.2rem; }
-  h2 {
-    font-size: 1.35rem;
-    color: var(--head);
-    border-bottom: 2px solid var(--line);
-    padding-bottom: 0.3rem;
-    margin-top: 2.4rem;
-  }
-  h3 { font-size: 1.1rem; color: var(--head); margin-top: 1.6rem; }
-  h4 { font-size: 0.98rem; margin: 1rem 0 0.4rem; }
+  h1 { font-size: 1.85rem; margin: 0 0 0.25rem; color: var(--accent); }
+  h2 { font-size: 1.35rem; margin: 2.25rem 0 0.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; margin: 1.5rem 0 0.4rem; color: var(--accent); }
   p { margin: 0.5rem 0; }
-  .subtitle { color: var(--muted); font-size: 1rem; margin-top: 0; }
-  .meta { color: var(--muted); font-size: 0.85rem; }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 0.8rem 0 1.4rem;
-    font-size: 0.88rem;
+  .sub { color: var(--muted); font-size: 0.95rem; }
+  .intro { background: var(--head); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0 1.5rem; }
+  .verdict {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 2px solid var(--pass);
+    background: #eaf6ec;
+    color: #0c5223;
   }
-  th, td {
-    border: 1px solid var(--line);
-    padding: 0.45rem 0.6rem;
-    text-align: left;
-    vertical-align: top;
-  }
-  th { background: var(--code-bg); font-weight: 600; }
-  code, .mono {
-    font-family: "SF Mono", "Menlo", "Consolas", monospace;
-    font-size: 0.82em;
-    background: var(--code-bg);
-    padding: 0.05rem 0.3rem;
-    border-radius: 3px;
-  }
+  .verdict .note { display: block; font-weight: 400; font-size: 0.95rem; margin-top: 0.4rem; color: var(--fg); }
+  table { border-collapse: collapse; width: 100%; margin: 0.75rem 0 1.25rem; font-size: 0.92rem; }
+  caption { text-align: left; font-weight: 600; padding: 0.3rem 0; color: var(--accent); }
+  th, td { border: 1px solid var(--border); padding: 0.45rem 0.6rem; text-align: left; vertical-align: top; }
+  th { background: var(--head); font-weight: 600; }
+  td.code, th.code, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86rem; }
+  code { background: var(--head); padding: 0.05rem 0.3rem; border-radius: 4px; }
   .badge {
     display: inline-block;
-    font-size: 0.74rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 0.1rem 0.5rem;
-    border-radius: 10px;
+    letter-spacing: 0.02em;
     white-space: nowrap;
   }
-  .b-pass, .b-complete, .b-implemented { color: var(--pass); background: var(--pass-bg); }
-  .b-fail { color: var(--fail); background: var(--fail-bg); }
-  .b-partial { color: var(--partial); background: var(--partial-bg); }
-  .b-missing { color: var(--missing); background: var(--missing-bg); }
-  .b-na { color: var(--muted); background: var(--missing-bg); }
-  .intro {
-    background: var(--code-bg);
-    border-left: 4px solid var(--head);
-    padding: 0.8rem 1rem;
-    border-radius: 0 6px 6px 0;
-  }
-  .verdict {
-    border: 1px solid var(--line);
-    border-left: 4px solid var(--partial);
-    background: var(--partial-bg);
-    padding: 0.9rem 1.1rem;
-    border-radius: 0 6px 6px 0;
-    margin: 1rem 0;
-  }
-  td.status-col { white-space: nowrap; width: 1%; }
-  .ev { font-size: 0.84rem; color: var(--fg); }
-  ul.tight { margin: 0.3rem 0; padding-left: 1.2rem; }
-  ul.tight li { margin: 0.25rem 0; }
-  .phase-head { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
-  hr { border: none; border-top: 1px solid var(--line); margin: 2rem 0; }
+  .b-pass, .b-complete, .b-implemented { background: #dafbe1; color: var(--pass); }
+  .b-fail, .b-missing { background: #ffebe9; color: var(--fail); }
+  .b-warn, .b-partial, .b-deviation { background: #fff8c5; color: var(--warn); }
+  .b-na { background: #eaeef2; color: var(--na); }
+  .ev { font-size: 0.85rem; color: var(--fg); }
+  .legend { font-size: 0.85rem; color: var(--muted); margin: 0.25rem 0 1rem; }
+  ul.compact { margin: 0.4rem 0; padding-left: 1.2rem; }
+  ul.compact li { margin: 0.2rem 0; }
+  .phase-flag { color: var(--accent); font-weight: 600; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
   @media print {
     body { padding: 0; max-width: none; }
     h2 { page-break-after: avoid; }
     table { page-break-inside: auto; }
     tr { page-break-inside: avoid; }
+    .verdict, .intro { break-inside: avoid; }
   }
 </style>
 </head>
 <body>
 
 <h1>Bessel Implementation Report</h1>
-<p class="subtitle">Independent cross-check of the Bessel build against SPEC.md</p>
-<p class="meta">Generated 2026-06-14. Synthesis of independent verification agents (build gates, per-phase audits 0 through 5, budgets and security, and the suite contract check). Branch <code>autonomous-run</code>.</p>
+<p class="sub">Independent re-verification after the Phase 0-3 closure effort. Generated 2026-06-14.</p>
 
 <div class="intro">
-<p>This report is an independent verification pass over the Bessel codebase, cross-checking the implemented build against the requirements in SPEC.md and the binding conventions in CLAUDE.md. Every status below is grounded in concrete file evidence or a captured command exit code. Findings that could not be substantiated by a file path or a command result were dropped during synthesis. Where an agent reported a command failing, this report records that failure rather than smoothing it over.</p>
+  <p>This report is an <strong>independent re-verification</strong> of the Bessel codebase produced after a dedicated Phase 0-3 closure effort. It merges structured findings from independent agents (one gates agent running the full verifiable command catalog, one agent per phase 0 through 5, a budgets-and-security agent, and a suite-contract agent). Every claim below is retained only where it is substantiated by concrete file paths or command exit codes; unsupported assertions were dropped. Build-execution gates (build:web, build:desktop, cap:sync, e2e, size, lhci) are owned by the gates agent, whose recorded exit codes are reported verbatim in the gate table.</p>
 </div>
 
 <div class="verdict">
-<strong>Overall verdict: PARTIAL.</strong> Phase 0 is complete and well tested. Phase 1 and Phase 2 are partial, with their named completion-condition tests passing but several build-list items missing. Phase 3 is substantially incomplete (only meta-kernel resolution is real). Phases 4 and 5 are not started. Seven of eight build gates pass on real exit codes; the single failing gate is <code>pnpm release:dry</code> (exit 1) because no changesets exist yet. Budgets and security checks all pass and no secrets or bulk kernels are committed.
+  Verdict: Phases 0-3 are now fully implemented per the evidence. The Phase 0-3 closure is confirmed.
+  <span class="note">All four phases pass their build-list items in real, tested code (not stubs). The full gate vocabulary runs green with one exception, <code>pnpm release:dry</code> (exit 1), which is a Phase 5 release-hygiene gate (no changesets present) and does not affect any Phase 0-3 completion condition. Phases 4 and 5 remain out of scope and are unstarted.</span>
 </div>
 
-<h2>1. Phase status summary</h2>
+<h2>1. Phase Status Summary</h2>
+<p class="legend">Legend:
+  <span class="badge b-complete">complete</span>
+  <span class="badge b-partial">partial</span>
+  <span class="badge b-missing">missing</span>
+</p>
 <table>
+  <caption>Phases 0 to 5 by status</caption>
   <thead>
-    <tr><th>Phase</th><th>Title (per SPEC Section 9)</th><th class="status-col">Status</th><th>One-line basis</th></tr>
+    <tr><th>Phase</th><th>Title</th><th>Status</th><th>In scope for this closure</th></tr>
   </thead>
   <tbody>
-    <tr>
-      <td>0</td><td>Proof of concept end to end</td>
-      <td class="status-col"><span class="badge b-complete">Complete</span></td>
-      <td>All six build items implemented; typecheck and phase tests pass; PWA dist has manifest + service worker; poc-cassini e2e present.</td>
-    </tr>
-    <tr>
-      <td>1</td><td>Core geometry, PAL, shells, UI</td>
-      <td class="status-col"><span class="badge b-partial">Partial</span></td>
-      <td>Catalog taxonomy, 7 SPICE functions, PAL contract (web+electron) done; scene item incomplete; @bessel/ui object browser, settings, shortcuts missing.</td>
-    </tr>
-    <tr>
-      <td>2</td><td>Shareable views and integrations</td>
-      <td class="status-col"><span class="badge b-partial">Partial</span></td>
-      <td>URL-state, MMGIS outbound, CZML, OPFS cache done; readouts, capture/recording, timeline annotations, true multi-select missing.</td>
-    </tr>
-    <tr>
-      <td>3</td><td>Advanced geometry and rendering</td>
-      <td class="status-col"><span class="badge b-partial">Partial</span></td>
-      <td>Only meta-kernel resolution is real; DSK/atmosphere/shadows/rings/star field, Python bridge, native dialogs, and Electron DSK e2e missing.</td>
-    </tr>
-    <tr>
-      <td>4</td><td>Real-time and collaboration</td>
-      <td class="status-col"><span class="badge b-missing">Missing</span></td>
-      <td>No telemetry, no plugin registry, no collaboration, no WebXR; only a <code>webxr</code> capability flag stub exists.</td>
-    </tr>
-    <tr>
-      <td>5</td><td>Production hardening and GA</td>
-      <td class="status-col"><span class="badge b-missing">Missing</span></td>
-      <td>No release pipeline, no error boundaries/diagnostics; prerequisite Phase 4 not committed.</td>
-    </tr>
+    <tr><td>0</td><td>Cassini-at-Saturn PWA proof of concept</td><td><span class="badge b-complete">complete</span></td><td>Yes</td></tr>
+    <tr><td>1</td><td>Geometry taxonomy, scene effects, UI, PAL, shells</td><td><span class="badge b-complete">complete</span></td><td>Yes</td></tr>
+    <tr><td>2</td><td>State/URL, readouts, multi-select, capture, interop, offline</td><td><span class="badge b-complete">complete</span></td><td>Yes</td></tr>
+    <tr><td>3</td><td>Meta-kernel, dialogs, Python bridge, DSK, atmosphere, shadows, rings, stars, desktop e2e</td><td><span class="badge b-complete">complete</span></td><td>Yes</td></tr>
+    <tr><td>4</td><td>Real-time, telemetry, plugins, collaboration, WebXR</td><td><span class="badge b-missing">missing</span></td><td>No (out of scope)</td></tr>
+    <tr><td>5</td><td>Production hardening and GA</td><td><span class="badge b-missing">missing</span></td><td>No (out of scope)</td></tr>
   </tbody>
 </table>
 
-<h2>2. Build gates (captured exit codes)</h2>
-<p>All eight gates were run sequentially from the repository root with real exit codes captured. Seven pass; one fails.</p>
+<h2>2. Gate Results (verifiable command catalog)</h2>
+<p class="sub">Run sequentially from the repo root by the gates agent; exit codes captured directly. <code>build:desktop</code> was run before <code>e2e</code> as required.</p>
 <table>
+  <caption>Gate commands, exit codes, and result</caption>
   <thead>
-    <tr><th>Command</th><th class="status-col">Exit</th><th class="status-col">Result</th><th>Detail</th></tr>
+    <tr><th class="code">Command</th><th>Exit</th><th>Result</th><th>Note</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>pnpm verify</code></td><td class="status-col">0</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td>typecheck, lint, 48 tests (11 files), build:web produced manifest.webmanifest + sw.js, size within budgets (shell 228.84 kB / 350 kB, WASM 309.79 kB / 4 MB).</td></tr>
-    <tr><td><code>pnpm build:desktop</code></td><td class="status-col">0</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td>electron-vite built main.js, preload.mjs, and renderer (out/renderer/index.html + index bundle 228.22 kB).</td></tr>
-    <tr><td><code>pnpm cap:sync</code></td><td class="status-col">0</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td>cap sync ios copied web assets, ran pod install, finished in 1.375s.</td></tr>
-    <tr><td><code>pnpm e2e</code></td><td class="status-col">0</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td>8 Playwright tests passed (6.5s) including the a11y scan and WebGL render assertions.</td></tr>
-    <tr><td><code>pnpm size</code></td><td class="status-col">0</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td>shell 228.84 kB gzipped (limit 350 kB), CSPICE WASM 309.79 kB brotlied (limit 4 MB).</td></tr>
-    <tr><td><code>pnpm audit:prod</code></td><td class="status-col">0</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td>pnpm audit --prod --audit-level high reports no known vulnerabilities.</td></tr>
-    <tr><td><code>pnpm lhci</code></td><td class="status-col">0</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td>lhci autorun; all Lighthouse assertions processed with no failures on the built PWA.</td></tr>
-    <tr><td><code>pnpm release:dry</code></td><td class="status-col">1</td><td class="status-col"><span class="badge b-fail">Fail</span></td><td><code>changeset status --verbose</code> errors: "Some packages have been changed but no changesets were found. Run changeset add to resolve."</td></tr>
+    <tr><td class="code">pnpm verify</td><td>0</td><td><span class="badge b-pass">pass</span></td><td>typecheck, lint, 102 tests across 25 files, build:web (manifest.webmanifest + sw.js generated), size all green.</td></tr>
+    <tr><td class="code">pnpm build:desktop</td><td>0</td><td><span class="badge b-pass">pass</span></td><td>electron-vite built main.js, preload.cjs, and the renderer bundle.</td></tr>
+    <tr><td class="code">pnpm cap:sync</td><td>0</td><td><span class="badge b-pass">pass</span></td><td>cap sync ios copied web assets and ran pod install (1.27s).</td></tr>
+    <tr><td class="code">pnpm e2e</td><td>0</td><td><span class="badge b-pass">pass</span></td><td>11 of 11 Playwright tests passed, including the [electron] desktop DSK render test (electron-dsk.spec.ts).</td></tr>
+    <tr><td class="code">pnpm size</td><td>0</td><td><span class="badge b-pass">pass</span></td><td>web shell 270.56 kB gzip (limit 350 kB); CSPICE WASM 317.3 kB brotli (limit 4 MB).</td></tr>
+    <tr><td class="code">pnpm audit:prod</td><td>0</td><td><span class="badge b-pass">pass</span></td><td>No known high or critical vulnerabilities in production deps.</td></tr>
+    <tr><td class="code">pnpm lhci</td><td>0</td><td><span class="badge b-pass">pass</span></td><td>Lighthouse autorun: healthcheck passed, 1 run, all assertions processed, no failures.</td></tr>
+    <tr><td class="code">pnpm release:dry</td><td>1</td><td><span class="badge b-fail">fail</span></td><td>changeset status: packages changed but no changesets found; recommends <code>changeset add</code>. Attributed to <span class="phase-flag">Phase 5</span> release hygiene, not a Phase 0-3 build or test failure.</td></tr>
   </tbody>
 </table>
+<p class="sub">7 of 8 gates pass. The single failure, <code>pnpm release:dry</code>, belongs to the Phase 5 release pipeline and does not gate any Phase 0-3 completion condition.</p>
 
-<h2>3. Per-phase detail</h2>
+<h2>3. Per-Phase Build Items</h2>
+<p class="legend">Item legend:
+  <span class="badge b-implemented">implemented</span>
+  <span class="badge b-deviation">deviation</span>
+  <span class="badge b-partial">partial</span>
+  <span class="badge b-missing">missing</span>
+</p>
 
-<!-- PHASE 0 -->
-<h3 class="phase-head">Phase 0: Proof of concept <span class="badge b-complete">Complete</span></h3>
-<p>All six Phase 0 build-list items are implemented with real, non-stub code. <code>@bessel/spice</code> marshals a genuine 1.2 MB CSPICE-WASM binary through real ccall bindings; the fixture test asserts spkpos of the Saturn barycenter against a pinned NAIF de440s reference within 1e-3 km and passes. The app wires SPICE worker, pal-web kernels, scene, timeline, and catalog end to end into an installable PWA.</p>
+<h3>Phase 0: Cassini-at-Saturn PWA proof of concept &mdash; <span class="badge b-complete">complete</span></h3>
+<p class="ev">All six build items plus the two hard machine-checkable completion conditions are present and wired end to end. <code>pnpm typecheck</code> exits 0 and Phase 0 package tests pass 63/63, including the NAIF spkpos fixture assertion within 1e-3 km.</p>
 <table>
-  <thead><tr><th>Build item</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
+  <caption>Phase 0 build items</caption>
+  <thead><tr><th>Build item</th><th>Status</th><th>File / command evidence</th></tr></thead>
   <tbody>
-    <tr><td>1. <code>@bessel/spice</code> typed promise wrapper over CSPICE-WASM in a Web Worker (furnsh/unload/kclear, str2et/et2utc/utc2et, spkpos/spkezr; bytes via PAL KernelSource)</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>packages/spice/src/bindings.ts</code> (real ccall marshaling with pointer lifetimes and erract_c return-mode), <code>engine.ts</code> imports the real <code>cspice.mjs</code>, <code>wasm/cspice.wasm</code> is a 1.2 MB binary, worker runs off-thread via <code>installSpiceWorker</code>; kernel bytes staged to the Emscripten FS, never parsed directly.</td></tr>
-    <tr><td>2. pal-web KernelSource loads LSK and planetary SPK fixtures (range capable), OPFS cache stub acceptable</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>packages/pal-web/src/kernel-source.ts</code> HttpKernelSource implements list/resolve/read/readRange with an HTTP Range header (L48-60) and an optional OPFS cache; contract suite <code>kernel-source.test.ts</code> passes (5 tests); loud <code>PalError</code> with location strings.</td></tr>
-    <tr><td>3. <code>@bessel/scene</code> textured inner-system globes, camera-relative rendering, orbit and center-on-body modes</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>packages/scene/src/three-scene.ts</code>: textured globes via DataTexture/MeshStandardMaterial; camera-relative rendering L287-289 translate world group by -focusPos*SCALE; orbit and <code>centerOn()</code> (L248); <code>planets.ts</code> defines inner bodies.</td></tr>
-    <tr><td>4. <code>@bessel/timeline</code> epoch entry, play, pause, rate, driving a clock the scene subscribes to</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>packages/timeline/src/index.ts</code> Clock: setEpoch, play/pause, setRate, tick scaled by rate, subscribe/emit. No dedicated unit test file, but exercised by the app and the poc-cassini e2e timeline-changes-frame assertion.</td></tr>
-    <tr><td>5. <code>@bessel/catalog</code> parse a Cosmographia spacecraft fixture into a renderable trajectory polyline</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>packages/catalog/src/cosmographia.ts</code> returns a typed SpacecraftCatalog with located CatalogError on bad refs; fixture at <code>examples/cassini-cosmographia.json</code>; <code>apps/web/src/viewer.tsx</code> L85 parses it and the sampler builds the km polyline; <code>catalog.test.ts</code> passes (3 tests).</td></tr>
-    <tr><td>6. apps/web installable PWA via vite-plugin-pwa</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>apps/web/vite.config.ts</code> uses VitePWA (autoUpdate, workbox globPatterns, complete manifest); <code>apps/web/dist</code> contains manifest.webmanifest, sw.js, workbox-*.js, registerSW.js.</td></tr>
-    <tr><td>Completion: <code>pnpm typecheck</code> exits 0</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev">tsc --noEmit exited 0 with no diagnostics.</td></tr>
-    <tr><td>Completion: <code>pnpm test</code> passes including spice fixture vs NAIF reference</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>spice.test.ts</code> (5 tests) asserts spkpos x/y/z within 1e-3 km of pinned de440s NAIF reference and lightTime within 1e-6, plus a typed-error rejection. 43 tests pass across spice, catalog, pal-web, pal.</td></tr>
-    <tr><td>Completion: <code>pnpm build:web</code> succeeds and dist has manifest + service worker</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev">build:web is owned by the gates agent (exit 0 under <code>pnpm verify</code>); existing dist already contains manifest.webmanifest and generated sw.js plus a workbox chunk.</td></tr>
-    <tr><td>Completion: <code>pnpm e2e</code> has poc-cassini loading the fixture, asserting non-empty WebGL frame and that advancing the timeline changes the frame</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>e2e/tests/poc-cassini.spec.ts</code> waits for Ready, asserts <code>before.nonBackground &gt; 200</code>, then Play/Pause and asserts <code>after.signature !== before.signature</code>. Gate run confirms 8 e2e tests pass.</td></tr>
+    <tr><td>@bessel/spice: typed promise-based CSPICE-WASM wrapper in a dedicated Web Worker (furnsh, unload, kclear, str2et, et2utc, utc2et, spkpos, spkezr); kernel bytes via PAL KernelSource</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/spice/src/index.ts:34-103; bindings.ts:74-171 (real furnsh_c/str2et_c/et2utc_c/utc2et_c/spkpos_c/spkezr_c); engine.ts:15-78; apps/web/src/spice.worker.ts and spice.ts run CSPICE in a real Worker off the main thread.</td></tr>
+    <tr><td>pal-web KernelSource: load LSK + planetary SPK fixtures, range-request capable, OPFS cache</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/pal-web/src/kernel-source.ts:8-61 (read/readRange + optional KernelCache); opfs-cache.ts; opfs-cache.test.ts (3) and kernel-source.test.ts (5) pass. Loud located PalError on unknown name or failed fetch.</td></tr>
+    <tr><td>@bessel/scene: textured inner-solar-system globes, camera-relative rendering, orbit and center-on-body camera modes</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/scene/src/planets.ts:15-23; three-scene.ts:55-73, :136, :456 (world.position floating origin), :356 setCameraMode, :415 centerOn; camera-modes.ts:6.</td></tr>
+    <tr><td>@bessel/timeline: epoch, play, pause, rate driving a clock the scene subscribes to</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/timeline/src/index.ts:17-51 Clock with setEpoch/setRate/play/pause/tick and a ClockListener subscriber set.</td></tr>
+    <tr><td>@bessel/catalog: parse a Cosmographia spacecraft catalog fixture and produce a rendered trajectory polyline</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/catalog/src/cosmographia.ts:45-72 (located CatalogError); examples/cassini-cosmographia.json; viewer.tsx:141, :171 scene.setTrajectory; sampler.ts:78 trajectoryOf builds the km polyline.</td></tr>
+    <tr><td>apps/web: installable PWA via vite-plugin-pwa (manifest + generated service worker)</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">apps/web/vite.config.ts:13-35 VitePWA autoUpdate, Workbox globPatterns incl wasm, full webmanifest. Gate confirms manifest.webmanifest + sw.js generated (build:web green).</td></tr>
+    <tr><td>NAIF spkpos fixture test within tolerance (hard completion condition)</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/spice/src/spice.test.ts:42-56 asserts spkpos('6',et,'J2000','NONE','10') within 1e-3 km of a de440 reference; fixtures naif0012.tls + de440s-inner-cassini.bsp present; 5/5 pass.</td></tr>
+    <tr><td>e2e poc-cassini: trajectory renders (non-empty frame) and timeline advance changes the frame (hard completion condition)</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">e2e/tests/poc-cassini.spec.ts:34-56 reads canvas pixels, asserts nonBackground&gt;200 and that the post-play signature differs. Confirmed green in the gate e2e run.</td></tr>
   </tbody>
 </table>
-<p><strong>Conventions:</strong> dependency rule (no core to concrete-PAL imports), loud typed/located errors, mandatory camera-relative rendering, and no em dashes all pass.</p>
 
-<!-- PHASE 1 -->
-<h3 class="phase-head">Phase 1: Core geometry, PAL, shells, UI <span class="badge b-partial">Partial</span></h3>
-<p>The named completion-condition tests pass (typecheck clean; 43 tests across catalog, spice, pal-web, pal-electron). Catalog taxonomy and validation, the seven SPICE geometry functions, the PAL contract suite (web and electron), and the desktop plus iOS shells are real and tested. However the scene item is incomplete and the <code>@bessel/ui</code> item is essentially missing.</p>
+<h3>Phase 1: Geometry, scene effects, UI, PAL, shells &mdash; <span class="badge b-complete">complete</span></h3>
+<p class="ev">All six build items implemented. <code>pnpm typecheck</code> passes; the Phase 1 package suite runs 85 tests green, including the spkpos NAIF assertion and the shared kernelSourceContract against both pal-web and pal-electron.</p>
 <table>
-  <thead><tr><th>Build item</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
+  <caption>Phase 1 build items (previously flagged items called out explicitly)</caption>
+  <thead><tr><th>Build item</th><th>Status</th><th>File / command evidence</th></tr></thead>
   <tbody>
-    <tr><td>1. <code>@bessel/catalog</code> full 7-type geometry taxonomy + annotations, JSON Schema validation, located typed errors, broken kernel ref yields typed error</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>native-types.ts</code> defines all 7 Geometry types; <code>schema/bessel-catalog.schema.json</code> (800 lines) covers Mesh/DSK/Globe/Rings/ParticleSystem/KeplerianSwarm/TimeSwitched + annotations; <code>validator.ts</code> throws located CatalogError; <code>kernels.ts</code> throws located PalError on broken refs. taxonomy/schema/kernels tests pass.</td></tr>
-    <tr><td>2. <code>@bessel/spice</code> add getfov, pxform, sxform, sincpt, subpnt, bodvrd, bodvcd</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev">All 7 bound in <code>bindings.ts</code> (getfov_c L209, bodvrd_c L240, bodvcd_c L246, pxform_c L252, sxform_c L262, sincpt_c L289, subpnt_c L326), exposed through engine/client/interface. <code>geometry.test.ts</code> asserts bodvrd, getfov, subpnt, sincpt against fixtures. Note: pxform and sxform are exposed but have no direct test assertion.</td></tr>
-    <tr><td>3. <code>@bessel/scene</code> GLTF spacecraft, FOV cones, footprints, axis triads, direction vectors, track-along-trajectory camera mode</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">FOV cone (<code>setFovCone</code> L155) and footprint (<code>setFootprint</code> L192) implemented and wired into the viewer, with e2e pixel assertions (<code>instruments.spec.ts</code>). Missing: spacecraft is a SphereGeometry, not GLTF (no GLTFLoader anywhere); no axis triads; no direction vectors; track-along-trajectory is only a type literal (<code>CameraMode</code> L9) with no scene behavior. packages/scene has no test files.</td></tr>
-    <tr><td>4. <code>@bessel/ui</code> object browser panel, visualization settings panel, Cosmographia keyboard shortcuts</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev"><code>packages/ui/src</code> exports only Phase 0 TimelineControls.tsx and ViewControls.tsx; no ObjectBrowser, no settings, no keyboard handling. Comments explicitly defer these. apps/web/src has no keydown/object browser/settings.</td></tr>
-    <tr><td>5. PAL: complete pal-web; create pal-capacitor and pal-electron; KernelSource contract passed by pal-web and pal-electron</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev">pal-web, pal-capacitor, pal-electron all exist; shared contract <code>kernel-source-contract.ts</code> run by pal-web (5 pass) and pal-electron (5 pass) against committed fixtures. Completion names only web+electron, both satisfied.</td></tr>
-    <tr><td>6. Shells: apps/desktop (electron-vite, main, preload typed IPC, renderer) and apps/mobile (Capacitor, iOS only, no Android), both building and launching shared UI</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Desktop has electron.vite.config.ts, main.ts (BrowserWindow contextIsolation), preload.ts, built out/ tree. Mobile capacitor.config.ts sets webDir ../web/dist, has ios/ and no android/. Deviation: preload.ts exposes only <code>{ platform, versions }</code>, not the typed kernel/filesystem IPC surface the item specifies.</td></tr>
+    <tr><td>@bessel/catalog: full geometry taxonomy (Mesh, DSK, Globe, Rings, ParticleSystem, KeplerianSwarm, TimeSwitched) + annotations, JSON-Schema validation, typed/located errors, no silent re-center</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">native-types.ts:37-73 (all seven types + GEOMETRY_TYPES); taxonomy.test.ts (8); schema.test.ts (6) rejects arcs+trajectory and sideDivisions=1; catalog.test.ts asserts CatalogError.location='$.items[0].trajectory.type'; kernels.test.ts asserts PalError 'kernel-not-found'.</td></tr>
+    <tr><td>@bessel/spice: getfov, pxform, sxform, sincpt, subpnt, bodvrd, bodvcd</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">index.ts:60-89; bindings.ts call getfov_c/bodvrd_c/bodvcd_c/pxform_c/sxform_c/sincpt_c/ilumin_c/subpnt_c; geometry.test.ts (5) and spice.test.ts (5) pass.</td></tr>
+    <tr><td><strong>GLTF spacecraft nodes</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/scene/src/spacecraft-model.ts (GLTFLoader.parse + normalizeModelRadius + typed SpacecraftModelError); three-scene.ts:331 setSpacecraftModel; viewer.tsx:196 loads apps/web/src/assets/cassini.gltf; spacecraft-model.test.ts (2). Minor deviation: a .gltf is committed where the plan named .glb; parsed identically.</td></tr>
+    <tr><td><strong>Reference-frame axis triads</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">axis-triad.ts buildAxisTriad/buildTriadBuffers (RGB LineSegments); three-scene.ts:287 setAxisTriad via pxform 3x3 in orientation.ts; viewer.tsx:181; effects.test.ts covers triad construction.</td></tr>
+    <tr><td><strong>Direction vectors</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">direction-vectors.ts buildArrow/buildDirectionVectors; three-scene.ts:301 setDirectionVectors; viewer.tsx:190 (Sun/Earth/velocity arrows); effects.test.ts asserts normalization and tip math.</td></tr>
+    <tr><td><strong>Track-along-trajectory camera mode</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">camera-modes.ts computeTrackCameraPosition (velocity-near-zero guarded); three-scene.ts:356, render() :471-473; viewer.tsx:263-267; poc-cassini.spec.ts:58-64 asserts data-cam-mode='track' renders a non-empty frame.</td></tr>
+    <tr><td><strong>@bessel/ui: object browser, settings panel, keyboard shortcuts (Cosmographia)</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">ObjectBrowser.tsx (aria-pressed + visibility checkboxes), SettingsPanel.tsx, ReadoutPanel.tsx; keymap.ts:18-24 maps space/ArrowLeft/ArrowRight/c/? ; useKeyboardShortcuts.ts; ui-components.test.tsx (6) + keymap.test.ts (3); viewer.tsx:576-585 wires panels, :513 wires shortcuts.</td></tr>
+    <tr><td>PAL: complete pal-web; pal-capacitor and pal-electron loading fixture kernels</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">pal-web + pal-electron kernel-source.test.ts and ipc-kernel-source.test.ts run the shared kernelSourceContract from @bessel/pal/testing; pal-electron suite (dialogs-python, ipc-kernel-source, meta-kernel, kernel-source, capabilities = 20 tests) passes.</td></tr>
+    <tr><td><strong>Shells: apps/desktop typed IPC preload + main + renderer; apps/mobile Capacitor (iOS only)</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">apps/desktop/electron/preload.ts exposes a typed BesselBridge via contextBridge over BESSEL_IPC channels; packages/pal-electron/src/ipc-contract.ts is the single source of truth; apps/mobile/capacitor.config.ts webDir '../web/dist', Android deferred, ios/ present. build:desktop and cap:sync confirmed green by gates.</td></tr>
+    <tr><td>e2e: FOV cone and footprint rendering on a fixture mission</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">e2e/tests/instruments.spec.ts:62-83 asserts the cyan FOV cone increases blue pixels and the magenta footprint appears after data-footprint-points&gt;=3.</td></tr>
   </tbody>
 </table>
-<p><strong>Conventions:</strong> dependency rule, loud typed/located errors, camera-relative rendering, and no em dashes all pass.</p>
 
-<!-- PHASE 2 -->
-<h3 class="phase-head">Phase 2: Shareable views and integrations <span class="badge b-partial">Partial</span></h3>
-<p>The URL-state pillar is genuinely complete and well tested (500-run round-trip property test, end-to-end share wiring, MMGIS outbound builder, CZML exporter; 10 unit tests pass; typecheck exits 0). The OPFS kernel cache is implemented and wired. However four build-list items are missing or stubbed.</p>
+<h3>Phase 2: State/URL, readouts, multi-select, capture, interop, offline &mdash; <span class="badge b-complete">complete</span></h3>
+<p class="ev">All four build items implemented, including the previously-flagged readouts, multi-select, annotations, and capture/recording. <code>pnpm typecheck</code> passes; 28 Phase 2 unit/contract tests plus 5 spice geometry tests pass. Geometric readouts are backed by a real ilumin call through the full SPICE worker chain.</p>
 <table>
-  <thead><tr><th>Build item</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
+  <caption>Phase 2 build items (previously flagged items called out explicitly)</caption>
+  <thead><tr><th>Build item</th><th>Status</th><th>File / command evidence</th></tr></thead>
   <tbody>
-    <tr><td><code>@bessel/state</code> encode/decode view into a compact URL fragment, decode on load, wired so a shared URL reconstructs the exact view</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>packages/state/src/codec.ts</code> (encodeView/decodeView, percent-encoded, null-prototype visibility map); round-trip property test (500 runs); viewer decodes from <code>window.location.hash</code> on load and the Share button encodes to the hash (viewer.tsx L142-157, L277-301).</td></tr>
-    <tr><td>Geometric readouts: range, phase angle, incidence, emission via <code>@bessel/spice</code></td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No readout implementation anywhere; only a comment in color/index.ts. SPICE exposes no ilumin/range/phase helper; scene exports no readout hooks; UI is still only TimelineControls + ViewControls.</td></tr>
-    <tr><td>Multi-object selection</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Selection state exists and round-trips through the URL, but the UI can only ever create a single-element selection (<code>onCenter</code> sets <code>setSelection([body])</code>, viewer.tsx L270). No add/toggle multi-select interaction or component.</td></tr>
-    <tr><td>Timeline annotations with event markers</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No annotation or event-marker support; TimelineControls.tsx (54 lines) has play/pause/rate/scrub/epoch only.</td></tr>
-    <tr><td>Screen capture and video recording</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No MediaRecorder/toDataURL/toBlob/captureStream code or UI. The canvas uses preserveDrawingBuffer:true, which would enable capture, but nothing implements it.</td></tr>
-    <tr><td>MMGIS deep links both directions (time sync + lat/lon handoff)</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Outbound implemented: <code>mmgis.ts buildMmgisUrl</code> always sends the mapLon/mapLat/mapZoom triple plus optional centerPin/startTime/endTime; tested. Inbound is by design a Bessel view URL consumed by decodeView (no separate parser needed). Deviation: MMGIS/CZML live in <code>@bessel/state</code>, not the dedicated integrations module the goal text names.</td></tr>
-    <tr><td>CZML exporter for CesiumJS interop</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>czml.ts exportCzml</code> builds a document+entity, km to m conversion, sampled cartesian, clock interval; structure test asserts shape and metre conversion. Passes.</td></tr>
-    <tr><td>pal-web OPFS kernel cache so the PWA operates offline against cached kernels</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>opfs-cache.ts</code> (get/put, guarded openKernelCache) wired into HttpKernelSource.read and createWebPlatform. Caveat: no dedicated unit test for the cache; offline behavior is asserted only by the e2e operations test.</td></tr>
+    <tr><td>URL state serialization round-trips (epoch, camera pose+mode, selection, visibility, plugins) end to end</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/state/src/codec.ts:53-85 (null-prototype guard); state.test.ts:33-46 (500-run fast-check decode(encode)==view + leading-hash case); shared-url.spec.ts asserts reconstructed cam-target/selection/epoch; viewer.tsx:544 exposes data-selection.</td></tr>
+    <tr><td><strong>Geometric readouts (range, phase, incidence, emission) via @bessel/spice</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">apps/web/src/readouts.ts (range via spkpos, angles via ilumin on a subpnt point); bindings.ts:316-359 ilumin_c with malloc/checkFailed/free; full worker chain; geometry.test.ts:80-98 asserts angles in [0,pi] AND emission&lt;0.2 rad against the wasm fixture; e2e operations.spec.ts polls readout-range.</td></tr>
+    <tr><td><strong>Multi-object selection</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">apps/web/src/selection.ts (order-preserving toggle); selection.test.ts; viewer.tsx:464 wires toggle, :544 emits data-selection; ObjectBrowser.tsx aria-pressed; operations.spec.ts selects Earth+Jupiter and asserts both.</td></tr>
+    <tr><td><strong>Timeline annotations with event markers</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/timeline/src/annotations.ts (sortByEt + clamped markerFraction); annotations.test.ts; TimelineControls.tsx renders per-marker labelled buttons (ui-components.test.tsx:83-84 marker-soi, left:50%, aria-label); viewer.tsx:592-599.</td></tr>
+    <tr><td><strong>Screen capture and video recording</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/ui/src/capture.ts (captureStill via toBlob, startRecording over captureStream+MediaRecorder, typed CaptureError, downloadBlob revokes URL); capture.test.ts (still / null / unsupported); CaptureControls.tsx wired viewer.tsx:585.</td></tr>
+    <tr><td>MMGIS deep links (lon/lat/zoom triple, time sync, optional fields)</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/state/src/mmgis.ts buildMmgisUrl always sets mapLon/mapLat/mapZoom via deriveZoom, optional centerPin/startTime/endTime; state.test.ts:63-92.</td></tr>
+    <tr><td>CZML export for CesiumJS interop</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/state/src/czml.ts exportCzml (document+entity, km-&gt;m, time-tagged cartesian); state.test.ts:94-120 validates clock interval and cartesian length 12.</td></tr>
+    <tr><td>PWA offline with an OPFS kernel cache via pal-web</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/pal-web/src/opfs-cache.ts (sanitized id, put/get, fallback); kernel-source.ts checks cache before fetch and writes back on miss; opfs-cache.test.ts (round-trip, miss-&gt;null, hit-skips-fetch); operations.spec.ts reloads offline and asserts Ready.</td></tr>
+    <tr><td>Integrations-module deviation resolution (Task 24: keep MMGIS/CZML in @bessel/state with a documented re-export)</td><td><span class="badge b-deviation">deviation</span></td><td class="ev">packages/state/src/index.ts:37 documents the deliberate choice to keep buildMmgisUrl/exportCzml in @bessel/state (ADR-0008) rather than a separate package, avoiding dependency-rule churn. Intentional and documented per the closure plan.</td></tr>
   </tbody>
 </table>
-<p><strong>Conventions:</strong> dependency rule, loud typed/located errors, camera-relative rendering, and no em dashes all pass.</p>
 
-<!-- PHASE 3 -->
-<h3 class="phase-head">Phase 3: Advanced geometry and rendering <span class="badge b-partial">Partial</span></h3>
-<p>Only the meta-kernel resolution work is genuinely implemented and tested. The Python scripting bridge is a capability boolean with no bridge. The entire advanced-rendering set (DSK, atmosphere, shadow mapping, rings, star field) is missing. The required Playwright Electron test that loads a meta-kernel and renders a DSK body does not exist (no Electron project in the Playwright config), so that completion condition cannot pass.</p>
+<h3>Phase 3: Meta-kernel, dialogs, Python bridge, DSK, atmosphere, shadows, rings, stars, desktop e2e &mdash; <span class="badge b-complete">complete</span></h3>
+<p class="ev">All build items implemented in real, tested code. <code>pnpm typecheck</code> exits 0; the Phase 3 package suite runs 35/35 green. The [electron] DSK render test passed in the gate e2e run.</p>
 <table>
-  <thead><tr><th>Build item</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
+  <caption>Phase 3 build items (previously flagged items called out explicitly)</caption>
+  <thead><tr><th>Build item</th><th>Status</th><th>File / command evidence</th></tr></thead>
   <tbody>
-    <tr><td>pal-electron meta-kernel (.tm) path resolution against the local tree</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>meta-kernel.ts</code> (resolveMetaKernel/resolveLoadableKernels L46-89) parses PATH_SYMBOLS/PATH_VALUES/KERNELS_TO_LOAD, substitutes symbols, resolves relative paths, and stats each kernel. <code>meta-kernel.test.ts</code> (3 tests) passes; all 10 pal-electron tests pass.</td></tr>
-    <tr><td>pal-electron native open and save dialogs</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No showOpenDialog/showSaveDialog/dialog/ipcMain in main.ts or preload.ts. <code>electronCapabilities.fileDialogs</code> is true but unbacked; preload exposes only {platform, versions}.</td></tr>
-    <tr><td>apps/desktop Python scripting bridge surfaced via Capabilities (Electron only)</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Only the flag exists: <code>pythonBridge: true</code> (pal-electron index.ts L13), false on web/capacitor; the Capabilities test asserts only the flags. No process spawn, no IPC channel, no batch-geometry API.</td></tr>
-    <tr><td><code>@bessel/scene</code> DSK shape-model rendering</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">scene has only index/planets/three-scene; three-scene is Phase 0-2 content. No DSK rendering code, no .bds/DSK fixture in kernels.</td></tr>
-    <tr><td><code>@bessel/scene</code> atmosphere shaders (Rayleigh and Mie)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No rayleigh/mie/atmosphere matches; no shader code in scene/src.</td></tr>
-    <tr><td><code>@bessel/scene</code> shadow mapping</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">renderer.shadowMap never configured; no castShadow/receiveShadow.</td></tr>
-    <tr><td><code>@bessel/scene</code> ring rendering</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No ring geometry/mesh in scene/src.</td></tr>
-    <tr><td><code>@bessel/scene</code> star field from a catalog</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No star-field/Points/star-catalog code in scene/src.</td></tr>
-    <tr><td>pal-capacitor native filesystem kernel import (zip bundle)</td><td class="status-col"><span class="badge b-implemented">Implemented</span></td><td class="ev"><code>kernel-source.ts importKernelZip</code> (L62-77) uses fflate unzipSync and writes each entry via Capacitor Filesystem; exported. However no test exists (pal-capacitor has zero test files).</td></tr>
-    <tr><td>iOS App Store ready packaging configuration (Android deferred)</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">capacitor.config.ts sets appId gov.nasa.ammos.bessel, webDir ../web/dist; iOS Xcode scaffold present. Baseline scaffolding (largely Phase 1); no Phase-3-specific store-readiness hardening verified.</td></tr>
-    <tr><td>e2e Playwright Electron test: load meta-kernel and render a DSK body</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev"><code>e2e/playwright.config.ts</code> defines only a chromium project (no Electron project); no electron/dsk/meta-kernel test in e2e/. This required completion condition cannot pass.</td></tr>
+    <tr><td>pal-electron meta-kernel (.tm) path resolution (PATH_SYMBOLS/PATH_VALUES, relative paths, loadable assertion)</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">meta-kernel.ts:46-89 (resolveMetaKernel + resolveLoadableKernels); meta-kernel.test.ts (3: relative-&gt;absolute, $symbol substitution, loud PalError on missing kernel).</td></tr>
+    <tr><td>pal-electron native open/save dialogs</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/pal-electron/src/dialogs.ts (openKernelDialog/saveProductDialog over the bridge); apps/desktop/electron/ipc-handlers.ts; dialogs-python.test.ts (SPICE filters incl tm/bds, cancel-&gt;null, save defaultPath forwarded).</td></tr>
+    <tr><td><strong>Python scripting bridge, Electron only, surfaced via Capabilities</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">apps/desktop/electron/python-bridge.ts (real child_process spawn, detectPython, runBatchGeometry) + resources/batch_geometry.py (spiceypy spkpos grid); packages/pal-electron/src/python.ts throws typed PalError when unavailable; capabilities.test.ts asserts electron pythonBridge===true, web/capacitor===false.</td></tr>
+    <tr><td><strong>DSK shape-model rendering (CSPICE-WASM DSK exports, readDsk, scene mesh, desktop wiring)</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">DSK symbols (dasopr_c, dascls_c, dlabfs_c, dskz02_c, dskv02_c, dskp02_c, dskb02_c) in packages/spice/wasm/cspice.mjs and build-cspice.sh EXPORTS; readDsk threads the worker chain (bindings.ts:362-410, index.ts:100, client.ts:99, worker-core.ts:74, engine.ts:71); dsk.test.ts reads mu69_lopoly.bds fixture (nv&gt;0, in-range 0-based plate indices, pinned first vertex ~5.84/0/4.79); dsk-mesh.ts buildDskGeometry; three-scene.ts:258 setDskMesh; desktop-viewer.tsx:48-62 exposes data-dsk-plates.</td></tr>
+    <tr><td><strong>Atmosphere shaders (Rayleigh + Mie)</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/scene/src/atmosphere.ts (lambda^-4 Rayleigh coefficients, BackSide additive sky shell) + shaders/atmosphere.glsl.ts (Rayleigh + Mie/Henyey-Greenstein fragment); three-scene.ts:308 setAtmosphere; effects.test.ts asserts blue&gt;green&gt;red and uniform packing; render asserted via e2e non-empty frame.</td></tr>
+    <tr><td><strong>Shadow mapping</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/scene/src/shadows.ts computeShadowFrustum; three-scene.ts:343 renderer.shadowMap.enabled with a shadow-casting light; effects.test.ts asserts halfExtent&gt;radius and 0&lt;near&lt;far.</td></tr>
+    <tr><td><strong>Ring rendering from catalog Globe.rings</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/scene/src/rings.ts buildRingVertices (annulus, radial UVs); three-scene.ts:274 setRings; effects.test.ts asserts vertex radii within [inner,outer] (Saturn 74500/140220) and z=0 plane.</td></tr>
+    <tr><td><strong>Star field from a committed catalog</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/scene/src/star-field.ts + star-catalog.ts; three-scene.ts:320 setStarField; star-field.test.ts present (radec2vec / parse-error coverage). Committed catalog apps/web/src/assets/bright-stars.json (615 entries).</td></tr>
+    <tr><td>pal-capacitor native filesystem kernel import (zip bundle) + iOS packaging</td><td><span class="badge b-implemented">implemented</span></td><td class="ev">packages/pal-capacitor/src/kernel-source.ts:62 importKernelZip (fflate unzipSync -&gt; Filesystem.writeFile base64); kernel-source.test.ts; apps/mobile/capacitor.config.ts (appId gov.nasa.ammos.bessel, webDir ../web/dist), ios/ present, Android deferred per ADR-0002.</td></tr>
+    <tr><td><strong>Electron meta-kernel + DSK e2e (Playwright Electron project)</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">e2e/tests/electron-dsk.spec.ts launches apps/desktop/out/main/main.js with BESSEL_KERNEL_ROOT=kernels/fixtures, asserts data-dsk-plates&gt;100 and nonBackground&gt;200; playwright.config.ts adds the 'electron' project; CI runs build:desktop then xvfb-run e2e. Confirmed passing in the gate e2e run (11/11).</td></tr>
+    <tr><td><strong>Typed desktop IPC contract + preload contextBridge + ipcMain handlers + IpcKernelSource/IpcFileSystem (Phase 1 deviation closed here)</strong></td><td><span class="badge b-implemented">implemented</span></td><td class="ev">ipc-contract.ts (BESSEL_IPC channels, BesselBridge, no electron import); apps/desktop/electron/preload.ts contextBridge; ipc-handlers.ts + kernel-root.ts; ipc-kernel-source.ts runs the shared KernelSource contract (ipc-kernel-source.test.ts, 5 tests). Minor deviation: the dedicated ipc-contract.test.ts named in plan Task 25 is absent, but the contract is exercised at compile and runtime by ipc-kernel-source.test.ts and dialogs-python.test.ts; no SPEC completion condition is affected.</td></tr>
   </tbody>
 </table>
-<p><strong>Conventions:</strong> dependency rule, loud typed/located errors, and no em dashes pass. Camera-relative rendering is N/A here (no new Phase 3 rendering was added; the existing floating-origin path is unchanged).</p>
 
-<!-- PHASE 4 -->
-<h3 class="phase-head">Phase 4: Real-time and collaboration <span class="badge b-missing">Missing</span></h3>
-<p>Entirely unimplemented. The most recent commit is Phase 3a; no Phase 4 work was started. None of the build items exist.</p>
+<h2>4. Binding Conventions (Phases 0-3)</h2>
+<p class="sub">All independent agents confirmed the binding architecture conventions hold for the code they audited.</p>
 <table>
-  <thead><tr><th>Build item</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
+  <caption>Convention checks across Phases 0-3</caption>
+  <thead><tr><th>Convention</th><th>Result</th><th>Representative evidence</th></tr></thead>
   <tbody>
-    <tr><td>Telemetry: WebSocket ingestion with Yamcs and OpenMCT adapters</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No telemetry module; yamcs/openmct match only docs. No @bessel/telemetry package.</td></tr>
-    <tr><td>Predicted-versus-actual ephemeris overlay in <code>@bessel/scene</code></td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">scene/src has only index/planets/three-scene; no overlay/predicted/actual/telemetry code.</td></tr>
-    <tr><td>Plugin architecture (GA): registry with declarative manifest (mission id, kernels, frames, catalog overlays, custom panels, color strategies)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No registry source, no fixture plugin, no manifest type. The ColorStrategy registry in @bessel/color predates Phase 4 (scaffold commit) and is a color seam, not a mission registry.</td></tr>
-    <tr><td>Collaboration: multi-user shared sessions</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">Matches only docs; no collaboration source, no session-sharing code, no WebSocket session layer.</td></tr>
-    <tr><td>WebXR VR walkthrough mode for the scene</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">Only a feature-detection stub: <code>readonly webxr: boolean</code> (pal/src/index.ts L67) set via <code>'xr' in navigator</code> (pal-web L108). No VRButton, no XRSession, no immersive-vr loop.</td></tr>
-    <tr><td>Completion: plugin-registry test (loads fixture plugin, asserts registration and lazy loading)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No plugin-registry test file exists.</td></tr>
-    <tr><td>Completion: telemetry-adapter test (mock Yamcs WebSocket, asserts overlay updates)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No telemetry test; no mock Yamcs WebSocket source.</td></tr>
-    <tr><td>Completion: e2e test connecting to a mock telemetry source confirming the overlay renders</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No telemetry e2e test.</td></tr>
-  </tbody>
-</table>
-<p><strong>Conventions:</strong> no em dashes pass; the remaining conventions are N/A because no Phase 4 code exists to evaluate.</p>
-
-<!-- PHASE 5 -->
-<h3 class="phase-head">Phase 5: Production hardening and GA <span class="badge b-missing">Missing</span></h3>
-<p>Essentially unbuilt. The prerequisite (Phase 4 committed and green) is not met. The latest commit is Phase 3a and the working tree is clean.</p>
-<table>
-  <thead><tr><th>Build item</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
-  <tbody>
-    <tr><td>Release pipeline: electron-builder configs and changesets-driven release workflow (version, changelog, npm dry-run)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No electron-builder config in apps/desktop; no .github/workflows/release.yml (only ci.yml). <code>release:dry</code> is just <code>changeset status --verbose</code>, not a version+publish dry-run. No CHANGELOG.md and no .changeset version entries. (This is the same gate that fails at exit 1.)</td></tr>
-    <tr><td>Budgets everywhere: pnpm size passes on final bundle set; Lighthouse assertions pass on production build</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No Phase 5 work; .size-limit.json and lighthouserc.json are unchanged from earlier phases. No new bundle-set entries or Phase 5 budget hardening.</td></tr>
-    <tr><td>Hardening: error boundaries around every panel; typed user-facing error surface; opt-in privacy-plain diagnostics</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No ErrorBoundary/componentDidCatch/getDerivedStateFromError in source; no diagnostics module (matches only prebuilt dist bundles). ui/src has only TimelineControls and ViewControls.</td></tr>
-    <tr><td>Accessibility: full keyboard operability for object browser, timeline, settings; a11y scan zero serious/critical across primary views</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">The only axe scan is the pre-existing Phase 2 test (operations.spec.ts) over a single main view, not the multi-view Phase 5 requirement; no new keyboard-operability code/tests.</td></tr>
-    <tr><td>Suite contract: integration tests for inbound view URL contract and outbound MMGIS URL construction against fixture configs</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No Phase 5 suite contract tests. shared-url.spec.ts (Phase 2) covers only the inbound v=1 URL shape; no dedicated Phase 5 suite URL contract integration test.</td></tr>
-    <tr><td>Documentation: README quickstart verified by a script; CONTRIBUTING/SECURITY/CODE_OF_CONDUCT present and linked; CHANGELOG generated by changesets</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md, README.md exist but predate Phase 5. No quickstart-verification script; no CHANGELOG.md generated.</td></tr>
-  </tbody>
-</table>
-<p><strong>Conventions:</strong> no em dashes pass; the remaining conventions are N/A because no Phase 5 source was added.</p>
-
-<h2>4. Deviations, partials, and missing items</h2>
-<p>Every item below was classified by an agent as a deviation, partial, or missing, each grounded in a code location. This is the consolidated punch list.</p>
-<table>
-  <thead><tr><th>Phase</th><th>Item</th><th class="status-col">Class</th><th>Rationale and location</th></tr></thead>
-  <tbody>
-    <tr><td>1</td><td>@bessel/scene advanced nodes</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Spacecraft is SphereGeometry not GLTF (no GLTFLoader); no axis triads, no direction vectors; track-along-trajectory is only a type literal (<code>index.ts CameraMode</code> L9), render L300-306 always orbits. scene has no test files.</td></tr>
-    <tr><td>1</td><td>@bessel/ui object browser, settings, shortcuts</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev"><code>packages/ui/src</code> exports only TimelineControls + ViewControls; comments defer the rest. No keydown handling in apps/web/src.</td></tr>
-    <tr><td>1</td><td>Desktop preload typed IPC surface</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev"><code>apps/desktop/electron/preload.ts</code> exposes only {platform, versions}; no kernel/filesystem IPC as item 6 specifies.</td></tr>
-    <tr><td>2</td><td>Geometric readouts (range/phase/incidence/emission)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No implementation in spice, scene, or ui; no ilumin/range/phase helper.</td></tr>
-    <tr><td>2</td><td>Multi-object selection</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Single-element only in the UI (<code>setSelection([body])</code>, viewer.tsx L270); round-trips via URL but no multi-select interaction.</td></tr>
-    <tr><td>2</td><td>Timeline annotations / event markers</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No annotation/marker support in TimelineControls.tsx.</td></tr>
-    <tr><td>2</td><td>Screen capture and video recording</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No MediaRecorder/toBlob/captureStream code or UI.</td></tr>
-    <tr><td>2</td><td>MMGIS/CZML location</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Deviation: they live in <code>@bessel/state</code> (mmgis.ts, czml.ts) rather than a dedicated integrations module the goal text names. Functionally complete and tested.</td></tr>
-    <tr><td>2</td><td>OPFS cache test coverage</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Cache implemented and wired but no dedicated unit test for get/put or cache-hit-skips-fetch; only the e2e offline test covers it.</td></tr>
-    <tr><td>3</td><td>pal-electron native dialogs</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev"><code>fileDialogs: true</code> capability unbacked; no dialog/ipcMain in main.ts.</td></tr>
-    <tr><td>3</td><td>Python scripting bridge</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Only the <code>pythonBridge: true</code> flag (pal-electron index.ts L13); no process spawn, IPC, or batch-geometry API.</td></tr>
-    <tr><td>3</td><td>Advanced rendering set (DSK, atmosphere, shadows, rings, star field)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">None present in packages/scene/src; no DSK fixture.</td></tr>
-    <tr><td>3</td><td>pal-capacitor zip import test</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev"><code>importKernelZip</code> implemented but pal-capacitor has zero test files.</td></tr>
-    <tr><td>3</td><td>Electron DSK e2e (completion condition)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No Electron project in playwright.config.ts; condition cannot pass.</td></tr>
-    <tr><td>4</td><td>All items (telemetry, overlay, plugin registry, collaboration, WebXR, three completion tests)</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No Phase 4 source or tests; only a webxr capability flag stub.</td></tr>
-    <tr><td>5</td><td>Release pipeline, hardening, suite contract</td><td class="status-col"><span class="badge b-missing">Missing</span></td><td class="ev">No electron-builder/release.yml/CHANGELOG; no ErrorBoundary/diagnostics; no Phase 5 URL contract tests. Directly tied to the failing <code>release:dry</code> gate.</td></tr>
-    <tr><td>5</td><td>Accessibility multi-view, documentation quickstart script</td><td class="status-col"><span class="badge b-partial">Partial</span></td><td class="ev">Single-view axe scan only; community docs predate Phase 5; no quickstart-verification script; no generated CHANGELOG.</td></tr>
+    <tr><td>Dependency rule: core never imports a concrete PAL implementation</td><td><span class="badge b-pass">pass</span></td><td class="ev">grep across packages/{spice,scene,timeline,catalog,state,color,ui}/src found zero imports of pal-web/pal-electron/pal-capacitor; catalog imports only @bessel/pal; pal-electron core has no <code>from 'electron'</code> import.</td></tr>
+    <tr><td>Fail loudly with typed, located errors</td><td><span class="badge b-pass">pass</span></td><td class="ev">SpiceError on unresolved bodies; PalError 'kernel-not-found' with location; CatalogError.location; CaptureError; meta-kernel.ts PalError on missing .tm; ipc-kernel-source reconstructs located PalError.</td></tr>
+    <tr><td>Camera-relative (floating-origin) rendering</td><td><span class="badge b-pass">pass</span></td><td class="ev">three-scene.ts:455-456 sets world.position to -focusPos*SCALE each frame; DSK mesh anchored in the world Group (setDskMesh, :258); cameraRelativeOffset exported and tested.</td></tr>
+    <tr><td>SPICE engine never reads kernel bytes directly</td><td><span class="badge b-pass">pass</span></td><td class="ev">bindings.ts furnsh(name,bytes) writes bytes into the WASM FS then furnsh_c by path; apps/web/src/kernels.ts feeds KernelSource-read bytes to engine.furnsh.</td></tr>
+    <tr><td>No em dashes anywhere; no weakened typecheck or test suppression</td><td><span class="badge b-pass">pass</span></td><td class="ev">grep for the em-dash character across phase source returned no matches; grep for ts-ignore/eslint-disable/.skip/.todo/xit/xdescribe returned none; typecheck exits 0.</td></tr>
   </tbody>
 </table>
 
-<h2>5. Budgets and security</h2>
-<p>All budget and security checks pass. Budget configs are intact and unweakened (each has only the single scaffold commit in history). The committed tree contains no secrets and no bulk kernel data.</p>
-<table>
-  <thead><tr><th>Finding</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
-  <tbody>
-    <tr><td>.size-limit.json budgets intact (not weakened)</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">Two budgets: web app shell <code>apps/web/dist/assets/*.js</code> limit 350 KB gzip; CSPICE WASM <code>apps/web/dist/**/*.wasm</code> limit 4 MB. Only one commit (scaffold) touches the file.</td></tr>
-    <tr><td>lighthouserc.json assertions intact (not weakened)</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">performance minScore 0.8, accessibility 0.9, best-practices 0.9 (all error level); staticDistDir apps/web/dist. Only the single scaffold commit.</td></tr>
-    <tr><td>vendor/ and kernels/data/ git-ignored and untracked</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">.gitignore L20 ignores vendor/; L12 ignores kernels/data/. <code>git ls-files</code> shows none committed.</td></tr>
-    <tr><td>Bulk binaries (32 MB de440s.bsp, 101 MB static lib) not committed</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">Largest committed file is <code>packages/spice/wasm/cspice.wasm</code> at 1.2 MB; no committed file exceeds 5 MB.</td></tr>
-    <tr><td>Committed kernel fixtures bounded and acceptable</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">cassini-soi.bsp (768K), de440s-inner-cassini.bsp (116K), pck00011.tpc (132K), cas_iss_v10.ti (32K), naif0012.tls (8K), plus small pal-electron test fixtures. No stray .bsp outside fixtures.</td></tr>
-    <tr><td>No secret files committed (keys, certs, .env, credentials)</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">No .pem/.key/.p12/.env/credential/secret/id_rsa matches in git ls-files. .gitignore and .claudeignore cover secrets.</td></tr>
-    <tr><td>No credential patterns in committed text content</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">git grep for AKIA, PEM headers, ghp_, xox*, AIza, sk-, and secret_key assignments matched nothing.</td></tr>
-  </tbody>
-</table>
-
-<h2>6. Suite contract (ADR-0008 URL contracts)</h2>
-<p>All ADR-0008 URL contracts verified against docs/integrations.md. <code>pnpm test packages/state</code> passes all 5 tests, covering the round-trip property test (500 runs), CZML export, and both MMGIS URL tests.</p>
-<table>
-  <thead><tr><th>Finding</th><th class="status-col">Status</th><th>Evidence</th></tr></thead>
-  <tbody>
-    <tr><td>buildMmgisUrl always emits the mapLon/mapLat/mapZoom triple plus optional fields</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">mmgis.ts L38-46 unconditionally sets mission, mapLon, mapLat, mapZoom (via deriveZoom, always a number); centerPin/startTime/endTime only when present, matching the Section 2 table and the triple rule. deriveZoom clamps to MMGIS 1..18.</td></tr>
-    <tr><td>Outbound MMGIS URL tests pass</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">state.test.ts L63-92 asserts the triple is always present and that smaller footprints derive higher zoom, plus optional field forwarding.</td></tr>
-    <tr><td>View URL round-trip (encodeView/decodeView) is lossless</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">codec.ts percent-encodes all values so ':' and ',' delimiters never collide; 500-run property test asserts decode(encode(view)) equals view (with documented normalization).</td></tr>
-    <tr><td>Decoding uses a null-prototype object to prevent prototype pollution</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">codec.ts L34-45 decodeVisibility uses <code>Object.create(null)</code>; runtime check confirms a hostile <code>__proto__</code> flag round-trips as an own property without polluting Object.prototype.</td></tr>
-    <tr><td>CZML export test passes</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">czml.ts L29-73 emits a document (id document, version 1.0, clock interval) and a sampled entity with km to m conversion; test asserts shape and metre values.</td></tr>
-    <tr><td>pnpm test packages/state result</td><td class="status-col"><span class="badge b-pass">Pass</span></td><td class="ev">Output: Test Files 1 passed (1), Tests 5 passed (5).</td></tr>
-  </tbody>
-</table>
-
-<h2>7. Open risks and recommended follow-ups</h2>
-<ul class="tight">
-  <li><strong>Release pipeline is the one failing gate.</strong> <code>pnpm release:dry</code> exits 1 because no changesets exist and there is no electron-builder config or release.yml workflow. Recommended: add a changeset (or <code>changeset add --empty</code> for the current state), wire a true version+publish dry-run, add electron-builder configs, and generate a CHANGELOG. This is the Phase 5 release item and must clear before GA.</li>
-  <li><strong>Phase scope drift.</strong> The most recent commit is Phase 3a, yet several Phase 1 and Phase 2 UI build-list items (object browser, settings panel, keyboard shortcuts, geometric readouts, multi-select, timeline annotations, screen capture/recording) were never built. Recommended: reconcile the phase ledger so a phase is not marked done while its build list has unimplemented, untested features; backfill these before advancing.</li>
-  <li><strong>@bessel/scene has no test files.</strong> FOV cones and footprints are exercised only through e2e pixel assertions. The missing GLTF spacecraft, axis triads, direction vectors, and track-along-trajectory camera mode are entirely untested because unimplemented. Recommended: add scene unit tests alongside the Phase 1 scene completion.</li>
-  <li><strong>Capability flags without backing implementations.</strong> <code>fileDialogs: true</code> and <code>pythonBridge: true</code> in pal-electron assert capabilities that no code provides. Recommended: gate capability flags on real implementations so the Capabilities contract does not over-promise to the UI.</li>
-  <li><strong>Desktop preload exposes no kernel/filesystem IPC.</strong> preload.ts surfaces only {platform, versions}, so the Electron shell cannot yet drive native kernel loading through a typed IPC surface as Phase 1 item 6 specifies.</li>
-  <li><strong>Untested implemented code paths.</strong> The OPFS kernel cache (Phase 2) and pal-capacitor <code>importKernelZip</code> (Phase 3) are implemented but lack dedicated unit tests; they rely on e2e or are unexercised. Recommended: add focused unit tests so these are covered independently of the browser e2e run.</li>
-  <li><strong>Missing Electron e2e project.</strong> playwright.config.ts has only a chromium project, so the Phase 3 Electron meta-kernel/DSK render condition cannot ever pass without adding an Electron project and a DSK fixture.</li>
-  <li><strong>Phases 4 and 5 are greenfield.</strong> Telemetry adapters, plugin registry, collaboration, WebXR, error boundaries, diagnostics, and the production release pipeline are all unstarted. These represent the bulk of remaining GA work and their completion-condition tests do not yet exist.</li>
+<h2>5. Remaining Work</h2>
+<p>The Phase 0-3 closure is confirmed. The remaining items below are minor, documented, or out of scope, and none block a Phase 0-3 completion condition.</p>
+<ul class="compact">
+  <li><strong>Documented deviations within Phases 0-3 (not blocking):</strong>
+    <ul class="compact">
+      <li>Phase 1: a <code>cassini.gltf</code> is committed where the plan named a <code>.glb</code>. Parsed identically by GLTFLoader; functionally equivalent.</li>
+      <li>Phase 2 (Task 24): MMGIS/CZML kept inside <code>@bessel/state</code> with a documented re-export (ADR-0008) rather than a separate integrations package. Intentional.</li>
+      <li>Phase 3 (Task 25): the dedicated <code>ipc-contract.test.ts</code> is absent. The IPC contract is still exercised at compile and runtime by <code>ipc-kernel-source.test.ts</code> and <code>dialogs-python.test.ts</code>. No SPEC completion condition is affected.</li>
+    </ul>
+  </li>
+  <li><strong>Release hygiene (Phase 5, surfaces now):</strong> <code>pnpm release:dry</code> exits 1 because packages changed but no changesets exist (<code>changeset status</code> recommends <code>changeset add</code>). This is the only failing gate. It belongs to the Phase 5 release pipeline and does not gate Phases 0-3.</li>
+  <li><strong>Phases 4 and 5 remain out of scope.</strong> Phase 4 (real-time telemetry, Yamcs/OpenMCT adapters, predicted-versus-actual overlay, plugin registry/manifest loader, multi-user collaboration, WebXR) is entirely unstarted; the only superficial matches are pre-existing Phase 1-3 seams (a <code>webxr</code> capability boolean, the color ColorStrategy registry, an unrelated <code>plugins</code> fuzz field). Phase 5 (production hardening and GA) is essentially unimplemented: no electron-builder config or installable artifacts, no release workflow, no ErrorBoundary or typed user-facing error surface, no opt-in diagnostics, no docs/integrations.md-driven outbound integration test, no README quickstart verification script, no CHANGELOG.md, and <code>release:dry</code> already fails. Pre-existing infrastructure (.size-limit.json, lighthouserc.json, the axe a11y scan, the inbound view-URL test) is inherited Phase 2 work, not Phase 5 hardening.</li>
 </ul>
 
-<hr>
-<p class="meta">End of report. All statuses trace to a cited file path, line reference, or captured command exit code; unsubstantiated claims were dropped during synthesis.</p>
+<h2>6. Budgets and Security</h2>
+<p class="sub">All budget and security checks pass. Budget config files are byte-identical to the scaffold commit and were not weakened; no secrets or bulk kernel/static-lib data are committed.</p>
+<table>
+  <caption>Budgets and security findings</caption>
+  <thead><tr><th>Finding</th><th>Result</th><th>Evidence</th></tr></thead>
+  <tbody>
+    <tr><td>.size-limit.json not weakened</td><td><span class="badge b-pass">pass</span></td><td class="ev"><code>git diff e64f502 HEAD -- .size-limit.json</code> empty. Budgets: web shell &lt;=350 KB gzip; CSPICE WASM &lt;=4 MB.</td></tr>
+    <tr><td>lighthouserc.json not weakened</td><td><span class="badge b-pass">pass</span></td><td class="ev"><code>git diff e64f502 HEAD -- lighthouserc.json</code> empty. Assertions: performance 0.8, accessibility 0.9, best-practices 0.9.</td></tr>
+    <tr><td>No secrets in committed tree</td><td><span class="badge b-pass">pass</span></td><td class="ev">git ls-files grep for AKIA, PEM headers, api_key/secret_key/password, ghp_, xox* returned zero hits. No .env/.pem/.p12/.pfx/id_rsa/credentials/.keystore tracked.</td></tr>
+    <tr><td>de440s.bsp (32 MB) not committed</td><td><span class="badge b-pass">pass</span></td><td class="ev">On-disk full kernels git-ignored (.gitignore:12 kernels/data/, :20 vendor/); only the 114 KB de440s-inner-cassini.bsp fixture is committed.</td></tr>
+    <tr><td>101 MB CSPICE static lib not committed</td><td><span class="badge b-pass">pass</span></td><td class="ev">No .a / libcspice tracked; vendor/cspice/lib/libcspice_wasm.a (101 MB) git-ignored by .gitignore:20.</td></tr>
+    <tr><td>Closure-added fixtures all under budget</td><td><span class="badge b-pass">pass</span></td><td class="ev">mu69_lopoly.bds 84 KB; bright-stars.json 23 KB; cassini.gltf 1.5 KB; packages/spice/wasm/cspice.wasm 1.19 MB (well under the 4 MB WASM budget), the largest committed binary.</td></tr>
+    <tr><td>vendor/ and kernels/data/ remain git-ignored</td><td><span class="badge b-pass">pass</span></td><td class="ev"><code>git check-ignore -v</code> matches .gitignore:20 and :12; zero tracked files under either path.</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Suite Contract (ADR-0008)</h2>
+<p class="sub">All ADR-0008 URL contracts verified against docs/integrations.md. <code>pnpm test packages/state</code> passes 5/5.</p>
+<table>
+  <caption>Suite-contract findings</caption>
+  <thead><tr><th>Finding</th><th>Result</th><th>Evidence</th></tr></thead>
+  <tbody>
+    <tr><td>buildMmgisUrl always emits the mapLon/mapLat/mapZoom triple plus optional fields</td><td><span class="badge b-pass">pass</span></td><td class="ev">mmgis.ts:38-46 unconditionally sets mission/mapLon/mapLat/mapZoom (deriveZoom clamped 1..18); optional centerPin/startTime/endTime only when present; state.test.ts:66-91. Matches docs/integrations.md Section 2.</td></tr>
+    <tr><td>View URL round-trip is lossless</td><td><span class="badge b-pass">pass</span></td><td class="ev">codec.ts percent-encodes so ':' and ',' delimiters never collide; state.test.ts:33-45 fast-check 500 runs decode(encode(view))==view plus leading-hash case.</td></tr>
+    <tr><td>Decoding uses a null-prototype object (no prototype pollution)</td><td><span class="badge b-pass">pass</span></td><td class="ev">codec.ts decodeVisibility:34-45 builds via Object.create(null); decoding <code>__proto__:1</code> yields an own property, prototype stays null, Object.prototype not polluted.</td></tr>
+    <tr><td>MMGIS and CZML kept in @bessel/state, not a broken separate module</td><td><span class="badge b-pass">pass</span></td><td class="ev">index.ts re-exports buildMmgisUrl and exportCzml with a comment documenting the ADR-0008 decision; mmgis.ts and czml.ts compile and test cleanly.</td></tr>
+    <tr><td>CZML export matches docs/integrations.md Section 4</td><td><span class="badge b-pass">pass</span></td><td class="ev">czml.ts emits [document, entity] with km-&gt;m (KM_TO_M=1000), clock/availability intervals, INERTIAL default; state.test.ts:94-121 asserts cartesian length 12 with metre scaling.</td></tr>
+    <tr><td>pnpm test packages/state passes</td><td><span class="badge b-pass">pass</span></td><td class="ev">vitest run: state.test.ts 5 tests, 5 passed (codec round-trip + leading-hash, two MMGIS tests, CZML test).</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  Bessel independent re-verification report. Self-contained, inline CSS only, no external requests. Build-execution gates (build:web, build:desktop, cap:sync, e2e, size, lhci, audit:prod, release:dry) reflect exit codes recorded by the gates agent. All other items reflect direct file and filtered-test evidence from the per-phase, budgets-security, and suite-contract agents.
+</footer>
 
 </body>
 </html>
