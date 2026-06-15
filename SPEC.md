@@ -3,7 +3,7 @@
 Status: Draft v1.0
 Date: 2026-06-07
 Owner: Paul Ramirez
-Companion documents: VISION.md, IMPLEMENTATION_GUIDE.md, GAP_ANALYSIS.md, REFERENCES.md, docs/adr/, docs/goals/
+Companion documents: VISION.md, REFERENCES.md, docs/adr/, docs/PARITY_MATRIX.md (implemented status)
 
 This specification is written to be executed. Every phase in Section 9 states a
 completion condition as runnable commands so that a Claude Code `/goal` session,
@@ -326,11 +326,10 @@ Conventions for verifiable conditions, applied throughout Section 9:
 
 ## 9. Phased build with completion conditions
 
-Each phase below maps to one file in docs/goals/ and is intended to be run as a
-single `/goal` session (or a short chain of them). The completion condition is
-expressed so the checker can verify it by running commands. Scope boundaries and
-turn-limit guidance live in the goal files; the SPEC owns the acceptance
-criteria.
+Each phase below was built and its completion condition is expressed as runnable
+commands so it can be verified objectively. This section is retained as the
+acceptance-criteria record; the current implemented status is tracked in
+docs/PARITY_MATRIX.md.
 
 ### Phase 0: Proof of concept (PWA only)
 
@@ -521,7 +520,7 @@ implementation does not silently pick an answer. Defaults proposed in brackets.
 
 ## 12. Traceability
 
-Goal files in docs/goals/ reference phases in Section 9 by number. The suite
+The suite
 integration contracts live in docs/integrations.md (ADR-0008); the production
 baseline (CI, budgets, releases, governance) is ADR-0009 with its configs at
 the repo root. ADRs in

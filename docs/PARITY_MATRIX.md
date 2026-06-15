@@ -14,9 +14,9 @@ Date: 2026-06-14
 > render and the axe scan, size, audit:prod, lhci, release:dry).
 
 This is the auditable, feature-by-feature parity check promised in ADR-0006 and
-SPEC.md Section 11. It complements the strategic narrative in `GAP_ANALYSIS.md`:
-that document argues *why* Bessel exists; this one states *exactly* what
-Cosmographia does, whether Bessel has it, and where the evidence is.
+SPEC.md Section 11. Where VISION.md argues *why* Bessel exists, this document
+states *exactly* what Cosmographia does, whether Bessel has it, and where the
+evidence is.
 
 Method:
 - Cosmographia baseline (the "should match" column) was verified against the
@@ -291,24 +291,6 @@ What is still genuinely not present (by nature, not capability): real
 photographic textures and a real CK kernel/SCLK fixture (the sample uses a
 procedural spin), and a live Yamcs/OpenMCT server (the telemetry feed is an
 in-app mock).
-
----
-
-## 16. Tracker reconciliation
-
-Three trackers describe the same work in different vocabularies. They are
-reconciled here; this matrix is the intended single source of truth for parity.
-
-| This matrix | BUILD_REPORT phase | modern-alternative-roadmap workstream |
-| --- | --- | --- |
-| Sections 3, 4 (engine, geometry math) | Phase 0, Phase 1 (complete) | Foundation F0, Phase C geometry (complete) |
-| Section 2 row 4 (arbitrary mission) | Phase 1 (catalog) plus beyond | Phase B headline (remaining) |
-| Section 5 textures, CK | Phase 3b build-list | Phase C remaining |
-| Section 4 DSK e2e | Phase 3b (partial) | covered under rendering fidelity |
-| Section 11 sharing, MMGIS, CZML | Phase 2 (complete) | Phase D (substantially done) |
-| Section 8 measurement | Phase 2 deferred plus Phase D | Phase D (measurement done) |
-| Section 12 scripting, plugins; Section 11 telemetry | Phase 4 (not started) | not in the four workstreams |
-| Section 15 item 7 (GA) | Phase 5 (not started) | not in the four workstreams |
 
 ---
 

@@ -59,7 +59,7 @@ if command -v claude > /dev/null 2>&1; then
     if [ "$(printf '%s\n' "2.1.154" "$CC_VER" | sort -V | head -1)" = "2.1.154" ]; then
       ok "Claude Code $CC_VER (>= 2.1.154 for dynamic workflows)"
     else
-      note "Claude Code $CC_VER runs /goal but is below 2.1.154; the /verify-spec workflow needs 2.1.154+. Run: npm update -g @anthropic-ai/claude-code"
+      note "Claude Code $CC_VER runs /goal; 2.1.154+ adds dynamic workflows. Run: npm update -g @anthropic-ai/claude-code"
     fi
   else
     bad "Claude Code ${CC_VER:-unknown} too old. Run: npm update -g @anthropic-ai/claude-code"

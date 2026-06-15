@@ -7,7 +7,7 @@ other harnesses, you can delete this file.
 
 See: ./CLAUDE.md (authoritative in-session operating manual)
 Requirements: ./SPEC.md
-Phase goals for /goal sessions: ./docs/goals/
+Implemented status: ./docs/PARITY_MATRIX.md
 Binding decisions: ./docs/adr/
 
 One hard rule worth repeating because it is easy to violate: do not use em dashes

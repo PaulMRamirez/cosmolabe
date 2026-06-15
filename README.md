@@ -5,18 +5,33 @@ single codebase as a Progressive Web App, as native mobile apps (via Capacitor),
 and as a desktop app (via Electron). It reads Cosmographia-compatible catalogs,
 drives geometry from CSPICE compiled to WebAssembly, and renders with Three.js.
 
-License: Apache-2.0 (LICENSE at the root). Status: specification and build
-scaffold.
+License: Apache-2.0 (LICENSE at the root).
 
 Program objective: a fully featured, production quality, efficient application
-suitable for the NASA-AMMOS product suite alongside MMGIS. The
-objective is enforced by verifiable gates (ADR-0009) and certified by Phase 5.
+suitable for the NASA-AMMOS product suite alongside MMGIS. The objective is
+enforced by verifiable gates (ADR-0009).
 
-## What this repository currently contains
+## What this repository contains
 
-This is the planning and execution scaffold, written to be built with Claude
-Code's `/goal` workflow. It is documentation and agent configuration, not yet the
-implementation. The implementation is produced by running the phase goals.
+A pnpm workspace monorepo: typed core packages (`packages/`), a platform
+abstraction layer with web, Electron, and Capacitor implementations, and the
+three app shells (`apps/web`, `apps/desktop`, `apps/mobile`). The web app boots a
+neutral inner-solar-system scene and renders any loaded mission through a generic,
+catalog-driven builder.
+
+## Running it
+
+```
+pnpm install
+pnpm --filter @bessel/web dev      # web app (Vite dev server)
+pnpm build:web                     # production PWA build
+pnpm build:desktop                 # Electron build
+pnpm cap:sync                      # sync the iOS shell against the web build
+```
+
+`pnpm verify` runs the gate (typecheck, lint, test, build:web, size). The full
+verifiable command catalog is in CLAUDE.md and SPEC.md Section 8; CI runs the
+same vocabulary (`.github/workflows/ci.yml`).
 
 ## Sample missions
 
@@ -29,49 +44,38 @@ of view and footprint, and a glTF model).
 
 A worked example ships as a one-click sample: "Load Cassini at Saturn" in the
 Mission panel loads `apps/web/public/samples/cassini-saturn.json`, a native
-catalog that drives the Cassini-at-Saturn scene (Saturn globe with rings and an
-atmosphere, the Cassini trajectory and glTF model, and the ISS wide-angle FOV
-cone and footprint) entirely from catalog data. Copy and edit that file as a
-starting point for your own mission; the kernels its bodies need must be
-furnished (the bundled demo kernels cover the inner system, Saturn, and Cassini).
+catalog that drives the Cassini-at-Saturn scene (Saturn globe with image texture,
+rings, and an atmosphere; the Cassini trajectory, glTF model, and a uniform
+spin; and the ISS wide-angle FOV cone and footprint) entirely from catalog data.
+The Operations panel also lists this mission from the plugin registry, runs a
+scripted guided tour, and shows a predicted-versus-actual telemetry residual.
+Copy and edit the sample file as a starting point for your own mission; the
+kernels its bodies need must be furnished (the bundled demo kernels cover the
+inner system, Saturn, and Cassini).
 
 ## Where to start
 
 1. VISION.md: why Bessel exists and what it is.
-2. SPEC.md: the master specification, with verifiable per-phase acceptance criteria.
-3. IMPLEMENTATION_GUIDE.md: how to drive the build with Claude Code and `/goal`.
-4. GAP_ANALYSIS.md: what already exists and what Bessel must build.
-5. REFERENCES.md: curated sources.
+2. SPEC.md: the master specification and the verifiable command catalog.
+3. docs/PARITY_MATRIX.md: the feature-by-feature parity check against
+   Cosmographia, with the current implemented status.
+4. docs/catalog-schema.md: the native catalog schema for authoring missions.
+5. docs/adr/: the binding architecture decisions.
+6. REFERENCES.md: curated sources.
 
-## Agent and build configuration
+## Project configuration
 
-- CLAUDE.md: canonical agent context, the file Claude Code reads at session
-  start (AGENTS.md is a thin pointer for other harnesses). The in-session
-  operating manual: tech stack, the verifiable command catalog, the dependency
-  rule, and the `/goal` session guardrails.
+- CLAUDE.md: canonical agent context (AGENTS.md is a thin pointer for other
+  harnesses): tech stack, the verifiable command catalog, the dependency rule,
+  and the working conventions.
 - docs/adr/: the binding architecture decisions.
-- docs/goals/: one file per phase, each written as a pasteable `/goal`.
-- .claude/commands/: `/phase N` to launch a phase, `/verify` to run the gate,
-  `/implement` for the autonomous build.
-- .claude/workflows/: `/verify-spec`, the dynamic workflow that cross-checks the
-  build against SPEC.md and writes the HTML report (Claude Code v2.1.154+).
+- .claude/commands/: `/verify` runs the gate and the post-change review checks.
 - .claudeignore: secrets and bulk kernel data the agent must not touch.
-- .github/workflows/ci.yml: CI running the same gate vocabulary as /goal.
+- .github/workflows/ci.yml: CI running the same gate vocabulary as `pnpm verify`.
 - .size-limit.json, lighthouserc.json: the efficiency budgets (hard gates).
 - docs/integrations.md: the MMGIS deep-link contract, grounded in the MMGIS
   repository (scripts/fetch-mmgis-reference.sh keeps a local reference copy).
 - CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md: governance.
-
-## The build in one paragraph
-
-Bootstrap the pnpm workspace and the verifiable command catalog (SPEC.md Section
-8), start Claude Code in the repo (no `/init` needed; CLAUDE.md loads
-automatically and is already authored), then run the phases in order (Phase 0
-through
-Phase 5) as `/goal` sessions, reviewing the diff and running `pnpm verify`
-yourself before committing each one. The independent completion checker verifies
-each phase by running the named `pnpm` commands, which is why the acceptance
-criteria are written as commands.
 
 ## House rules
 
