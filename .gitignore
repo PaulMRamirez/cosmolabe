@@ -2,7 +2,10 @@ node_modules/
 dist/
 out/
 .vite/
-coverage/
+# Test-coverage output only. Anchored so it does NOT match the @bessel/coverage
+# package directory (packages/coverage).
+/coverage/
+packages/*/coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
