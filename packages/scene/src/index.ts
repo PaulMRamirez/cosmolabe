@@ -39,8 +39,25 @@ export {
   computeTrackCameraPosition,
   computeOrbitCameraPosition,
   azimuthElevationFromDirection,
+  dollyFactor,
+  craneOffsetFraction,
   type CameraMode,
 } from './camera-modes.ts';
+export {
+  TextureManager,
+  TextureLoadError,
+  defaultBodyTextureUrl,
+  DEFAULT_BODY_TEXTURE_URLS,
+  type TextureCache,
+  type TextureManagerDeps,
+} from './texture-manager.ts';
+export {
+  proceduralBodyTexture,
+  chooseBodyTextureSource,
+  buildBodyMaterial,
+  type BodyTextureSource,
+  type BodyMaterialDeps,
+} from './body-material.ts';
 export {
   type SceneSpec,
   type SpacecraftSpec,

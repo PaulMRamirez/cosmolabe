@@ -17,7 +17,7 @@ import {
 } from '@bessel/pal';
 
 export { HttpKernelSource } from './kernel-source.ts';
-export { OpfsKernelCache, openKernelCache } from './opfs-cache.ts';
+export { OpfsKernelCache, openKernelCache, openTextureCache } from './opfs-cache.ts';
 
 import { HttpKernelSource } from './kernel-source.ts';
 import { openKernelCache } from './opfs-cache.ts';

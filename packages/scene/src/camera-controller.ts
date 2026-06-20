@@ -5,10 +5,17 @@
 // Distances are SCENE UNITS (km * SCALE). The view "center" is in km: the scene
 // shifts the world by -center so the focus sits near the origin (float32 safe).
 
-import { computeOrbitCameraPosition, computeTrackCameraPosition } from './camera-modes.ts';
+import {
+  computeOrbitCameraPosition,
+  computeTrackCameraPosition,
+  dollyFactor,
+} from './camera-modes.ts';
 import { type Km3 } from './geometry-builders.ts';
 
-export type CameraControlMode = 'orbit' | 'track' | 'sync' | 'free';
+// 'frame' locks the orbit basis to an arbitrary SPICE reference frame (any
+// frame->J2000 rotation), generalizing 'sync' (which is specifically the body's
+// IAU body-fixed frame). Both feed a rotation into orbitPose the same way.
+export type CameraControlMode = 'orbit' | 'track' | 'sync' | 'free' | 'frame';
 
 const RESPONSIVE = 0.1; // smoothTime (s) for direct input (drag, wheel)
 const TRANSITION = 0.5; // smoothTime (s) for animated view changes
@@ -174,6 +181,33 @@ export class CameraController {
     this.panY.set(clamp(this.panY.target + dyFraction, -4, 4), RESPONSIVE);
   }
 
+  /**
+   * Dolly (Cosmographia dollyForward / dollyBackward): translate the camera along
+   * its view axis. forward > 0 approaches the focus, forward < 0 recedes. In the
+   * orbit model this is a distance change, distinct from fovBy (a lens change).
+   * In free-fly it moves the free camera straight along its own forward axis.
+   */
+  dollyBy(forwardFraction: number): void {
+    if (this.mode === 'free') {
+      this.flyMove(this.freeRadius * forwardFraction, 0, 0);
+      return;
+    }
+    this.zoomBy(dollyFactor(forwardFraction));
+  }
+
+  /**
+   * Crane (Cosmographia craneUp / craneDown): a vertical screen-plane translation
+   * of the viewpoint. up > 0 raises the camera. In free-fly it moves the free
+   * camera along world +Y.
+   */
+  craneBy(upFraction: number): void {
+    if (this.mode === 'free') {
+      this.flyMove(0, 0, this.freeRadius * upFraction);
+      return;
+    }
+    this.panY.set(clamp(this.panY.target + upFraction, -4, 4), RESPONSIVE);
+  }
+
   rollBy(dRoll: number): void {
     this.roll.set(this.roll.target + dRoll, RESPONSIVE);
   }
@@ -311,9 +345,10 @@ export class CameraController {
   private orbitPose(center: Km3, fov: number, bodyFrame?: readonly number[]): CameraPose {
     let position = computeOrbitCameraPosition(this.azimuth.value, this.elevation.value, this.distance);
     let up: [number, number, number] = [0, 1, 0];
-    if (this.mode === 'sync' && bodyFrame && bodyFrame.length === 9) {
-      // Co-rotate with the body: the orbit offset is defined in the body-fixed
-      // frame, rotated into J2000 (world) by the body-fixed -> J2000 matrix.
+    if ((this.mode === 'sync' || this.mode === 'frame') && bodyFrame && bodyFrame.length === 9) {
+      // Co-rotate with the locked frame: the orbit offset is defined in that
+      // reference frame, rotated into J2000 (world) by the frame -> J2000 matrix.
+      // 'sync' uses the body's IAU body-fixed frame; 'frame' uses any SPICE frame.
       position = mat3xVec(bodyFrame, position);
       up = mat3xVec(bodyFrame, up);
     }

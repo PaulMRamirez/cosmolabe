@@ -72,10 +72,12 @@ describe('@bessel/ui SettingsPanel', () => {
       stars: true,
       atmosphere: false,
       shadows: false,
+      realImagery: false,
     };
     const out = html(createElement(SettingsPanel, { settings, onChange: () => {} }));
     expect(out).toContain('data-testid="setting-trajectory"');
     expect(out).toContain('data-testid="setting-shadows"');
+    expect(out).toContain('data-testid="setting-realImagery"');
     expect(out).toContain('Visualization');
   });
 });

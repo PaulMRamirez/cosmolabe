@@ -90,6 +90,10 @@ export class BesselEngine {
   private telemetryAccum = 0;
   private syncAccum = 0;
   private syncFrameBody = '';
+  private frameAccum = 0;
+  // The SPICE frame name last fed to 'frame' camera mode, so changing the frame
+  // clears the stale rotation rather than co-rotating with the old basis.
+  private cameraFrameName = '';
   private readonly heldKeys = new Set<string>();
   private telemetry: { socket: MockTelemetrySocket; adapter: TelemetryAdapter } | null = null;
   private recorder: Recorder | null = null;
@@ -176,6 +180,7 @@ export class BesselEngine {
     } else {
       e.scene.setCameraMode(s.cameraMode);
       if (s.cameraMode === 'sync') this.updateSyncFrame(dt, now);
+      else if (s.cameraMode === 'frame') this.updateCameraFrame(dt, now, s.cameraFrame);
     }
     this.applyCameraKeys(dt);
 
@@ -426,7 +431,8 @@ export class BesselEngine {
     };
     const key = (isDown: boolean) => (ev: KeyboardEvent): void => {
       const k = ev.key.toLowerCase();
-      if (k.length !== 1 || !'wasdqe,.-='.includes(k)) return;
+      // wasdqe: free-fly; ,. roll; -= fov; rf dolly fwd/back; tg crane up/down.
+      if (k.length !== 1 || !'wasdqe,.-=rftg'.includes(k)) return;
       // Gate only key-DOWN on editable targets (so typing never starts motion);
       // key-UP must always release, or a key can stick when focus moves to an input.
       if (isDown) {
@@ -638,33 +644,67 @@ export class BesselEngine {
     return ops.runReport(e, this.store, this.isDisposed, cfg);
   }
 
-  /** Set the base camera mode (orbit / sync-orbit / free); track overrides it live. */
-  setCameraMode(mode: 'orbit' | 'sync' | 'free'): void {
+  /** Set the base camera mode (orbit / sync / free / frame); track overrides it live. */
+  setCameraMode(mode: 'orbit' | 'sync' | 'free' | 'frame'): void {
     this.store.setState({ cameraMode: mode });
     // Apply to the scene now (not just next frame) so any mode conversion happens
     // before a follow-up setView (e.g. a preset) and is not clobbered.
     if (!this.store.getState().track) this.core?.scene.setCameraMode(mode);
     if (mode !== 'sync') this.core?.scene.setSyncFrame(null);
+    if (mode !== 'frame') {
+      this.core?.scene.setCameraFrame(null);
+      this.cameraFrameName = '';
+    }
+  }
+
+  /** Pick the SPICE frame the camera basis locks to in 'frame' mode (e.g. IAU_MARS). */
+  setCameraFrame(frame: string): void {
+    const trimmed = frame.trim();
+    if (!trimmed) return;
+    this.store.setState({ cameraFrame: trimmed });
+    // Clear the stale rotation so the next frame recomputes from the new frame.
+    if (trimmed !== this.cameraFrameName) {
+      this.cameraFrameName = '';
+      this.core?.scene.setCameraFrame(null);
+    }
+  }
+
+  /** Dolly the camera forward (+) or back (-) along the view axis (Cosmographia). */
+  dolly(forwardFraction: number): void {
+    this.core?.scene.dollyBy(forwardFraction);
+  }
+
+  /** Crane the camera up (+) or down (-) (Cosmographia craneUp / craneDown). */
+  crane(upFraction: number): void {
+    this.core?.scene.craneBy(upFraction);
   }
 
   /**
    * Apply continuous camera input from currently-held keys each frame: roll
-   * (, / .), FOV / telephoto (- / =) in any mode, and free-fly translation
-   * (WASD + Q/E) when free mode is active.
+   * (, / .), FOV / telephoto (- / =) in any mode, dolly (R / F) and crane (T / G)
+   * in any non-track mode, and free-fly translation (WASD + Q/E) in free mode.
    */
   private applyCameraKeys(dt: number): void {
     const e = this.core;
     if (!e || this.heldKeys.size === 0) return;
     const k = this.heldKeys;
     const mode = e.scene.cameraMode;
-    // Roll is only expressed in orbit/sync, so only feed it there (avoids silently
-    // accumulating roll in track/free that would snap in on return to orbit).
-    if (mode === 'orbit' || mode === 'sync') {
+    // Roll is only expressed in orbit/sync/frame, so only feed it there (avoids
+    // silently accumulating roll in track/free that would snap in on return).
+    if (mode === 'orbit' || mode === 'sync' || mode === 'frame') {
       const roll = (k.has(',') ? 1 : 0) - (k.has('.') ? 1 : 0);
       if (roll) e.scene.rollBy(roll * dt * 1.2);
     }
     const fov = (k.has('-') ? 1 : 0) - (k.has('=') ? 1 : 0);
     if (fov) e.scene.fovBy(1 + fov * dt * 0.9);
+    // Dolly (along the view axis) and crane (vertical). Available in every mode
+    // except track, which owns the camera placement from the velocity.
+    if (mode !== 'track') {
+      const dolly = (k.has('r') ? 1 : 0) - (k.has('f') ? 1 : 0);
+      if (dolly) e.scene.dollyBy(dolly * dt * 1.2);
+      const crane = (k.has('t') ? 1 : 0) - (k.has('g') ? 1 : 0);
+      if (crane) e.scene.craneBy(crane * dt * 1.2);
+    }
     if (mode === 'free') {
       // Speed scales with how far the free camera is from the view center.
       const speed = Math.max(0.01, e.scene.freeRadius) * dt * 1.2;
@@ -694,6 +734,36 @@ export class BesselEngine {
       () => {
         // No body-fixed frame for this body at this epoch: fall back to plain orbit.
         if (!this.disposed) e.scene.setSyncFrame(null);
+      },
+    );
+  }
+
+  // Refresh the arbitrary SPICE frame->J2000 rotation feeding 'frame' camera mode
+  // (throttled worker pxform). Unlike sync (which is the focus body's IAU frame),
+  // this locks the camera basis to any frame the user picks (e.g. IAU_EARTH or a
+  // mission frame). An unresolvable frame falls back to plain orbit (frame=null),
+  // never a silent identity rotation. Camera-relative: only a basis rotation, the
+  // floating-origin shift is unchanged.
+  private updateCameraFrame(dt: number, et: number, frame: string): void {
+    const e = this.core;
+    if (!e || !frame) return;
+    this.frameAccum += dt;
+    if (frame !== this.cameraFrameName) {
+      this.cameraFrameName = frame;
+      e.scene.setCameraFrame(null);
+    }
+    if (this.frameAccum < 0.1) return;
+    this.frameAccum = 0;
+    void e.spice.pxform(frame, 'J2000', et).then(
+      (rot) => {
+        const s = this.store.getState();
+        if (!this.disposed && s.cameraMode === 'frame' && s.cameraFrame === frame) {
+          e.scene.setCameraFrame(rot);
+        }
+      },
+      () => {
+        // Frame not resolvable at this epoch (no kernels / typo): plain orbit.
+        if (!this.disposed) e.scene.setCameraFrame(null);
       },
     );
   }
@@ -857,6 +927,45 @@ export class BesselEngine {
     else if (key === 'stars') scene.setStarFieldVisible(value);
     else if (key === 'atmosphere') scene.setAtmosphereVisible(value);
     else if (key === 'shadows' && value) scene.enableShadows(scene.focusBodyRadiusKm());
+    else if (key === 'realImagery' && value) void this.applyRealImagery();
+  }
+
+  // Fetch and apply real equirectangular imagery to every body in the current
+  // scene that has a known-body default or an explicit catalog URL. The texture
+  // manager (and the decode path) is dynamically imported so it stays out of the
+  // first-paint shell; bodies keep their procedural map until a real image
+  // arrives, and a genuine fetch/decode failure is logged loudly (never a silent
+  // wrong render). Camera-relative rendering is untouched: only the diffuse map
+  // changes. Turning the toggle off leaves applied imagery in place; it is not
+  // re-applied on a scene rebuild unless the setting is still on (see boot).
+  private realImageryStarted = false;
+  private async applyRealImagery(): Promise<void> {
+    const e = this.core;
+    if (!e || this.realImageryStarted) return;
+    this.realImageryStarted = true;
+    try {
+      const { createWebTextureManager } = await import('../texture-imagery.ts');
+      const manager = await createWebTextureManager();
+      // Capture body names now; the data-real-imagery flag flips once at least one
+      // body has swapped to a real map, so an e2e can assert the path was taken.
+      let applied = 0;
+      await Promise.all(
+        e.scene.bodyNames().map(async (name) => {
+          try {
+            const tex = await manager.loadForBody(name);
+            if (tex && !this.disposed && e.scene.setBodyTexture(name, tex)) applied += 1;
+          } catch (err) {
+            // One body's imagery failing must not abort the rest; log it loudly.
+            console.error(`real imagery for ${name} failed`, err);
+          }
+        }),
+      );
+      if (!this.disposed && applied > 0) this.store.setState({ realImageryApplied: true });
+    } catch (err) {
+      console.error('real imagery unavailable', err);
+    } finally {
+      this.realImageryStarted = false;
+    }
   }
 
   toggleSelectObject(id: string): void {
@@ -1019,8 +1128,12 @@ export class BesselEngine {
         telemetryFault: null,
         ringTextured,
         cloudShell,
+        realImageryApplied: false,
         status: 'Ready',
       });
+      // A scene rebuild creates fresh procedural materials, so re-apply real
+      // imagery to the new bodies if the toggle is on (it is otherwise lost).
+      if (this.store.getState().settings.realImagery) void this.applyRealImagery();
     } catch (err) {
       this.store.setState({ status: 'Ready', loadError: formatLoadError(err) });
     }

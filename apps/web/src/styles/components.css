@@ -334,6 +334,48 @@ button[aria-pressed='true'] {
   margin-top: calc(-1 * var(--space-1));
 }
 
+/* The camera mode band carries four options; let it wrap rather than overflow. */
+.bessel-view-modes[aria-label='Camera mode'] {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Camera frame selector and the dolly/crane motion band -------------------- */
+
+.bessel-camera-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.bessel-frame-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+
+.bessel-frame-select select {
+  flex: 1 1 auto;
+  background: var(--bg-2);
+  color: var(--text-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.78rem;
+}
+
+.bessel-frame-select select[disabled] {
+  opacity: 0.5;
+}
+
+.bessel-camera-frame .bessel-view-modes {
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 0;
+}
+
 /* Object/body rows ------------------------------------------------------- */
 
 .bessel-body-list {

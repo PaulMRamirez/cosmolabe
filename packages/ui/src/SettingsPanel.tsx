@@ -11,6 +11,8 @@ export interface VisualizationSettings {
   readonly stars: boolean;
   readonly atmosphere: boolean;
   readonly shadows: boolean;
+  /** Fetch and apply real equirectangular planetary imagery (else procedural). */
+  readonly realImagery: boolean;
 }
 
 export type SettingKey = keyof VisualizationSettings;
@@ -30,6 +32,7 @@ const LABELS: Record<SettingKey, string> = {
   stars: 'Star field',
   atmosphere: 'Atmosphere',
   shadows: 'Shadows',
+  realImagery: 'Real imagery',
 };
 
 export function SettingsPanel(props: SettingsPanelProps): JSX.Element {

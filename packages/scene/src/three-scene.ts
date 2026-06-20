@@ -23,7 +23,10 @@ import {
   Raycaster,
   Scene,
   SphereGeometry,
+  type Texture,
   TextureLoader,
+  ClampToEdgeWrapping,
+  RepeatWrapping,
   Vector3,
   WebGLRenderer,
 } from 'three';
@@ -154,6 +157,9 @@ export class SolarSystemScene {
   private readonly controller = new CameraController();
   private focusVelocity: Km3 = [0, 0, 0];
   private syncFrame: readonly number[] | null = null;
+  // The arbitrary SPICE-frame -> J2000 rotation for 'frame' camera mode (lock the
+  // camera basis to e.g. IAU_EARTH or a mission frame), refreshed by the engine.
+  private cameraFrame: readonly number[] | null = null;
   private focus = 'Sun';
 
   constructor(canvas: HTMLCanvasElement) {
@@ -212,6 +218,31 @@ export class SolarSystemScene {
   /** True when the last setBodies built at least one cloud shell (read for the HUD flag). */
   cloudShellPresent(): boolean {
     return this.hasCloudShell;
+  }
+
+  /** The known body names in the current scene (so a texture manager can target them). */
+  bodyNames(): string[] {
+    return [...this.bodies.keys()];
+  }
+
+  /**
+   * Swap a body's diffuse map to a loaded equirectangular image (real imagery),
+   * replacing the procedural fallback in place. The base-map wraps in longitude
+   * and clamps at the poles, matching the procedural setup. No-op for an unknown
+   * body; the old map is disposed so the swap does not leak a GPU texture.
+   */
+  setBodyTexture(name: string, texture: Texture): boolean {
+    const node = this.bodies.get(name);
+    if (!node) return false;
+    const material = node.mesh.material as MeshStandardMaterial;
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = ClampToEdgeWrapping;
+    texture.needsUpdate = true;
+    const previous = material.map;
+    material.map = texture;
+    material.needsUpdate = true;
+    if (previous && previous !== texture) previous.dispose();
+    return true;
   }
 
   setSpacecraft(name: string, radiusKm = 200): void {
@@ -629,9 +660,24 @@ export class SolarSystemScene {
     this.syncFrame = matrix;
   }
 
+  /** Arbitrary SPICE-frame -> J2000 rotation (3x3 row-major) for 'frame' mode. */
+  setCameraFrame(matrix: readonly number[] | null): void {
+    this.cameraFrame = matrix;
+  }
+
   /** Pan (truck) the view in the screen plane, as a fraction of the distance. */
   panBy(dxFraction: number, dyFraction: number): void {
     this.controller.panBy(dxFraction, dyFraction);
+  }
+
+  /** Dolly: translate the camera forward/back along its view axis (Cosmographia). */
+  dollyBy(forwardFraction: number): void {
+    this.controller.dollyBy(forwardFraction);
+  }
+
+  /** Crane: translate the viewpoint vertically (Cosmographia craneUp / craneDown). */
+  craneBy(upFraction: number): void {
+    this.controller.craneBy(upFraction);
   }
 
   rollBy(dRoll: number): void {
@@ -798,11 +844,18 @@ export class SolarSystemScene {
 
   render(dt = 0): void {
     const focusPos = this.positions.get(this.focus) ?? [0, 0, 0];
+    // sync locks to the body IAU frame; frame locks to an arbitrary SPICE frame.
+    const lockFrame =
+      this.cameraMode === 'sync'
+        ? this.syncFrame
+        : this.cameraMode === 'frame'
+          ? this.cameraFrame
+          : null;
     const pose = this.controller.step({
       dt,
       focusPos,
       focusVelocity: this.focusVelocity,
-      bodyFrame: this.cameraMode === 'sync' ? (this.syncFrame ?? undefined) : undefined,
+      bodyFrame: lockFrame ?? undefined,
     });
     this.world.position.set(-pose.center[0] * SCALE, -pose.center[1] * SCALE, -pose.center[2] * SCALE);
 

@@ -21,6 +21,8 @@ const CAMERA_HELP: readonly { keys: string; description: string }[] = [
   { keys: 'Wheel / Pinch', description: 'Zoom toward cursor' },
   { keys: 'W A S D', description: 'Free-fly move (Free mode)' },
   { keys: 'Q E', description: 'Free-fly down / up' },
+  { keys: 'R F', description: 'Dolly forward / back (along view axis)' },
+  { keys: 'T G', description: 'Crane up / down (vertical)' },
   { keys: ', .', description: 'Roll left / right' },
   { keys: '- =', description: 'Widen / narrow field of view' },
 ];

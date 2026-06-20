@@ -62,3 +62,26 @@ export function computeOrbitCameraPosition(
     distance * ce * Math.sin(azimuth),
   ];
 }
+
+/**
+ * Dolly factor (Cosmographia dollyForward / dollyBackward): translate the camera
+ * along its view axis toward (forward > 0) or away from (forward < 0) the focus.
+ * In the orbit model the view axis points at the focus, so a dolly is a distance
+ * change; this returns the multiplicative distance factor for a fractional step.
+ * exp keeps the step symmetric in log-distance (matching the wheel's feel) and
+ * strictly positive, so a forward dolly approaches the focus without crossing it.
+ * This is a true camera translation, not a field-of-view (lens) change.
+ */
+export function dollyFactor(forwardFraction: number): number {
+  return Math.exp(-forwardFraction);
+}
+
+/**
+ * Crane offset (Cosmographia craneUp / craneDown): a vertical screen-plane shift,
+ * perpendicular to the view axis, expressed as a pan-Y fraction of the distance.
+ * Positive raises the viewpoint. Returned as a fraction so it composes with the
+ * existing truck/pan channel rather than introducing a second offset basis.
+ */
+export function craneOffsetFraction(upFraction: number): number {
+  return upFraction;
+}

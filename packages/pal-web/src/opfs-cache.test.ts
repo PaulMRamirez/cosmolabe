@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { OpfsKernelCache, openKernelCache } from './opfs-cache.ts';
+import { OpfsKernelCache, openKernelCache, openTextureCache } from './opfs-cache.ts';
 import { HttpKernelSource } from './kernel-source.ts';
 
 // In-memory fakes of the OPFS handle API, enough to exercise the cache.
@@ -50,6 +50,10 @@ describe('@bessel/pal-web OPFS kernel cache', () => {
 
   it('openKernelCache returns undefined when OPFS is unavailable', async () => {
     expect(await openKernelCache()).toBeUndefined();
+  });
+
+  it('openTextureCache returns undefined when OPFS is unavailable', async () => {
+    expect(await openTextureCache()).toBeUndefined();
   });
 });
 

@@ -3,7 +3,12 @@
 // makes it look ALONG the requested direction toward the focus.
 
 import { describe, it, expect } from 'vitest';
-import { azimuthElevationFromDirection, computeOrbitCameraPosition } from './camera-modes.ts';
+import {
+  azimuthElevationFromDirection,
+  computeOrbitCameraPosition,
+  craneOffsetFraction,
+  dollyFactor,
+} from './camera-modes.ts';
 
 describe('azimuthElevationFromDirection', () => {
   it('places the camera opposite the look direction', () => {
@@ -28,5 +33,25 @@ describe('azimuthElevationFromDirection', () => {
 
   it('returns a safe default for a near-zero vector', () => {
     expect(azimuthElevationFromDirection([0, 0, 0])).toEqual({ azimuth: 0, elevation: 0 });
+  });
+});
+
+describe('dollyFactor', () => {
+  it('is 1 (no move) at zero', () => {
+    expect(dollyFactor(0)).toBeCloseTo(1, 9);
+  });
+  it('moves the camera closer for a forward dolly and farther for a backward one', () => {
+    expect(dollyFactor(0.2)).toBeLessThan(1); // forward: distance shrinks
+    expect(dollyFactor(-0.2)).toBeGreaterThan(1); // backward: distance grows
+  });
+  it('stays strictly positive so a forward dolly never crosses the focus', () => {
+    expect(dollyFactor(100)).toBeGreaterThan(0);
+  });
+});
+
+describe('craneOffsetFraction', () => {
+  it('passes the vertical fraction through (positive raises the viewpoint)', () => {
+    expect(craneOffsetFraction(0.3)).toBe(0.3);
+    expect(craneOffsetFraction(-0.5)).toBe(-0.5);
   });
 });

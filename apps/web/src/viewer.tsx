@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SOLAR_SYSTEM } from '@bessel/scene';
 import {
   BookmarksPanel,
+  CameraFrameControls,
   CaptureControls,
   CatalogLoader,
   KeyboardHelp,
@@ -83,6 +84,8 @@ export function BesselViewer(): JSX.Element {
   const selection = useStore(store, (s) => s.selection);
   const track = useStore(store, (s) => s.track);
   const cameraMode = useStore(store, (s) => s.cameraMode);
+  const cameraFrame = useStore(store, (s) => s.cameraFrame);
+  const realImageryApplied = useStore(store, (s) => s.realImageryApplied);
   const settings = useStore(store, (s) => s.settings);
   const visibility = useStore(store, (s) => s.visibility);
   const readouts = useStore(store, (s) => s.readouts);
@@ -248,6 +251,13 @@ export function BesselViewer(): JSX.Element {
         mode={cameraMode}
         onMode={(m) => engine?.setCameraMode(m)}
       />
+      <CameraFrameControls
+        frame={cameraFrame}
+        frameMode={cameraMode === 'frame'}
+        onFrame={(f) => engine?.setCameraFrame(f)}
+        onDolly={(forward) => engine?.dolly(forward)}
+        onCrane={(up) => engine?.crane(up)}
+      />
       <ObjectBrowser
         entries={filteredEntries}
         focus={focus}
@@ -272,9 +282,10 @@ export function BesselViewer(): JSX.Element {
         data-footprint-points={footprintPoints}
         data-fov={fovOk ? '1' : '0'}
         data-ring-textured={ringTextured ? 'true' : 'false'}
+        data-real-imagery={realImageryApplied ? 'true' : 'false'}
         {...(cloudShell ? { 'data-cloud-shell': 'true' } : {})}
         data-cam-target={focus}
-        data-cam-mode={track ? 'track' : 'orbit'}
+        data-cam-mode={track ? 'track' : cameraMode}
         data-selection={selection.join(',')}
         data-epoch={epochLabel}
         data-sc-quat={spacecraftQuat ? spacecraftQuat.map((v) => v.toFixed(4)).join(',') : ''}

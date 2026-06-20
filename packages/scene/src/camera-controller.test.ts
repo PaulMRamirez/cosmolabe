@@ -107,6 +107,44 @@ describe('CameraController', () => {
     expect(pose.position[2]).toBeCloseTo(expected[2], 4);
   });
 
+  it('frame mode applies an arbitrary SPICE frame rotation to the orbit basis', () => {
+    // A 90-degree rotation about +Y: a frame->J2000 matrix. The orbit offset is
+    // defined in the frame, then rotated into world, so the pose differs from
+    // plain orbit by that rotation (the parity with sync, generalized).
+    const rotY90 = [0, 0, 1, 0, 1, 0, -1, 0, 0];
+    const c = new CameraController();
+    c.setView(0, 0, 100, false);
+    c.setMode('frame');
+    const pose = c.step({ dt: 1 / 60, focusPos: [0, 0, 0], bodyFrame: rotY90 });
+    const base = computeOrbitCameraPosition(0, 0, 100); // [100, 0, 0]
+    // rotY90 * [100,0,0] = [0, 0, -100].
+    expect(pose.position[0]).toBeCloseTo(base[2], 4);
+    expect(pose.position[2]).toBeCloseTo(-base[0], 4);
+  });
+
+  it('dollyBy translates along the view axis (a distance change in orbit)', () => {
+    const c = new CameraController();
+    c.setView(0, 0, 100, false);
+    settle(c);
+    c.dollyBy(0.5); // forward: closer
+    settle(c);
+    expect(c.distance).toBeLessThan(100);
+    c.dollyBy(-0.9); // backward: farther than where it started
+    settle(c);
+    expect(c.distance).toBeGreaterThan(100);
+  });
+
+  it('craneBy shifts the viewpoint vertically (pan offset, not a look rotation)', () => {
+    const c = new CameraController();
+    c.setView(0, 0, 100, false);
+    settle(c);
+    const before = c.step({ dt: 1 / 60, focusPos: [0, 0, 0] }).position;
+    c.craneBy(0.4);
+    settle(c);
+    const after = c.step({ dt: 1 / 60, focusPos: [0, 0, 0] }).position;
+    expect(after[1]).toBeGreaterThan(before[1] + 1); // the eye rose
+  });
+
   it('track mode places the camera behind the velocity', () => {
     const c = new CameraController();
     c.setView(0, 0, 100, false);

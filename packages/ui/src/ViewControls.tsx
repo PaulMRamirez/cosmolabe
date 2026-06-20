@@ -3,7 +3,7 @@
 // velocity). Per-body "center on" lives on each object row in the browser, so
 // this is just the mode band. Velocity is disabled until a spacecraft is loaded.
 
-export type CameraBaseMode = 'orbit' | 'sync' | 'free';
+export type CameraBaseMode = 'orbit' | 'sync' | 'free' | 'frame';
 
 export interface ViewControlsProps {
   /** Set the view looking from the Sun toward the focus (vector-set-view). */
@@ -21,6 +21,7 @@ const MODES: readonly { id: CameraBaseMode; label: string; title: string }[] = [
   { id: 'orbit', label: 'Orbit', title: 'Orbit around the focused body' },
   { id: 'sync', label: 'Sync', title: 'Lock to the body and hover a fixed surface point' },
   { id: 'free', label: 'Free', title: 'Free fly: WASD to move, Q/E up-down, drag to look' },
+  { id: 'frame', label: 'Frame', title: 'Lock the camera basis to a chosen SPICE frame' },
 ];
 
 export function ViewControls(props: ViewControlsProps): JSX.Element {

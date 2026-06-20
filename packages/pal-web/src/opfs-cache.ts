@@ -35,17 +35,34 @@ export class OpfsKernelCache implements KernelCache {
   }
 }
 
-/** Open the OPFS kernel cache, or return undefined when OPFS is unavailable. */
-export async function openKernelCache(): Promise<KernelCache | undefined> {
+/** Open an OPFS byte cache under a named directory, or undefined when OPFS is absent. */
+async function openOpfsCache(dirName: string): Promise<OpfsKernelCache | undefined> {
   const storage = globalThis.navigator?.storage as
     | { getDirectory?: () => Promise<FileSystemDirectoryHandle> }
     | undefined;
   if (!storage?.getDirectory) return undefined;
   try {
     const root = await storage.getDirectory();
-    const dir = await root.getDirectoryHandle(CACHE_DIR, { create: true });
+    const dir = await root.getDirectoryHandle(dirName, { create: true });
     return new OpfsKernelCache(dir);
   } catch {
     return undefined;
   }
+}
+
+/** Open the OPFS kernel cache, or return undefined when OPFS is unavailable. */
+export async function openKernelCache(): Promise<KernelCache | undefined> {
+  return openOpfsCache(CACHE_DIR);
+}
+
+const TEXTURE_CACHE_DIR = 'textures';
+
+/**
+ * Open the OPFS texture cache (the same content-addressed byte store the kernel
+ * cache uses, in a separate directory), or undefined when OPFS is unavailable so
+ * the texture manager falls back to the network. Mirrors openKernelCache so real
+ * imagery survives reloads and works offline once fetched.
+ */
+export async function openTextureCache(): Promise<KernelCache | undefined> {
+  return openOpfsCache(TEXTURE_CACHE_DIR);
 }

@@ -25,7 +25,9 @@ export interface AppState {
   selection: readonly string[];
   track: boolean;
   /** Base camera mode; spacecraft tracking overrides it while active. */
-  cameraMode: 'orbit' | 'sync' | 'free';
+  cameraMode: 'orbit' | 'sync' | 'free' | 'frame';
+  /** The SPICE frame the camera basis locks to in 'frame' mode (e.g. IAU_EARTH). */
+  cameraFrame: string;
   /** Eclipse (umbra) intervals from the last lighting analysis, with their span. */
   eclipseUmbra: readonly (readonly [number, number])[] | null;
   eclipseSpan: readonly [number, number] | null;
@@ -69,6 +71,8 @@ export interface AppState {
   ringTextured: boolean;
   /** True when the rendered scene built at least one translucent cloud shell. */
   cloudShell: boolean;
+  /** True once real fetched imagery has been applied to at least one body. */
+  realImageryApplied: boolean;
   // Layers and per-object visibility.
   settings: VisualizationSettings;
   visibility: Readonly<Record<string, boolean>>;
@@ -244,6 +248,7 @@ export const initialAppState: AppState = {
   selection: [],
   track: false,
   cameraMode: 'orbit',
+  cameraFrame: 'IAU_EARTH',
   eclipseUmbra: null,
   eclipseSpan: null,
   rangeSeries: null,
@@ -268,6 +273,7 @@ export const initialAppState: AppState = {
   fovOk: false,
   ringTextured: false,
   cloudShell: false,
+  realImageryApplied: false,
   settings: {
     trajectory: true,
     orbits: true,
@@ -278,6 +284,7 @@ export const initialAppState: AppState = {
     stars: true,
     atmosphere: false,
     shadows: false,
+    realImagery: false,
   },
   visibility: {},
   readouts: {

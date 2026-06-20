@@ -3,7 +3,12 @@
 // readouts, keyboard shortcuts, timeline annotations, and capture controls.
 
 export { TimelineControls, type TimelineControlsProps } from './TimelineControls.tsx';
-export { ViewControls, type ViewControlsProps } from './ViewControls.tsx';
+export { ViewControls, type ViewControlsProps, type CameraBaseMode } from './ViewControls.tsx';
+export {
+  CameraFrameControls,
+  type CameraFrameControlsProps,
+  COMMON_SPICE_FRAMES,
+} from './CameraFrameControls.tsx';
 export { ReadoutPanel, type ReadoutPanelProps, type Readouts } from './ReadoutPanel.tsx';
 export {
   SettingsPanel,
