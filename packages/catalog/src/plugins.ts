@@ -6,11 +6,29 @@
 
 import { CatalogError, type BesselCatalog } from './index.ts';
 
+/**
+ * A reference to one kernel a plugin needs furnished. Mirrors a Cosmographia
+ * add-on's spiceKernels[] entry: a logical name plus a PAL/KernelSource
+ * resolvable source (a URL or PAL handle path, never a host filesystem path).
+ * Kernels are furnished in declaration order so SPICE data precedes the objects
+ * that depend on it (Cosmographia's "load in order of information dependency").
+ */
+export interface KernelRef {
+  /** Logical kernel name used to de-duplicate and to furnish into SPICE. */
+  readonly name: string;
+  /** PAL/KernelSource-resolvable source for the bytes (e.g. a URL). */
+  readonly source: string;
+  /** True when this is a metakernel that furnishes the kernels it lists. */
+  readonly meta?: boolean;
+}
+
 export interface MissionPlugin {
   readonly id: string;
   readonly name: string;
-  /** Logical kernel names this plugin needs furnished, in load order. */
-  readonly kernels: readonly string[];
+  /** One-line summary, mirroring a Cosmographia add-on's description. */
+  readonly description?: string;
+  /** Kernels this plugin needs furnished, in SPICE-data-before-objects order. */
+  readonly kernels: readonly KernelRef[];
   /** SPICE frames this plugin defines or relies on. */
   readonly frames?: readonly string[];
   /** UI panel ids this plugin contributes (resolved by the shell). */
@@ -39,14 +57,14 @@ export class PluginRegistry {
     return this.plugins.get(id);
   }
 
-  /** All kernels declared by registered plugins, de-duplicated, in registration order. */
-  requiredKernels(): string[] {
+  /** All kernels declared by registered plugins, de-duplicated by name, in registration order. */
+  requiredKernels(): KernelRef[] {
     const seen = new Set<string>();
-    const out: string[] = [];
+    const out: KernelRef[] = [];
     for (const plugin of this.plugins.values()) {
       for (const k of plugin.kernels) {
-        if (!seen.has(k)) {
-          seen.add(k);
+        if (!seen.has(k.name)) {
+          seen.add(k.name);
           out.push(k);
         }
       }

@@ -2,11 +2,15 @@
 // kernels, and lazily load each catalog at most once.
 
 import { describe, it, expect, vi } from 'vitest';
-import { PluginRegistry, type MissionPlugin } from './plugins.ts';
+import { PluginRegistry, type MissionPlugin, type KernelRef } from './plugins.ts';
 import type { BesselCatalog } from './native-types.ts';
 
+function ref(name: string): KernelRef {
+  return { name, source: `https://kernels.example/${name}` };
+}
+
 function plugin(id: string, kernels: string[], load: () => Promise<BesselCatalog>): MissionPlugin {
-  return { id, name: id.toUpperCase(), kernels, loadCatalog: load };
+  return { id, name: id.toUpperCase(), kernels: kernels.map(ref), loadCatalog: load };
 }
 
 const CATALOG: BesselCatalog = { version: '1.0', name: 'X' };
@@ -20,11 +24,13 @@ describe('PluginRegistry', () => {
     expect(() => reg.register(plugin('juice', [], async () => CATALOG))).toThrow(/Duplicate/);
   });
 
-  it('de-duplicates required kernels across plugins in registration order', () => {
+  it('de-duplicates required kernel refs by name across plugins in registration order', () => {
     const reg = new PluginRegistry();
     reg.register(plugin('a', ['lsk.tls', 'a.bsp'], async () => CATALOG));
     reg.register(plugin('b', ['lsk.tls', 'b.bsp'], async () => CATALOG));
-    expect(reg.requiredKernels()).toEqual(['lsk.tls', 'a.bsp', 'b.bsp']);
+    expect(reg.requiredKernels().map((k) => k.name)).toEqual(['lsk.tls', 'a.bsp', 'b.bsp']);
+    // The first occurrence's source wins (registration order, not the later duplicate).
+    expect(reg.requiredKernels()[0]?.source).toBe('https://kernels.example/lsk.tls');
   });
 
   it('activates lazily and caches: loadCatalog runs once across repeated activations', async () => {

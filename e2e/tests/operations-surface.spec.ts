@@ -3,17 +3,17 @@ import { loadCassiniSample } from './sample.ts';
 
 // The Operations panel surfaces core capabilities in the shell: the telemetry
 // adapter (a predicted-versus-actual residual) and the scripting API (a guided
-// tour). No mission is bundled, so the missions list shows an empty state until
-// the user loads a catalog.
+// tour). A fixture mission plugin is bundled (the plugin registry, Track C), so
+// the missions list shows it; telemetry stays empty until a mission is loaded.
 
-test('operations panel: empty missions, telemetry residual, and guided tour', async ({ page }) => {
+test('operations panel: bundled plugin, telemetry residual, and guided tour', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
 
-  // Operations now live in the top-bar "Mission" menu. No bundled missions, and no
-  // telemetry until a spacecraft mission is loaded.
+  // Operations now live in the top-bar "Mission" menu. The bundled fixture plugin
+  // appears in the missions list; no telemetry until a spacecraft mission is loaded.
   await page.getByTestId('mission-menu').click();
-  await expect(page.getByTestId('panel-ops')).toContainText('none bundled');
+  await expect(page.getByTestId('mission-cassini-soi')).toBeVisible();
   await expect(page.getByTestId('telemetry-residual')).toHaveText('Telemetry: none');
   await page.keyboard.press('Escape');
 

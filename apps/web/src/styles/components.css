@@ -939,6 +939,83 @@ button[aria-pressed='true'] {
   line-height: 1.4;
 }
 
+/* Mission plugin loader (Cosmographia add-on browser analog). */
+.bessel-plugins {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 18rem;
+}
+
+.bessel-plugins-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.bessel-plugins-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+}
+
+.bessel-plugins-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bessel-plugins-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bessel-plugins-name {
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.bessel-plugins-desc {
+  color: var(--text-1);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.bessel-plugins-badge {
+  font-size: 0.68rem;
+  color: var(--accent, #6cf);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  padding: 0 0.3rem;
+}
+
+.bessel-plugins-kernels {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--text-1);
+}
+
+.bessel-plugins-kernels dt {
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+
+.bessel-plugins-kernels ol {
+  margin: 0.2rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.bessel-plugins-empty,
+.bessel-plugins-status {
+  color: var(--text-1);
+  font-size: 0.72rem;
+}
+
 /* 2D equirectangular ground-track overlay. */
 .bessel-groundtrack {
   display: block;
