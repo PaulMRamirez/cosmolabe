@@ -47,6 +47,14 @@ export { CatalogLoader, type CatalogLoaderProps } from './CatalogLoader.tsx';
 export { MeasurePanel, type MeasurePanelProps } from './MeasurePanel.tsx';
 export { OpsPanel, type OpsPanelProps, type MissionOption } from './OpsPanel.tsx';
 export {
+  TelemetryOverlay,
+  severityFor,
+  DEFAULT_LADDER,
+  type TelemetryOverlayProps,
+  type TelemetrySeverity,
+  type SeverityLadder,
+} from './TelemetryOverlay.tsx';
+export {
   BookmarksPanel,
   type BookmarksPanelProps,
   type BookmarkItem,

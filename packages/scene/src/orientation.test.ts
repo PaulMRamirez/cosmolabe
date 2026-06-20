@@ -7,6 +7,7 @@ import {
   applyAttitude,
   applyQuaternion,
   rowMajor3x3ToMatrix4,
+  rowMajor3x3ToQuaternion,
   uniformRotationQuaternion,
 } from './orientation.ts';
 
@@ -41,6 +42,23 @@ describe('applyAttitude', () => {
     expect(v1.x).toBeCloseTo(v2.x, 6);
     expect(v1.y).toBeCloseTo(v2.y, 6);
     expect(v1.z).toBeCloseTo(v2.z, 6);
+  });
+});
+
+describe('rowMajor3x3ToQuaternion (state readout)', () => {
+  it('returns the identity quaternion for the identity rotation', () => {
+    expect(rowMajor3x3ToQuaternion([1, 0, 0, 0, 1, 0, 0, 0, 1])).toEqual([0, 0, 0, 1]);
+  });
+
+  it('agrees with applyAttitude for the same rotation', () => {
+    const rot = [0, -1, 0, 1, 0, 0, 0, 0, 1];
+    const q = rowMajor3x3ToQuaternion(rot);
+    const obj = new Object3D();
+    applyAttitude(obj, rot);
+    expect(q[0]).toBeCloseTo(obj.quaternion.x, 6);
+    expect(q[1]).toBeCloseTo(obj.quaternion.y, 6);
+    expect(q[2]).toBeCloseTo(obj.quaternion.z, 6);
+    expect(q[3]).toBeCloseTo(obj.quaternion.w, 6);
   });
 });
 

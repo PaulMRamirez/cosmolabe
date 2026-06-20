@@ -66,7 +66,9 @@ export class Clock {
 export {
   sortByEt,
   markerFraction,
+  arcBoundaryAnnotations,
   type TimelineAnnotation,
+  type ArcBounds,
 } from './annotations.ts';
 
 export {

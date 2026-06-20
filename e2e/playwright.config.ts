@@ -3,7 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 // Builds the canonical web app and serves the production bundle, then runs the
 // suite against it. "Renders" is asserted by loading a fixture and checking a
 // non-empty WebGL frame, never by visual judgement (SPEC Section 8).
-const PORT = 4173;
+// The preview port defaults to 4173 (CI) but honors E2E_PORT so a developer can
+// run the suite on an isolated port when another instance already holds 4173.
+const PORT = Number(process.env.E2E_PORT ?? 4173);
 
 export default defineConfig({
   testDir: './tests',

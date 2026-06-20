@@ -26,6 +26,14 @@ export function applyAttitude(object: Object3D, rotationRowMajor3x3: readonly nu
   object.quaternion.copy(q);
 }
 
+/** A SPICE row-major 3x3 rotation as a quaternion [x, y, z, w] (for state readout). */
+export function rowMajor3x3ToQuaternion(
+  rotationRowMajor3x3: readonly number[],
+): [number, number, number, number] {
+  const q = new Quaternion().setFromRotationMatrix(rowMajor3x3ToMatrix4(rotationRowMajor3x3));
+  return [q.x, q.y, q.z, q.w];
+}
+
 /** Orient an object by a quaternion [x, y, z, w] (a Fixed catalog orientation). */
 export function applyQuaternion(
   object: Object3D,

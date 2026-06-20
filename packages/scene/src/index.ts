@@ -29,6 +29,7 @@ export { rayleighCoefficients, buildAtmosphereUniforms, buildAtmosphere } from '
 export { computeShadowFrustum, buildSunLight } from './shadows.ts';
 export {
   rowMajor3x3ToMatrix4,
+  rowMajor3x3ToQuaternion,
   applyAttitude,
   applyQuaternion,
   uniformRotationQuaternion,

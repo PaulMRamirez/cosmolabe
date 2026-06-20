@@ -19,6 +19,7 @@ import {
   ScriptConsole,
   SearchBox,
   SettingsPanel,
+  TelemetryOverlay,
   ThemeToggle,
   TimelineControls,
   Tooltip,
@@ -80,6 +81,10 @@ export function BesselViewer(): JSX.Element {
   const recording = useStore(store, (s) => s.recording);
   const theme = useStore(store, (s) => s.theme);
   const telemetryResidualKm = useStore(store, (s) => s.telemetryResidualKm);
+  const telemetryOverlay = useStore(store, (s) => s.telemetryOverlay);
+  const telemetryFault = useStore(store, (s) => s.telemetryFault);
+  const missionAnnotations = useStore(store, (s) => s.annotations);
+  const spacecraftQuat = useStore(store, (s) => s.spacecraftQuat);
   const objects = useStore(store, (s) => s.objects);
   const loadedName = useStore(store, (s) => s.loadedName);
   const loadError = useStore(store, (s) => s.loadError);
@@ -130,16 +135,10 @@ export function BesselViewer(): JSX.Element {
   // default solar-system view stays uncluttered.
   const hasSpacecraft = objects.some((e) => e.kind === 'spacecraft');
 
-  const annotations =
-    hasSpacecraft && bounds[1] > bounds[0]
-      ? [
-          {
-            id: 'soi',
-            et: bounds[0] + 0.15 * (bounds[1] - bounds[0]),
-            label: 'Saturn orbit insertion',
-          },
-        ]
-      : [];
+  // Timeline annotations are computed in the engine/mission layer (where SPICE
+  // lives) from arc boundaries plus a SPICE-found closest approach, and arrive
+  // here as inert data (the dependency rule). No hard-coded markers.
+  const annotations = missionAnnotations;
 
   const actions = (
     <>
@@ -203,6 +202,15 @@ export function BesselViewer(): JSX.Element {
           <AnalysisPanel engine={engine} store={store} />
         </Popover>
       ) : null}
+      {hasSpacecraft ? (
+        <Popover label="Telemetry" title="Predicted versus actual" align="right" testId="telemetry-menu">
+          <TelemetryOverlay
+            series={telemetryOverlay}
+            nowEt={et}
+            fault={telemetryFault}
+          />
+        </Popover>
+      ) : null}
       <Tooltip label="Toggle light / dark theme">
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </Tooltip>
@@ -246,6 +254,7 @@ export function BesselViewer(): JSX.Element {
         data-cam-mode={track ? 'track' : 'orbit'}
         data-selection={selection.join(',')}
         data-epoch={epochLabel}
+        data-sc-quat={spacecraftQuat ? spacecraftQuat.map((v) => v.toFixed(4)).join(',') : ''}
         data-testid="viewport"
       />
       <div className="bessel-hud" data-testid="status">

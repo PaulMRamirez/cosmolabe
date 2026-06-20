@@ -16,6 +16,7 @@
     {
       "id": "-82",
       "name": "Probe",
+      "orientation": { "type": "UniformRotation", "axis": [0, 1, 0], "ratePerSec": 0.05 },
       "arcs": [
         {
           "timeRange": { "start": "2004-06-22T00:00:00Z", "stop": "2004-08-22T00:00:00Z" },

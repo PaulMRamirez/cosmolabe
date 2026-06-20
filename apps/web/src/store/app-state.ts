@@ -4,6 +4,8 @@
 // BesselEngine (via getState/setState) share.
 
 import type { CatalogEntry, Readouts, VisualizationSettings } from '@bessel/ui';
+import type { PredictedVsActual } from '@bessel/state';
+import type { TimelineAnnotation } from '@bessel/timeline';
 import { DEFAULT_OBJECT_ENTRIES } from '../catalog-load.ts';
 import type { Bookmark } from '../bookmarks.ts';
 import { createStore, type Store } from './create-store.ts';
@@ -80,6 +82,14 @@ export interface AppState {
   measurement: Measurement | null;
   // Telemetry: latest predicted-versus-actual residual (km), or null.
   telemetryResidualKm: number | null;
+  /** Full predicted-versus-actual series for the on-screen telemetry overlay. */
+  telemetryOverlay: readonly PredictedVsActual[];
+  /** Loud telemetry-transport fault from the adapter, surfaced as a banner. */
+  telemetryFault: string | null;
+  /** Mission timeline annotations (arc boundaries + SPICE-found events). */
+  annotations: readonly TimelineAnnotation[];
+  /** Applied spacecraft attitude quaternion [x,y,z,w], or null when none. */
+  spacecraftQuat: readonly [number, number, number, number] | null;
   // Saved views.
   bookmarks: readonly Bookmark[];
 }
@@ -279,6 +289,10 @@ export const initialAppState: AppState = {
   loadError: null,
   measurement: null,
   telemetryResidualKm: null,
+  telemetryOverlay: [],
+  telemetryFault: null,
+  annotations: [],
+  spacecraftQuat: null,
   bookmarks: [],
 };
 

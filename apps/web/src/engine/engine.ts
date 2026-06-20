@@ -10,6 +10,7 @@ import {
   buildScene,
   azimuthElevationFromDirection,
   uniformRotationQuaternion,
+  rowMajor3x3ToQuaternion,
   type Km3,
 } from '@bessel/scene';
 import {
@@ -61,6 +62,7 @@ import {
   DEFAULT_OBJECT_ENTRIES,
 } from '../catalog-load.ts';
 import { buildCatalogMissionScene } from '../generic-mission.ts';
+import { buildMissionAnnotations } from './mission-annotations.ts';
 import { createScript } from '../scripting.ts';
 import { runScript, type ScriptResult } from '../script-runner.ts';
 import { MockTelemetrySocket } from '../telemetry-mock.ts';
@@ -278,10 +280,11 @@ export class BesselEngine {
     const att = e.identity.attitude;
     if (att?.kind === 'fixed') {
       e.scene.setSpacecraftAttitudeQuaternion(att.quaternion);
+      this.publishSpacecraftQuat(att.quaternion);
     } else if (att?.kind === 'uniform') {
-      e.scene.setSpacecraftAttitudeQuaternion(
-        uniformRotationQuaternion(att.axis, att.ratePerSec, now, att.epochEt),
-      );
+      const q = uniformRotationQuaternion(att.axis, att.ratePerSec, now, att.epochEt);
+      e.scene.setSpacecraftAttitudeQuaternion(q);
+      this.publishSpacecraftQuat(q);
     } else if (att?.kind === 'spice') {
       this.attitudeAccum += dt;
       if (this.attitudeAccum > 0.2) {
@@ -289,7 +292,9 @@ export class BesselEngine {
         const frame = att.frame;
         void e.spice.pxform(frame, 'J2000', now).then(
           (rot) => {
-            if (!this.disposed) e.scene.setSpacecraftAttitude(rot);
+            if (this.disposed) return;
+            e.scene.setSpacecraftAttitude(rot);
+            this.publishSpacecraftQuat(rowMajor3x3ToQuaternion(rot));
           },
           () => {
             // No CK coverage at this epoch; leave the model orientation unchanged.
@@ -326,11 +331,35 @@ export class BesselEngine {
           JSON.stringify({ et: now, position: [p[0] + 2, p[1] - 1, p[2] + 0.5] }),
         );
         const latest = this.telemetry.adapter.latest();
-        if (latest) this.store.setState({ telemetryResidualKm: latest.residualKm });
+        // Publish the full predicted-versus-actual series (the OpenMCT/Yamcs
+        // overlay model) plus the latest scalar and any loud transport fault.
+        this.store.setState({
+          telemetryResidualKm: latest ? latest.residualKm : null,
+          telemetryOverlay: this.telemetry.adapter.overlay(),
+          telemetryFault: this.telemetry.adapter.error(),
+        });
       }
     }
     this.raf = requestAnimationFrame(this.frame);
   };
+
+  // Mirror the applied spacecraft attitude quaternion to the store so the viewport
+  // can expose it (data-sc-quat) for verification. Only written when it changes
+  // beyond a small tolerance so a static (fixed) attitude does not re-render every
+  // frame, while a spinning (uniform) attitude still updates.
+  private publishSpacecraftQuat(q: readonly [number, number, number, number]): void {
+    const prev = this.store.getState().spacecraftQuat;
+    if (
+      prev &&
+      Math.abs(prev[0] - q[0]) < 1e-4 &&
+      Math.abs(prev[1] - q[1]) < 1e-4 &&
+      Math.abs(prev[2] - q[2]) < 1e-4 &&
+      Math.abs(prev[3] - q[3]) < 1e-4
+    ) {
+      return;
+    }
+    this.store.setState({ spacecraftQuat: [q[0], q[1], q[2], q[3]] });
+  }
 
   // Distance between the first two selected objects, when both have ephemerides.
   // Updated on the readout throttle; only written when it changes meaningfully so
@@ -1603,6 +1632,15 @@ export class BesselEngine {
       this.startTelemetry();
       const [et0, et1] = mission.window;
       e.clock.setEpoch(et0);
+      // Timeline annotations are derived here, where SPICE lives: arc boundaries
+      // plus a SPICE-found closest approach. They flow to the viewer as inert data.
+      const annotations = await buildMissionAnnotations(
+        e.spice,
+        catalog.spacecraft?.[0] ?? null,
+        mission.identity.centerBody,
+        mission.table,
+        mission.window,
+      );
       this.store.setState({
         bounds: [et0, et1],
         et: et0,
@@ -1610,6 +1648,10 @@ export class BesselEngine {
         selection: [mission.identity.centerBody],
         footprintPoints: 0,
         fovOk: !!e.instrument,
+        annotations,
+        spacecraftQuat: null,
+        telemetryOverlay: [],
+        telemetryFault: null,
         status: 'Ready',
       });
     } catch (err) {

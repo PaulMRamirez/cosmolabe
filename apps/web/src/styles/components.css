@@ -850,6 +850,36 @@ button[aria-pressed='true'] {
   stroke-width: 1.5;
 }
 
+/* Predicted-versus-actual telemetry overlay (OpenMCT/Yamcs idioms). */
+.bessel-telemetry-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 280px;
+}
+
+.bessel-telemetry-overlay svg {
+  display: block;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bessel-telemetry-fault {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  color: var(--bg-1);
+  background: #f85149;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.bessel-telemetry-readout {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+}
+
 /* Shared parameter controls at the top of the Analysis workbench. */
 .bessel-analysis-params {
   display: flex;
