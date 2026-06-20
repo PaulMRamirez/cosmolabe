@@ -49,10 +49,17 @@ const EARTH_GM = 398600.4418;
 const EARTH_RE = 6378.137;
 const EARTH_J2 = 1.08262668e-3;
 import type { PluginRegistry, BesselCatalog } from '@bessel/catalog';
+import { HttpKernelSource } from '@bessel/pal-web';
+import { furnishMissionKernels } from './load-mission.ts';
 import { positionAt, velocityAt, rangeRate } from '../sampler.ts';
 import { fovRim, footprint } from '../instruments.ts';
 import { toggleSelection } from '../selection.ts';
-import { parseAnyCatalog, nativeEntries, formatLoadError } from '../catalog-load.ts';
+import {
+  parseAnyCatalog,
+  nativeEntries,
+  formatLoadError,
+  DEFAULT_OBJECT_ENTRIES,
+} from '../catalog-load.ts';
 import { buildCatalogMissionScene } from '../generic-mission.ts';
 import { createScript } from '../scripting.ts';
 import { runScript, type ScriptResult } from '../script-runner.ts';
@@ -158,6 +165,9 @@ export class BesselEngine {
   private recorder: Recorder | null = null;
   private disposed = false;
   private tleSeq = 0;
+  // Logical kernel names already furnished this session, so a plugin load or a
+  // re-upload never double-furnishes the same kernel (Cosmographia de-dups too).
+  private readonly furnished = new Set<string>();
   // The most recently propagated satellite (NAIF id + epoch), for ground-station access.
   private lastTle: { bodyId: number; epoch: number } | null = null;
 
@@ -1513,13 +1523,38 @@ export class BesselEngine {
     }
   }
 
-  // Load a mission from the plugin registry: lazily activate the plugin (fetch
-  // and parse its catalog, once) and render it, surfacing the registry in the UI.
+  // Load a mission from the plugin registry, mirroring a Cosmographia add-on:
+  // furnish the plugin's declared kernels in SPICE-data-before-objects order
+  // BEFORE rendering, verify any declared frames resolve, then activate (fetch
+  // and parse the catalog, once) and render. Fails loudly on a missing plugin,
+  // an unresolved kernel, or an unresolved frame (never a silent fallback).
   async loadMission(registry: PluginRegistry, id: string): Promise<void> {
+    const e = this.core;
     const plugin = registry.get(id);
-    if (!plugin) return;
+    if (!plugin) {
+      this.store.setState({
+        status: 'Ready',
+        loadError: `Unknown plugin "${id}" (not registered)`,
+      });
+      return;
+    }
+    if (!e) {
+      this.store.setState({ loadError: 'Engine not ready' });
+      return;
+    }
     try {
-      this.store.setState({ status: `Loading ${plugin.name}` });
+      this.store.setState({ status: `Loading ${plugin.name}`, loadError: null });
+      // SPICE data before objects: furnish each declared kernel in order, then
+      // verify the declared frames resolve, all before the catalog renders.
+      const source = new HttpKernelSource(
+        Object.fromEntries(plugin.kernels.map((k) => [k.name, k.source])),
+      );
+      await furnishMissionKernels(plugin.kernels, plugin.frames ?? [], {
+        resolve: async (ref) => source.read(await source.resolve(ref.name)),
+        furnish: (name, bytes) => this.furnishKernel(name, bytes),
+        isFurnished: (name) => this.furnished.has(name),
+        verifyFrame: (frame) => this.verifyFrame(frame),
+      });
       const catalog = await registry.activate(id);
       this.store.setState({
         objects: nativeEntries(catalog),
@@ -1529,6 +1564,21 @@ export class BesselEngine {
       await this.renderNativeMission(catalog);
     } catch (err) {
       this.store.setState({ status: 'Ready', loadError: formatLoadError(err) });
+    }
+  }
+
+  // Verify one declared SPICE frame resolves now that the kernels are furnished.
+  // pxform throws a loud SpiceError for an unknown frame, so a typo in a plugin's
+  // frame name surfaces as a located error instead of a silent identity rotation.
+  private async verifyFrame(frame: string): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    try {
+      await e.spice.pxform(frame, 'J2000', e.clock.state.et);
+    } catch (err) {
+      throw new Error(`Frame "${frame}" is not resolvable after furnishing kernels`, {
+        cause: err,
+      });
     }
   }
 
@@ -1570,6 +1620,26 @@ export class BesselEngine {
   // The canned guided tour, expressed in the same cosmoscripting line grammar the
   // console interprets, so the tour and the console share one execution path.
   private static readonly TOUR_SCRIPT = ['setTimeRate 3600', 'unpause', 'viewFromSun'].join('\n');
+
+  // Unload the active mission and return to the neutral inner-solar-system scene,
+  // mirroring Cosmographia's File > Unload Last Catalog. Furnished kernels stay
+  // loaded (SPICE has no per-kernel unfurnsh here); only the rendered objects and
+  // scene reset. Activation caches in the registry remain, so a re-load is cheap.
+  unloadMission(): void {
+    const e = this.core;
+    this.stopTelemetry();
+    if (e) {
+      e.scene.reset();
+      e.identity = { ...e.identity, spacecraftName: null };
+    }
+    this.store.setState({
+      objects: [...DEFAULT_OBJECT_ENTRIES],
+      loadedName: null,
+      loadError: null,
+      telemetryResidualKm: null,
+      status: 'Ready',
+    });
+  }
 
   // Run a short scripted tour over the viewer (surfaces the scripting API).
   runTour(): void {
@@ -1624,20 +1694,30 @@ export class BesselEngine {
   // kernels are not bundled can be rendered, and persist it to OPFS (best effort)
   // so a reload finds it. Returns a loud error string on failure, else null.
   async uploadKernel(name: string, bytes: Uint8Array): Promise<string | null> {
-    const e = this.core;
-    if (!e) return 'Engine not ready';
+    if (!this.core) return 'Engine not ready';
     try {
-      await e.spice.furnsh(name, bytes);
-      await e.fs.writeFile(`/kernels/${name}`, bytes).catch((err: unknown) => {
-        // Persistence is best-effort; the kernel is already usable this session.
-        console.error('kernel persist failed', err);
-      });
+      await this.furnishKernel(name, bytes);
       return null;
     } catch (err) {
       const message = formatLoadError(err);
       this.store.setState({ loadError: message });
       return message;
     }
+  }
+
+  // Furnish one kernel's bytes into SPICE (de-duplicated by logical name) and
+  // persist them to OPFS best-effort so a reload finds them. Shared by the plugin
+  // loader and the manual kernel upload so both honor the same de-dup and persist.
+  private async furnishKernel(name: string, bytes: Uint8Array): Promise<void> {
+    const e = this.core;
+    if (!e) throw new Error('Engine not ready');
+    if (this.furnished.has(name)) return;
+    await e.spice.furnsh(name, bytes);
+    this.furnished.add(name);
+    await e.fs.writeFile(`/kernels/${name}`, bytes).catch((err: unknown) => {
+      // Persistence is best-effort; the kernel is already usable this session.
+      console.error('kernel persist failed', err);
+    });
   }
 
   toggleHelp(): void {

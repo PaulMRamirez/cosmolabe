@@ -29,7 +29,7 @@ import {
 import { createAppStore, useStore, type AppStore } from './store/index.ts';
 import { useBesselEngine } from './engine/index.ts';
 import { createMissionRegistry } from './missions.ts';
-import { AppShell } from './shell/index.ts';
+import { AppShell, resolvePanel, pluginPanelIds } from './shell/index.ts';
 import { Popover } from './overlays/Popover.tsx';
 import { AnalysisPanel } from './panels/AnalysisPanel.tsx';
 import { PropagatePanel } from './panels/PropagatePanel.tsx';
@@ -111,6 +111,16 @@ export function BesselViewer(): JSX.Element {
     () => registryRef.current.list().map((p) => ({ id: p.id, name: p.name })),
     [],
   );
+  // The shell resolves the plugin-declared panel ids to concrete components; the
+  // registry stays UI-free. The Plugins panel appears when any plugin contributes it.
+  const PluginPanel = useMemo(() => {
+    const ids = pluginPanelIds(registryRef.current.list());
+    for (const id of ids) {
+      const component = resolvePanel(id);
+      if (component) return component;
+    }
+    return null;
+  }, []);
 
   const focusEntry = objects.find((e) => e.id === focus);
   const inspectorFields = [{ label: 'SPICE id', value: SPICE_IDS[focus] ?? '-' }];
@@ -148,6 +158,11 @@ export function BesselViewer(): JSX.Element {
           />
         </div>
       </Popover>
+      {PluginPanel ? (
+        <Popover label="Plugins" title="Mission plugins" align="right" testId="plugins-menu">
+          <PluginPanel engine={engine} store={store} registry={registryRef.current} />
+        </Popover>
+      ) : null}
       <Popover label="Capture" title="Capture" align="right" testId="capture-menu">
         <CaptureControls
           recording={recording}
