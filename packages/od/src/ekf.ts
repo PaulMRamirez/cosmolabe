@@ -37,8 +37,18 @@ import { measurementSize, type Covariance6, type Measurement, type OdState } fro
 export interface EkfOptions {
   /** Force model defining the dynamics. */
   readonly forceModel: ForceModel;
-  /** Optional process noise Q (6x6 row-major, length 36) added each time update. */
+  /** Optional static process noise Q (6x6 row-major, length 36) added each time update. */
   readonly processNoise?: Covariance6;
+  /**
+   * Optional state-noise compensation (SNC): a continuous white-noise acceleration of one-sigma
+   * spectral density `sigmaAccel` (km/s^2 per sqrt(Hz), the sqrt of the acceleration PSD) on each
+   * axis, integrated over each time-update span dt into the standard piecewise-constant-
+   * acceleration Q block. This keeps the filter from growing overconfident on a mismodeled or
+   * maneuvering truth (the no-process-noise filter then diverges as its covariance collapses).
+   * Either an isotropic scalar (same on all three axes) or a per-axis triple. Added on top of any
+   * static `processNoise`. (Tapley-Schutz-Born section 4.9, state-noise compensation.)
+   */
+  readonly snc?: { readonly sigmaAccel: number | readonly [number, number, number] };
   /** Inertial frame label passed to the propagator (default 'J2000'). */
   readonly frame?: string;
 }
@@ -61,6 +71,8 @@ export class ExtendedKalmanFilter {
   private epoch: number;
   private p: Mat;
   private readonly q: Mat | undefined;
+  /** Per-axis acceleration-noise variance (km^2/s^4 per Hz) for SNC, or undefined if off. */
+  private readonly sncVar: readonly [number, number, number] | undefined;
   private readonly forceModel: ForceModel;
   private readonly frame: string;
 
@@ -71,6 +83,7 @@ export class ExtendedKalmanFilter {
     this.epoch = initial.epoch;
     this.p = symmetrize(mat(6, 6, Float64Array.from(initialCovariance)));
     this.q = options.processNoise ? mat(6, 6, Float64Array.from(options.processNoise)) : undefined;
+    this.sncVar = options.snc ? sncVariance(options.snc.sigmaAccel) : undefined;
     this.forceModel = options.forceModel;
     this.frame = options.frame ?? 'J2000';
   }
@@ -93,16 +106,18 @@ export class ExtendedKalmanFilter {
 
     // Time update: propagate the state and map the covariance through the STM.
     if (m.epoch > this.epoch + 1e-12) {
+      const dt = m.epoch - this.epoch;
       const arc = propagateArc(this.x, this.epoch, [m.epoch], this.forceModel, this.frame);
       this.x = arc.stateAt(m.epoch);
       const phi = mat(6, 6, arc.stmAt(m.epoch));
       const phiT = transpose(phi);
       let pMinus = matmul(matmul(phi, this.p), phiT);
       if (this.q) pMinus = add(pMinus, this.q);
+      if (this.sncVar) pMinus = add(pMinus, sncQ(this.sncVar, dt));
       this.p = symmetrize(pMinus);
       this.epoch = m.epoch;
     } else if (this.q) {
-      // Same-epoch measurement: still admit process noise so stacked observations differ.
+      // Same-epoch measurement: still admit static process noise so stacked observations differ.
       this.p = symmetrize(add(this.p, this.q));
     }
 
@@ -145,6 +160,39 @@ export class ExtendedKalmanFilter {
       nis,
     };
   }
+}
+
+/** Per-axis acceleration-noise variance from the SNC sigma (scalar broadcast or a triple). */
+function sncVariance(sigmaAccel: number | readonly [number, number, number]): [number, number, number] {
+  if (typeof sigmaAccel === 'number') {
+    if (!(sigmaAccel >= 0)) throw new MeasurementError(`EKF snc.sigmaAccel must be >= 0 (got ${sigmaAccel})`);
+    const v = sigmaAccel * sigmaAccel;
+    return [v, v, v];
+  }
+  return [sigmaAccel[0] ** 2, sigmaAccel[1] ** 2, sigmaAccel[2] ** 2];
+}
+
+/**
+ * The state-noise-compensation process-noise block Q (6x6 row-major) for a continuous white-noise
+ * acceleration of per-axis variance `var` integrated over span dt, the standard piecewise-
+ * constant-acceleration form (Tapley-Schutz-Born eq. 4.9.41):
+ *   Q_rr = (dt^3/3) var,  Q_rv = Q_vr = (dt^2/2) var,  Q_vv = dt var,  block-diagonal per axis.
+ */
+function sncQ(varAxis: readonly [number, number, number], dt: number): Mat {
+  const q = new Float64Array(36);
+  const rr = (dt * dt * dt) / 3;
+  const rv = (dt * dt) / 2;
+  const vv = dt;
+  for (let a = 0; a < 3; a++) {
+    const qa = varAxis[a]!;
+    const pi = a; // position index
+    const vi = a + 3; // velocity index
+    q[pi * 6 + pi] = rr * qa;
+    q[pi * 6 + vi] = rv * qa;
+    q[vi * 6 + pi] = rv * qa;
+    q[vi * 6 + vi] = vv * qa;
+  }
+  return mat(6, 6, q);
 }
 
 /** Solve K S = B for K, where B = P H^T is 6 x size and S is size x size (size 1 or 2). */

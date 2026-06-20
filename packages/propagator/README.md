@@ -37,7 +37,13 @@ Numerical (Cowell) propagation:
   `ExponentialAtmosphereOptions`, `DragOptions`, `DragError`), the higher-fidelity
   `harrisPriesterAtmosphere` (a diurnal-bulge `DensityModel`: day/night density
   profiles weighted by a cos^n bulge term, `HarrisPriesterOptions`,
-  `HarrisPriesterRow`, `HARRIS_PRIESTER_MEAN`), `srp` (cannonball
+  `HarrisPriesterRow`, `HARRIS_PRIESTER_MEAN`), the space-weather-driven
+  `jacchiaAtmosphere` (a Jacchia 1971 `DensityModel` driven by F10.7, the 81-day
+  average, and Kp: it forms the exospheric temperature from the solar/geomagnetic
+  drivers plus the diurnal bulge, then a barometric Bates-profile density, with
+  `JacchiaDrivers`, `JacchiaAtmosphereOptions`, and the building blocks
+  `nightMinExosphericTemp`, `geomagneticDeltaTemp`, `diurnalExosphericTemp`,
+  `exosphericTemperatureAt`, `jacchiaTemperatureAt`), `srp` (cannonball
   solar radiation pressure with `cylindricalShadow`, `SunPositionAt`, `SrpOptions`,
   `SrpError`), `thirdBody`, `sampledPosition` (`PositionAt`), plus the `ForceModel`,
   `ForceTerm`, `ForceContext`, `Vector3`, `Mat3`, `AccelPartials` types (the
@@ -72,6 +78,12 @@ Mission Control Sequence (`mcs/`, Astrogator-class):
   feasibility-restoration operator; the cost gradient is projected onto the null space of the
   constraint Jacobian `(I - J^T (J J^T)^-1 J)`, line-searched, and re-restored each sweep until
   the projected gradient is stationary. The optimizer reports surface on `McsRun.optimizerReports`.
+  The objective also carries an `OptimizerMethod`: the default `'projectedGradient'` (above) or
+  the second-order `'sqp'`, a sequential-quadratic-programming step that solves the equality-
+  constrained Newton-KKT system `[[W, J^T], [J, 0]] [dc; dl] = [-(grad + J^T lambda); -g]` with
+  the analytic objective Hessian `W = d2f/dc2` (a small ridge along the cost-flat gauge), giving a
+  quadratic-convergence / active-set advantage (markedly fewer outer iterations near the optimum
+  on a redundant-control fuel problem).
   `DcSettings` gains `optimizerMaxIterations` and `optimizerTolerance` (defaulted) for the outer
   sweep budget and the stationarity threshold.
 - Finite (continuous-thrust) burns: a `Maneuver` with `mode: 'Finite'` carries `isp` (s),
@@ -175,13 +187,18 @@ See REFERENCES.md (repo root) and docs/STK_PARITY_SPEC.md for full provenance.
 Force terms implemented: point-mass, zonal harmonics (J2/J4), full NxN spherical
 harmonics (sectoral and tesseral, body-fixed evaluation rotated to inertial),
 atmospheric drag (cannonball with a co-rotating atmosphere and a pluggable density
-model behind the `DensityModel` seam: a piecewise-exponential USSA76 atmosphere and a
-higher-fidelity Harris-Priester model with a diurnal density bulge; a faithful full
-NRLMSISE-00 port, with F10.7/Ap space-weather drivers and a species-resolved
-thermosphere, is still pending, but Harris-Priester drops in behind the same seam),
-cannonball solar radiation pressure (cylindrical umbra shadow), and
-third-body. Mean-element propagation covers J2/J4 secular rates only (no periodic
-terms). The MCS corrector supports nested (multi-level) targeting and finite
-(continuous-thrust) burns with mass depletion; gradient optimizers are still
-pending. The TEME to J2000 transform takes the celestial-pole EOP offsets but the
-time argument is TT approximated from TDB (sub-millisecond).
+model behind the `DensityModel` seam: a piecewise-exponential USSA76 atmosphere, a
+higher-fidelity Harris-Priester model with a diurnal density bulge, and a Jacchia 1971
+model with the F10.7/Ap space-weather drivers, the diurnal/latitudinal bulge, and a
+barometric Bates-profile thermosphere; the Jacchia 1971 model reproduces the canonical
+exospheric-temperature drivers and reduces to the exponential atmosphere in the fixed-
+temperature limit. A full multi-species NRLMSISE-00 / Jacchia-Roberts port (species-
+resolved diffusion, so it matches third-party density to all digits above ~500 km) is
+deferred, but the Jacchia 1971 model drops in behind the same seam and carries the
+space-weather drivers the tables lack), cannonball solar radiation pressure (cylindrical
+umbra shadow), and third-body. Mean-element propagation covers J2/J4 secular rates only
+(no periodic terms). The MCS corrector supports nested (multi-level) targeting and finite
+(continuous-thrust) burns with mass depletion; OPTIMIZER-mode targeting offers both a
+first-order projected-gradient method and a second-order SQP (Newton-KKT) method, selected
+by the objective's `method`. The TEME to J2000 transform takes the celestial-pole EOP
+offsets but the time argument is TT approximated from TDB (sub-millisecond).

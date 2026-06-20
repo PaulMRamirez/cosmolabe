@@ -12,6 +12,7 @@ import { evaluateResidual, type DcEvalContext } from './residual.ts';
 import { assembleJacobian } from './jacobian.ts';
 import { conditionEstimate, solveLeastSquares, solveMinNorm, solveSquare } from './linalg.ts';
 import { runOptimizer, type OptimizerReport } from './optimize.ts';
+import { runSqpOptimizer } from './sqp.ts';
 
 export interface PerGoalReport {
   readonly type: GoalType;
@@ -185,7 +186,13 @@ export function runTargetOptimizer(
     return { c, raw, extraRuns: extra };
   };
 
-  const opt = runOptimizer(objective, controls, goals, ctx, settings, segmentPath, restore);
+  // The objective selects the method: 'sqp' uses the second-order KKT step (sqp.ts), anything
+  // else (the default) uses the first-order projected gradient (optimize.ts). Both share the
+  // restore closure and return the same report shape.
+  const opt =
+    objective.method === 'sqp'
+      ? runSqpOptimizer(objective, controls, goals, ctx, settings, segmentPath, restore)
+      : runOptimizer(objective, controls, goals, ctx, settings, segmentPath, restore);
   let tree: readonly Segment[] = ctx.children;
   for (let j = 0; j < n; j++) tree = controls[j]!.write(tree, opt.controls[j]!);
   return { report: opt.report, solvedChildren: tree };

@@ -179,8 +179,20 @@ export interface Goal {
  */
 export type ObjectiveType = 'minimizeDeltaV';
 
+/**
+ * The optimization method an OPTIMIZER-mode Target uses.
+ *   - 'projectedGradient' (default): a first-order reduced-gradient descent with constraint
+ *     restoration (Rosen gradient projection). Robust, but only linearly convergent.
+ *   - 'sqp': a second-order sequential-quadratic-programming step that solves the
+ *     equality-constrained KKT system with the analytic objective Hessian, giving an
+ *     active-set / quadratic-convergence advantage (far fewer iterations near the optimum).
+ */
+export type OptimizerMethod = 'projectedGradient' | 'sqp';
+
 export interface Objective {
   readonly type: ObjectiveType;
+  /** The optimization method (default 'projectedGradient'). */
+  readonly method?: OptimizerMethod;
 }
 
 export interface DcSettings {

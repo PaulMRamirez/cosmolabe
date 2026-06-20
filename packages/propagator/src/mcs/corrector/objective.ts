@@ -54,3 +54,39 @@ export function evaluateObjective(objective: Objective, c: Float64Array, control
   }
   return { cost, gradient };
 }
+
+/**
+ * The analytic objective Hessian d2f/dc2 (n x n, row-major) used by the SQP step. For each
+ * maneuver group the cost is the L2 norm |u| of its component controls; the Hessian of |u| is
+ * (I - u u^T / |u|^2) / |u|, the standard norm Hessian (positive semidefinite, singular along
+ * the u direction). Cross-group and non-dv blocks are zero.
+ */
+export function evaluateObjectiveHessian(objective: Objective, c: Float64Array, controls: readonly ControlBinding[]): Float64Array {
+  if (objective.type !== 'minimizeDeltaV') {
+    throw new Error(`unsupported optimizer objective: ${String(objective.type)}`);
+  }
+  const n = controls.length;
+  const H = new Float64Array(n * n);
+  const groups = new Map<string, number[]>();
+  for (let j = 0; j < n; j++) {
+    const sa = controls[j]!.seedAxis;
+    if (!sa || sa.kind !== 'dv') continue;
+    const arr = groups.get(sa.segment) ?? [];
+    arr.push(j);
+    groups.set(sa.segment, arr);
+  }
+  for (const idx of groups.values()) {
+    let sumSq = 0;
+    for (const j of idx) sumSq += c[j]! * c[j]!;
+    const norm = Math.sqrt(sumSq);
+    const inv = 1 / Math.max(norm, DV_EPS);
+    const inv3 = inv * inv * inv;
+    // Hess(|u|)_{ab} = delta_{ab}/|u| - u_a u_b / |u|^3.
+    for (const a of idx) {
+      for (const b of idx) {
+        H[a * n + b] = (a === b ? inv : 0) - c[a]! * c[b]! * inv3;
+      }
+    }
+  }
+  return H;
+}

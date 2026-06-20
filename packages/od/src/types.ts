@@ -63,6 +63,14 @@ export interface AnglesMeasurement extends MeasurementBase {
    * Required for azel, ignored for radec.
    */
   readonly enu?: { readonly east: readonly [number, number, number]; readonly north: readonly [number, number, number]; readonly up: readonly [number, number, number] };
+  /**
+   * For `azel`, optionally model tropospheric refraction: the predicted elevation is raised by
+   * the Bennett refraction angle R(el) so it matches the APPARENT elevation a station reports.
+   * Pass `true` for standard sea-level conditions or an object to set the site pressure (mbar)
+   * and temperature (K). Omitted/false leaves the geometric (vacuum) elevation. Ignored for
+   * radec and for azimuth (refraction is vertical, it does not bend the azimuth).
+   */
+  readonly refraction?: boolean | { readonly pressureMbar?: number; readonly temperatureK?: number };
 }
 
 /** The measurement union the estimators consume. */
