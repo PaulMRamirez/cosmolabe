@@ -14,6 +14,7 @@
     "test": "vitest run",
     "bench": "vitest bench --run",
     "build:web": "pnpm --filter @bessel/web build",
+    "build:pages": "BESSEL_BASE=/bessel/ pnpm --filter @bessel/web build",
     "build:desktop": "pnpm --filter @bessel/desktop build",
     "build:cli": "pnpm --filter @bessel/cli build",
     "cap:sync": "pnpm --filter @bessel/mobile sync",

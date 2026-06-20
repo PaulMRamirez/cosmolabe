@@ -7,7 +7,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 // what Capacitor wraps and the Electron renderer loads. The CSPICE WASM is large
 // and lazy loaded, so it is excluded from precache to honour the 4 MB budget and
 // the app-shell JS budget (.size-limit.json).
+//
+// The deploy target sets the public base path. Local dev, the gate (build:web), and
+// the Electron/Capacitor shells all use '/'; only the GitHub Pages project-page build
+// (pnpm build:pages) sets BESSEL_BASE=/bessel/ so asset URLs resolve under the subpath.
+const base = process.env.BESSEL_BASE || '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -27,7 +34,7 @@ export default defineConfig({
         theme_color: '#0b0e14',
         background_color: '#0b0e14',
         display: 'standalone',
-        start_url: '/',
+        start_url: base,
         icons: [
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
         ],
