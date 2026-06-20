@@ -19,6 +19,12 @@ export {
 export { predict, residual, noiseVariances, wrapPi, type Prediction } from './measurements.ts';
 
 export {
+  bennettRefraction,
+  bennettRefractionSlope,
+  type RefractionConditions,
+} from './refraction.ts';
+
+export {
   predictLightTime,
   SPEED_OF_LIGHT_KM_S,
   type LightTimeOptions,

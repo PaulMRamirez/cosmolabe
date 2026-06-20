@@ -20,6 +20,7 @@ export type {
   DcSettings,
   Objective,
   ObjectiveType,
+  OptimizerMethod,
 } from './segments.ts';
 export { DEFAULT_DC_SETTINGS } from './segments.ts';
 

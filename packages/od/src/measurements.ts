@@ -14,6 +14,7 @@
 // (Vallado §4.4 and §10.2; Tapley-Schutz-Born §3.4.)
 
 import { MeasurementError } from './errors.ts';
+import { bennettRefraction, bennettRefractionSlope, type RefractionConditions } from './refraction.ts';
 import type { Measurement, ObserverPosition } from './types.ts';
 
 /** A measurement prediction: the model value(s) and the row-major (size x 6) Jacobian. */
@@ -117,10 +118,16 @@ function predictAzEl(m: Extract<Measurement, { kind: 'angles' }>, rho: readonly 
   const u = dot3(rho, up as [number, number, number]);
   const range = Math.hypot(rho[0], rho[1], rho[2]);
   const az = Math.atan2(e, n);
-  const el = Math.asin(u / range);
+  const elGeom = Math.asin(u / range); // geometric (vacuum) elevation
 
   const en2 = e * e + n * n;
   if (en2 === 0) throw new MeasurementError('predictAzEl: line of sight along local vertical, azimuth is undefined');
+
+  // Optional tropospheric refraction: the apparent elevation is el + R(el), and the elevation
+  // partial picks up the chain factor (1 + dR/del). Azimuth is unaffected (vertical bending).
+  const refr = refractionOption(m.refraction);
+  const el = refr ? elGeom + bennettRefraction(elGeom, refr.conditions) : elGeom;
+  const elChain = refr ? 1 + bennettRefractionSlope(elGeom, refr.conditions) : 1;
 
   // d(az)/d(e,n) = (n/en2, -e/en2); d(e,n)/dr = east, north (constant unit vectors).
   // d(el)/dr_i: el = asin(u/range), u = up.rho, range = |rho|.
@@ -139,9 +146,18 @@ function predictAzEl(m: Extract<Measurement, { kind: 'angles' }>, rho: readonly 
     const drange = rho[i]! / range;
     jac[i] = dAz_de * dE + dAz_dn * dN;
     const dU_over_range = (dU * range - u * drange) / r2;
-    jac[6 + i] = dU_over_range / cosEl;
+    jac[6 + i] = (dU_over_range / cosEl) * elChain;
   }
   return { value: Float64Array.of(az, el), jac };
+}
+
+/** Normalize the measurement's `refraction` option to either off or its site conditions. */
+function refractionOption(
+  opt: boolean | { readonly pressureMbar?: number; readonly temperatureK?: number } | undefined,
+): { conditions: RefractionConditions | undefined } | null {
+  if (!opt) return null;
+  if (opt === true) return { conditions: undefined };
+  return { conditions: opt };
 }
 
 /**

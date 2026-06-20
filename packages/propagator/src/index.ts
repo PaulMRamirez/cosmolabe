@@ -51,6 +51,16 @@ export {
   type HarrisPriesterRow,
 } from './force/harris-priester.ts';
 export {
+  jacchiaAtmosphere,
+  nightMinExosphericTemp,
+  geomagneticDeltaTemp,
+  diurnalExosphericTemp,
+  exosphericTemperatureAt,
+  temperatureAt as jacchiaTemperatureAt,
+  type JacchiaDrivers,
+  type JacchiaAtmosphereOptions,
+} from './force/jacchia.ts';
+export {
   srp,
   cylindricalShadow,
   SrpError,
