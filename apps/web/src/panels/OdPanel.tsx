@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Button, Tag } from '@bessel/selene-design';
 import { type BesselEngine } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
+import { RunStatusNote, busyLabel } from './RunStatus.tsx';
 
 export interface OdPanelProps {
   readonly engine: BesselEngine | null;
@@ -21,7 +22,9 @@ export function OdPanel(props: OdPanelProps): JSX.Element {
   const { engine, store } = props;
   const result = useStore(store, (s) => s.odResult);
   const objects = useStore(store, (s) => s.objects);
+  const runStatus = useStore(store, (s) => s.runStatus);
   const isSample = !objects.some((e) => e.kind === 'spacecraft');
+  const run = busyLabel(runStatus['run-od'], 'Run batch least squares', 'Computing...');
   const [noise, setNoise] = useState(1);
 
   return (
@@ -40,9 +43,16 @@ export function OdPanel(props: OdPanelProps): JSX.Element {
         </label>
       </div>
 
-      <Button variant="primary" full testId="run-od" onClick={() => engine?.runOd(noise)}>
-        Run batch least squares
+      <Button
+        variant="primary"
+        full
+        testId="run-od"
+        disabled={run.disabled}
+        onClick={() => void engine?.runOd(noise)}
+      >
+        {run.label}
       </Button>
+      <RunStatusNote status={runStatus['run-od']} id="run-od" />
 
       {result ? (
         <div data-testid="od-result">

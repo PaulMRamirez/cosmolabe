@@ -10,6 +10,7 @@ import { Button, Tag } from '@bessel/selene-design';
 import { TimeSeriesChart } from '@bessel/ui';
 import { type BesselEngine, DEFAULT_MCS_DESIGN, type McsDesign } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
+import { RunStatusNote, busyLabel } from './RunStatus.tsx';
 
 export interface MissionPanelProps {
   readonly engine: BesselEngine | null;
@@ -23,7 +24,9 @@ export function MissionPanel(props: MissionPanelProps): JSX.Element {
   const { engine, store } = props;
   const result = useStore(store, (s) => s.mcsResult);
   const objects = useStore(store, (s) => s.objects);
+  const runStatus = useStore(store, (s) => s.runStatus);
   const isSample = !objects.some((e) => e.kind === 'spacecraft');
+  const run = busyLabel(runStatus['run-mcs'], 'Run mission sequence', 'Computing...');
   const [design, setDesign] = useState<McsDesign>(DEFAULT_MCS_DESIGN);
 
   const set = <K extends keyof McsDesign>(key: K, value: number): void =>
@@ -78,9 +81,16 @@ export function MissionPanel(props: MissionPanelProps): JSX.Element {
         </label>
       </div>
 
-      <Button variant="primary" full testId="run-mcs" onClick={() => void engine?.runMcsDesign(design)}>
-        Run mission sequence
+      <Button
+        variant="primary"
+        full
+        testId="run-mcs"
+        disabled={run.disabled}
+        onClick={() => void engine?.runMcsDesign(design)}
+      >
+        {run.label}
       </Button>
+      <RunStatusNote status={runStatus['run-mcs']} id="run-mcs" />
 
       {result ? (
         <div data-testid="mcs-result">

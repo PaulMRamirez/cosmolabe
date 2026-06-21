@@ -145,6 +145,7 @@ export async function computeEclipse(
   } catch (err) {
     if (!isDisposed()) store.setState({ eclipseUmbra: [], eclipseSpan: span });
     console.error('eclipse analysis failed', err);
+    throw err;
   }
 }
 
@@ -184,6 +185,7 @@ export async function computeRange(
   } catch (err) {
     if (!isDisposed()) store.setState({ rangeSeries: null });
     console.error('range analysis failed', err);
+    throw err;
   }
 }
 
@@ -230,6 +232,7 @@ export async function computeLinkBudget(
   } catch (err) {
     if (!isDisposed()) store.setState({ linkSeries: null });
     console.error('link-budget analysis failed', err);
+    throw err;
   }
 }
 
@@ -280,6 +283,7 @@ export async function computeAccessTool(
   } catch (err) {
     if (!isDisposed()) store.setState({ accessWindow: null, accessSpan: span, accessFom: null });
     console.error('access analysis failed', err);
+    throw err;
   }
 }
 
@@ -329,6 +333,7 @@ export async function computeConjunction(
   } catch (err) {
     if (!isDisposed()) store.setState({ conjunction: null });
     console.error('conjunction analysis failed', err);
+    throw err;
   }
 }
 
@@ -413,6 +418,7 @@ export async function computeSlew(
   } catch (err) {
     if (!isDisposed()) store.setState({ slewSeries: null });
     console.error('slew analysis failed', err);
+    throw err;
   }
 }
 
@@ -469,6 +475,7 @@ export async function computeTransfer(
   } catch (err) {
     if (!isDisposed()) store.setState({ transfer: null });
     console.error('transfer analysis failed', err);
+    throw err;
   }
 }
 
@@ -508,6 +515,7 @@ export async function computeGroundTrack(
   } catch (err) {
     if (!isDisposed()) store.setState({ groundTrack: null });
     console.error('ground-track analysis failed', err);
+    throw err;
   }
 }
 
@@ -551,6 +559,7 @@ export async function exportOem(e: EngineCore, store: AppStore): Promise<void> {
     downloadBlob(blob, `${sc.toLowerCase()}.oem`);
   } catch (err) {
     console.error('OEM export failed', err);
+    throw err;
   }
 }
 
@@ -621,6 +630,7 @@ export async function propagateTle(
   } catch (err) {
     if (!isDisposed()) store.setState({ tleOrbit: null });
     console.error('TLE propagation failed', err);
+    throw err;
   }
 }
 
@@ -680,6 +690,7 @@ export async function computeStationAccess(
   } catch (err) {
     if (!isDisposed()) store.setState({ stationAccess: null });
     console.error('station access failed', err);
+    throw err;
   }
 }
 
@@ -737,6 +748,7 @@ export async function propagateHpop(
   } catch (err) {
     if (!isDisposed()) store.setState({ hpopAltitude: null });
     console.error('HPOP propagation failed', err);
+    throw err;
   }
 }
 
@@ -767,6 +779,7 @@ export async function runMcsDesign(
   } catch (err) {
     if (!isDisposed()) store.setState({ mcsResult: null });
     console.error('MCS design run failed', err);
+    throw err;
   }
 }
 
@@ -784,6 +797,7 @@ export function runOd(store: AppStore, isDisposed: () => boolean, noiseScale: nu
   } catch (err) {
     if (!isDisposed()) store.setState({ odResult: null });
     console.error('Orbit determination failed', err);
+    throw err;
   }
 }
 
@@ -830,5 +844,6 @@ export async function runReport(
   } catch (err) {
     if (!isDisposed()) store.setState({ report: null });
     console.error('report failed', err);
+    throw err;
   }
 }

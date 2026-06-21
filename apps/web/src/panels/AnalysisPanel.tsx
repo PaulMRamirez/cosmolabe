@@ -10,8 +10,9 @@ import { Button } from '@bessel/selene-design';
 import { GroundTrackMap, PanelContainer } from '@bessel/ui';
 import { seriesToCsv, intervalsToCsv } from '@bessel/interop';
 import type { BesselEngine } from '../engine/index.ts';
-import { useStore, type AppStore } from '../store/index.ts';
+import { useStore, type AppStore, type RunStatus } from '../store/index.ts';
 import { IntervalResult, SeriesResult, StatResult } from './analysis-result.tsx';
+import { RunStatusNote } from './RunStatus.tsx';
 
 export interface AnalysisPanelProps {
   readonly engine: BesselEngine | null;
@@ -22,16 +23,25 @@ export interface AnalysisPanelProps {
 const fmt = (n: number, digits = 2): string =>
   Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: digits }) : '-';
 
-/** A primary panel action button (selene), preserving the data-testid test hook. */
+/** A panel action button (selene). While its tool is running it disables and reads
+ *  "Computing...", driven by the per-tool run status. */
 function Action(props: {
   onClick: () => void;
   testId: string;
   children: ReactNode;
   variant?: 'primary' | 'secondary';
+  status?: RunStatus;
 }): JSX.Element {
+  const busy = props.status === 'running';
   return (
-    <Button variant={props.variant ?? 'secondary'} full testId={props.testId} onClick={props.onClick}>
-      {props.children}
+    <Button
+      variant={props.variant ?? 'secondary'}
+      full
+      testId={props.testId}
+      disabled={busy}
+      onClick={props.onClick}
+    >
+      {busy ? 'Computing...' : props.children}
     </Button>
   );
 }
@@ -60,6 +70,7 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   // Run-parameter metadata stamped onto every exported CSV so a result is reproducible.
   const epochLabel = useStore(store, (s) => s.epochLabel);
   const timeSystem = useStore(store, (s) => s.timeSystem);
+  const runStatus = useStore(store, (s) => s.runStatus);
   const runMeta = useMemo(
     () => ({
       epoch: epochLabel || undefined,
@@ -161,7 +172,12 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
       </div>
 
       <PanelContainer title="Geometry" testId="analysis-section-geometry">
-        <Action variant="primary" onClick={() => void engine?.computeRange(targetSpan)} testId="compute-range">
+        <Action
+          variant="primary"
+          status={runStatus['compute-range']}
+          onClick={() => void engine?.computeRange(targetSpan)}
+          testId="compute-range"
+        >
           Compute range
         </Action>
         <SeriesResult
@@ -175,7 +191,12 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             build: (s) => seriesToCsv(s.et, [s.value], ['range_km'], { meta: runMeta }),
           }}
         />
-        <Action onClick={() => void engine?.computeGroundTrack(span)} testId="compute-groundtrack">
+        <RunStatusNote status={runStatus['compute-range']} id="compute-range" />
+        <Action
+          status={runStatus['compute-groundtrack']}
+          onClick={() => void engine?.computeGroundTrack(span)}
+          testId="compute-groundtrack"
+        >
           Compute ground track
         </Action>
         {groundTrack ? (
@@ -191,10 +212,16 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
         ) : (
           <p className="bessel-loader-hint">Project the sub-spacecraft point over the next day.</p>
         )}
+        <RunStatusNote status={runStatus['compute-groundtrack']} id="compute-groundtrack" />
       </PanelContainer>
 
       <PanelContainer title="Access & Coverage" testId="analysis-section-access">
-        <Action variant="primary" onClick={() => void engine?.computeAccess(targetSpan)} testId="compute-access">
+        <Action
+          variant="primary"
+          status={runStatus['compute-access']}
+          onClick={() => void engine?.computeAccess(targetSpan)}
+          testId="compute-access"
+        >
           Compute access
         </Action>
         <IntervalResult
@@ -219,7 +246,12 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             ) : null
           }
         />
-        <Action onClick={() => void engine?.computeEclipse(span)} testId="compute-eclipse">
+        <RunStatusNote status={runStatus['compute-access']} id="compute-access" />
+        <Action
+          status={runStatus['compute-eclipse']}
+          onClick={() => void engine?.computeEclipse(span)}
+          testId="compute-eclipse"
+        >
           Compute eclipse
         </Action>
         <IntervalResult
@@ -236,10 +268,16 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             build: (i) => intervalsToCsv(i, { meta: runMeta }),
           }}
         />
+        <RunStatusNote status={runStatus['compute-eclipse']} id="compute-eclipse" />
       </PanelContainer>
 
       <PanelContainer title="Comms" testId="analysis-section-comms">
-        <Action variant="primary" onClick={() => void engine?.computeLinkBudget(span)} testId="compute-link">
+        <Action
+          variant="primary"
+          status={runStatus['compute-link']}
+          onClick={() => void engine?.computeLinkBudget(span)}
+          testId="compute-link"
+        >
           Compute downlink Eb/N0
         </Action>
         <SeriesResult
@@ -248,11 +286,13 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           chartTestId="link-chart"
           hint="Plot the downlink Eb/N0 to a DSN station."
         />
+        <RunStatusNote status={runStatus['compute-link']} id="compute-link" />
       </PanelContainer>
 
       <PanelContainer title="Conjunction" testId="analysis-section-conjunction">
         <Action
           variant="primary"
+          status={runStatus['compute-conjunction']}
           onClick={() => void engine?.computeConjunction(secondary ? { secondary } : {})}
           testId="compute-conjunction"
         >
@@ -270,10 +310,16 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             </>
           )}
         </StatResult>
+        <RunStatusNote status={runStatus['compute-conjunction']} id="compute-conjunction" />
       </PanelContainer>
 
       <PanelContainer title="Constellation" testId="analysis-section-constellation">
-        <Action variant="primary" onClick={() => engine?.computeConstellation()} testId="compute-constellation">
+        <Action
+          variant="primary"
+          status={runStatus['compute-constellation']}
+          onClick={() => engine?.computeConstellation()}
+          testId="compute-constellation"
+        >
           Design Walker constellation
         </Action>
         <StatResult
@@ -289,10 +335,16 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             </>
           )}
         </StatResult>
+        <RunStatusNote status={runStatus['compute-constellation']} id="compute-constellation" />
       </PanelContainer>
 
       <PanelContainer title="Maneuver" testId="analysis-section-maneuver">
-        <Action variant="primary" onClick={() => void engine?.computeSlew()} testId="compute-slew">
+        <Action
+          variant="primary"
+          status={runStatus['compute-slew']}
+          onClick={() => void engine?.computeSlew()}
+          testId="compute-slew"
+        >
           Compute attitude slew
         </Action>
         <SeriesResult
@@ -301,7 +353,12 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           chartTestId="slew-chart"
           hint="Eigen-axis slew from nadir to Sun pointing."
         />
-        <Action onClick={() => void engine?.computeTransfer()} testId="compute-transfer">
+        <RunStatusNote status={runStatus['compute-slew']} id="compute-slew" />
+        <Action
+          status={runStatus['compute-transfer']}
+          onClick={() => void engine?.computeTransfer()}
+          testId="compute-transfer"
+        >
           Solve Lambert transfer
         </Action>
         <StatResult
@@ -315,12 +372,18 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             </>
           )}
         </StatResult>
+        <RunStatusNote status={runStatus['compute-transfer']} id="compute-transfer" />
       </PanelContainer>
 
       <PanelContainer title="Export" testId="analysis-section-export">
-        <Action onClick={() => void engine?.exportOem()} testId="export-oem">
+        <Action
+          status={runStatus['export-oem']}
+          onClick={() => void engine?.exportOem()}
+          testId="export-oem"
+        >
           Export CCSDS OEM
         </Action>
+        <RunStatusNote status={runStatus['export-oem']} id="export-oem" />
       </PanelContainer>
     </div>
   );

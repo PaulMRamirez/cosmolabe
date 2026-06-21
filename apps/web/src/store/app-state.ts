@@ -13,6 +13,9 @@ import { createStore, type Store } from './create-store.ts';
 /** The active tab in the consolidated Analyze dock. */
 export type AnalyzeTab = 'propagation' | 'maneuver' | 'od' | 'access' | 'report' | 'compare';
 
+/** Per-tool run status: a compute action is idle, running, succeeded, or failed loudly. */
+export type RunStatus = 'idle' | 'running' | 'ok' | { readonly error: string };
+
 /** Shared analysis parameters that every analysis tab reads by default (a tool can
  *  override locally). The run epoch is not held here: it is the live timeline epoch,
  *  so every tool already shares it; this slice holds the span, grid, and pointing. */
@@ -49,6 +52,8 @@ export interface AppState {
   welcomeSeen: boolean;
   /** A loud go-to-epoch parse error to surface next to the field, or null. */
   timelineError: string | null;
+  /** Per-tool run status keyed by the tool's action id (= its button data-testid). */
+  runStatus: Readonly<Record<string, RunStatus>>;
   // Camera and selection.
   focus: string;
   selection: readonly string[];
@@ -277,6 +282,7 @@ export const initialAppState: AppState = {
   analysisContext: { spanSec: 86400, stepSec: 120, target: '', observer: '', frame: 'J2000' },
   welcomeSeen: false,
   timelineError: null,
+  runStatus: {},
   // Default to a heliocentric whole-system view; a loaded mission recenters on
   // its own center body.
   focus: 'Sun',

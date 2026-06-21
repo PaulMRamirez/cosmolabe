@@ -10,6 +10,7 @@ import { GroundTrackMap, IntervalTimeline, TimeSeriesChart, downloadBlob } from 
 import { intervalsToCsv } from '@bessel/interop';
 import { type BesselEngine, type HpopForceModel } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
+import { RunStatusNote, busyLabel } from './RunStatus.tsx';
 
 // The HPOP force-model fidelity choices, in increasing order of physics modeled.
 const HPOP_MODELS: readonly { value: HpopForceModel; label: string }[] = [
@@ -34,14 +35,23 @@ export function PropagatePanel(props: PropagatePanelProps): JSX.Element {
   const stationAccess = useStore(store, (s) => s.stationAccess);
   const hpopAltitude = useStore(store, (s) => s.hpopAltitude);
   const objects = useStore(store, (s) => s.objects);
+  const runStatus = useStore(store, (s) => s.runStatus);
   const isSample = !objects.some((e) => e.kind === 'spacecraft');
   const [hpopModel, setHpopModel] = useState<HpopForceModel>('j2');
+  const tleBtn = busyLabel(runStatus['propagate-tle'], 'Propagate sample TLE (SGP4)', 'Computing...');
 
   return (
     <div className="bessel-analysis" data-testid="propagate-panel">
-      <Button variant="primary" full testId="propagate-tle" onClick={() => void engine?.propagateTle()}>
-        Propagate sample TLE (SGP4)
+      <Button
+        variant="primary"
+        full
+        testId="propagate-tle"
+        disabled={tleBtn.disabled}
+        onClick={() => void engine?.propagateTle()}
+      >
+        {tleBtn.label}
       </Button>
+      <RunStatusNote status={runStatus['propagate-tle']} id="propagate-tle" />
       {tleOrbit ? (
         <div data-testid="tle-result">
           {isSample ? (
@@ -70,10 +80,14 @@ export function PropagatePanel(props: PropagatePanelProps): JSX.Element {
             variant="primary"
             full
             testId="compute-station-access"
+            disabled={runStatus['compute-station-access'] === 'running'}
             onClick={() => void engine?.computeStationAccess()}
           >
-            Ground-station access (Goldstone, 10 deg, sunlit)
+            {runStatus['compute-station-access'] === 'running'
+              ? 'Computing...'
+              : 'Ground-station access (Goldstone, 10 deg, sunlit)'}
           </Button>
+          <RunStatusNote status={runStatus['compute-station-access']} id="compute-station-access" />
           {stationAccess ? (
             <div data-testid="station-access-result">
               <div className="bessel-panel-title">{stationAccess.label}</div>
@@ -133,10 +147,12 @@ export function PropagatePanel(props: PropagatePanelProps): JSX.Element {
             variant="primary"
             full
             testId="propagate-hpop"
+            disabled={runStatus['propagate-hpop'] === 'running'}
             onClick={() => void engine?.propagateHpop(hpopModel)}
           >
-            Propagate numerically (HPOP)
+            {runStatus['propagate-hpop'] === 'running' ? 'Computing...' : 'Propagate numerically (HPOP)'}
           </Button>
+          <RunStatusNote status={runStatus['propagate-hpop']} id="propagate-hpop" />
           {hpopAltitude ? (
             <div data-testid="hpop-result">
               <div className="bessel-panel-title">{hpopAltitude.label}</div>

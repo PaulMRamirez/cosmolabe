@@ -8,6 +8,7 @@ export {
   type AppState,
   type AppStore,
   type Measurement,
+  type RunStatus,
   type McsResult,
   type McsGoalReport,
   type OdResult,

@@ -77,7 +77,11 @@ describe('AnalysisPanel result tables (B18)', () => {
   it('renders the chart/table toolbar and table over a seeded series and interval', () => {
     const store = createAppStore();
     store.setState({
-      rangeSeries: { et: [0, 60], value: [10, 20], label: 'range (km)' },
+      rangeSeries: {
+        et: new Float64Array([0, 60]),
+        value: new Float64Array([10, 20]),
+        label: 'range (km)',
+      },
       accessWindow: [[0, 100]],
       accessSpan: [0, 200],
     });

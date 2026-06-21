@@ -30,6 +30,8 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   await page.getByTestId('compute-range').click();
   await expect(page.getByTestId('range-chart')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('range-chart').locator('polyline')).toHaveCount(1);
+  // B24: a located success note appears at the action site.
+  await expect(page.getByTestId('compute-range-status')).toContainText('Done', { timeout: 20_000 });
 
   // B18: the result is also a copyable data table. Chart is the default; toggling to
   // Table shows the underlying rows, Copy writes TSV to the clipboard, and the digits

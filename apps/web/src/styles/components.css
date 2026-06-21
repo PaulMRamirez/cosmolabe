@@ -949,6 +949,17 @@ button[aria-pressed='true'] {
   color: var(--text-1);
 }
 
+/* A located run error under a compute action (B24). Text stays AA (text-1, weight 600)
+   with a red left border, rather than low-contrast red body text. */
+.bessel-run-error {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--red);
+  color: var(--text-1);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 /* Always-mounted telemetry fault alert, centered under the app bar. The wrapper is
    inert until a fault fires (FaultBanner returns null when nominal). */
 .bessel-fault-chrome {

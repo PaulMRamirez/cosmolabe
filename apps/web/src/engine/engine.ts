@@ -49,7 +49,7 @@ import {
   newBookmarkId,
   type Bookmark,
 } from '../bookmarks.ts';
-import type { AppStore, AnalysisContext, AnalyzeTab } from '../store/index.ts';
+import type { AppStore, AnalysisContext, AnalyzeTab, RunStatus } from '../store/index.ts';
 import { bootScene, loadInstrument, type EngineCore } from './bootstrap.ts';
 import { applyViewModel } from './apply-view.ts';
 import { type HpopForceModel } from './hpop-model.ts';
@@ -530,128 +530,180 @@ export class BesselEngine {
   // heavy @bessel analysis packages out of the first-paint chunk; they load on first use.
   // The op functions own the loud-error and disposed handling.
 
+  // Every compute/run/export action runs through runTool, keyed by the action id (which
+  // is the panel button's data-testid), so each tool transitions idle -> running -> ok
+  // or { error } and the panel can show a busy state and a located success or failure.
+  private async runTool(id: string, fn: () => Promise<void> | void): Promise<void> {
+    this.setRunStatus(id, 'running');
+    try {
+      await fn();
+      if (!this.disposed) this.setRunStatus(id, 'ok');
+    } catch (err) {
+      if (!this.disposed) {
+        this.setRunStatus(id, { error: err instanceof Error ? err.message : String(err) });
+      }
+      console.error(`tool ${id} failed`, err);
+    }
+  }
+
+  private setRunStatus(id: string, status: RunStatus): void {
+    this.store.setState((s) => ({ runStatus: { ...s.runStatus, [id]: status } }));
+  }
+
   /** Lighting analysis: the spacecraft's umbra intervals over a day. */
   async computeEclipse(opts: AnalysisSpan = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeEclipse(e, this.store, this.isDisposed, opts);
+    await this.runTool('compute-eclipse', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeEclipse(e, this.store, this.isDisposed, opts);
+    });
   }
 
   /** Range analysis: the spacecraft-to-center-body distance over a day. */
   async computeRange(opts: AnalysisTargetSpan = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeRange(e, this.store, this.isDisposed, opts);
+    await this.runTool('compute-range', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeRange(e, this.store, this.isDisposed, opts);
+    });
   }
 
   /** Communications analysis: downlink Eb/N0 from the spacecraft to Earth over a day. */
   async computeLinkBudget(opts: AnalysisSpan = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeLinkBudget(e, this.store, this.isDisposed, opts);
+    await this.runTool('compute-link', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeLinkBudget(e, this.store, this.isDisposed, opts);
+    });
   }
 
   /** Access analysis: line-of-sight windows from the spacecraft to a target over a day. */
   async computeAccess(opts: AnalysisTargetSpan = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeAccessTool(e, this.store, this.isDisposed, opts);
+    await this.runTool('compute-access', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeAccessTool(e, this.store, this.isDisposed, opts);
+    });
   }
 
   /** Conjunction analysis: closest approach plus a 2D Pc on the loaded pair. */
   async computeConjunction(opts: { secondary?: string } = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeConjunction(e, this.store, this.isDisposed, opts);
+    await this.runTool('compute-conjunction', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeConjunction(e, this.store, this.isDisposed, opts);
+    });
   }
 
   /** Constellation design: a Walker Delta 24/3/1 LEO pattern (mission-independent). */
   async computeConstellation(): Promise<void> {
-    const ops = await import('./analysis-ops.ts');
-    ops.computeConstellation(this.store);
+    await this.runTool('compute-constellation', async () => {
+      const ops = await import('./analysis-ops.ts');
+      ops.computeConstellation(this.store);
+    });
   }
 
   /** Attitude analysis: a nadir-to-Sun eigen-axis slew as a slew-angle series. */
   async computeSlew(): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeSlew(e, this.store, this.isDisposed);
+    await this.runTool('compute-slew', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeSlew(e, this.store, this.isDisposed);
+    });
   }
 
   /** Maneuver design: a Lambert transfer departure delta-v on the loaded orbit. */
   async computeTransfer(): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeTransfer(e, this.store, this.isDisposed);
+    await this.runTool('compute-transfer', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeTransfer(e, this.store, this.isDisposed);
+    });
   }
 
   /** Ground-track analysis: sub-spacecraft longitude/latitude over a day. */
   async computeGroundTrack(opts: AnalysisSpan = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeGroundTrack(e, this.store, this.isDisposed, opts);
+    await this.runTool('compute-groundtrack', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeGroundTrack(e, this.store, this.isDisposed, opts);
+    });
   }
 
   /** Interoperability: export the spacecraft trajectory as a CCSDS OEM (KVN) download. */
   async exportOem(): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.exportOem(e, this.store);
+    await this.runTool('export-oem', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.exportOem(e, this.store);
+    });
   }
 
   /** Propagation: SGP4 the bundled sample TLE and read it back as altitude + track. */
   async propagateTle(): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.propagateTle(e, this.store, this.isDisposed, this.tleState);
+    await this.runTool('propagate-tle', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.propagateTle(e, this.store, this.isDisposed, this.tleState);
+    });
   }
 
   /** Ground-station access: passes of the last-propagated satellite over Goldstone. */
   async computeStationAccess(): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.computeStationAccess(e, this.store, this.isDisposed, this.tleState);
+    await this.runTool('compute-station-access', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeStationAccess(e, this.store, this.isDisposed, this.tleState);
+    });
   }
 
   /** Numerical (HPOP) propagation: Cowell-integrate the TLE state and plot altitude. */
   async propagateHpop(model: HpopForceModel = 'j2'): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.propagateHpop(e, this.store, this.isDisposed, this.tleState, model);
+    await this.runTool('propagate-hpop', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.propagateHpop(e, this.store, this.isDisposed, this.tleState, model);
+    });
   }
 
   /** Mission-design workbench: run a small MCS and draw the arc plus a DC report. */
   async runMcsDesign(design: McsDesign): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.runMcsDesign(e, this.store, this.isDisposed, design);
+    await this.runTool('run-mcs', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.runMcsDesign(e, this.store, this.isDisposed, design);
+    });
   }
 
   /** Orbit-determination workbench: a batch-least-squares recovery on synthetic data. */
   async runOd(noiseScale: number): Promise<void> {
-    const ops = await import('./analysis-ops.ts');
-    ops.runOd(this.store, this.isDisposed, noiseScale);
+    await this.runTool('run-od', async () => {
+      const ops = await import('./analysis-ops.ts');
+      ops.runOd(this.store, this.isDisposed, noiseScale);
+    });
   }
 
   /** Data-provider workbench: evaluate any provider over a grid into a report table. */
   async runReport(cfg: ReportConfig): Promise<void> {
     const e = this.core;
     if (!e) return;
-    const ops = await import('./analysis-ops.ts');
-    return ops.runReport(e, this.store, this.isDisposed, cfg);
+    await this.runTool('run-report', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.runReport(e, this.store, this.isDisposed, cfg);
+    });
   }
 
   /** Set the base camera mode (orbit / sync / free / frame); track overrides it live. */

@@ -10,6 +10,7 @@ import { seriesToCsv } from '@bessel/interop';
 import { PROVIDER_CATALOG, type ProviderKind } from '@bessel/spice';
 import type { BesselEngine } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
+import { RunStatusNote, busyLabel } from './RunStatus.tsx';
 
 export interface ReportPanelProps {
   readonly engine: BesselEngine | null;
@@ -22,7 +23,9 @@ export function ReportPanel(props: ReportPanelProps): JSX.Element {
   const report = useStore(store, (s) => s.report);
 
   const ctx = useStore(store, (s) => s.analysisContext);
+  const runStatus = useStore(store, (s) => s.runStatus);
   const names = useMemo(() => objects.map((o) => o.name), [objects]);
+  const runBtn = busyLabel(runStatus['run-report'], 'Run report', 'Computing...');
   const [useShared, setUseShared] = useState(true);
   const [kind, setKind] = useState<ProviderKind>('range');
   const [observer, setObserver] = useState(names[0] ?? 'Sun');
@@ -142,9 +145,10 @@ export function ReportPanel(props: ReportPanelProps): JSX.Element {
           </div>
         </>
       )}
-      <Button variant="primary" full testId="run-report" onClick={run}>
-        Run report
+      <Button variant="primary" full testId="run-report" disabled={runBtn.disabled} onClick={run}>
+        {runBtn.label}
       </Button>
+      <RunStatusNote status={runStatus['run-report']} id="run-report" />
       {report ? (
         <div data-testid="report-result">
           <div className="bessel-panel-title">{report.label}</div>
