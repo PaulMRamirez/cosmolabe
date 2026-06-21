@@ -357,6 +357,268 @@ mesh formats (glTF by design), and TLE auto-update (niche).
 
 ---
 
+---
+
+## 16. Catalog data-model coverage and full Cosmographia round-trip
+
+> Status: Design, 2026-06-21. This section is the implementation-ready design for
+> closing the catalog data-model gaps and reaching a full bidirectional
+> Cosmographia round-trip (import and export). It supersedes the ADR-0006 "80
+> percent core" framing for the catalog row only: ADR-0006 stays the binding
+> decision record; this is the plan to push the catalog data model toward Done.
+> No em dashes (CLAUDE.md). All references are code-verified against the files
+> named below.
+
+### 16.1 Current model-level gaps (verified)
+
+The viewer-parity closure (Section 15) closed the *rendering* path for native
+catalogs. What remains is a **data-model** gap: several declared trajectory and
+orientation shapes cannot carry their own parameters, the schema and its TS
+mirror disagree on the type names, the Cosmographia importer is single-item and
+Spice-only, and there is no exporter at all. Concretely:
+
+1. **Trajectory is a stub.** `packages/catalog/schema/bessel-catalog.schema.json`
+   `$defs.trajectory` is `{ type: enum(Spice|Keplerian|Fixed|Sampled), center?,
+   frame? }` with `additionalProperties:false`. So a `Keplerian` trajectory cannot
+   carry elements, a `Fixed` trajectory cannot carry a position, and a `Sampled`
+   trajectory cannot carry a sample source. Only `Spice` is usable today.
+
+2. **Schema and TS mirror drift.** `native-types.ts` `Trajectory.type` is
+   `Spice | Keplerian | InterpolatedStates | FixedPoint`; the schema enum is
+   `Spice | Keplerian | Fixed | Sampled`. The names `FixedPoint`/`InterpolatedStates`
+   (TS) versus `Fixed`/`Sampled` (schema) do not match, so a catalog that validates
+   may not typecheck and vice versa. The schema is the source of truth (validation
+   runs against it), so the TS side is the one in error.
+
+3. **TwoVector orientation has no parameters.** Both the schema `$defs.orientation`
+   and the TS `Orientation` list `TwoVector` in the enum, but neither carries the
+   primary/secondary axis-and-target fields the construct needs. It is undeclarable.
+
+4. **Importer is single-item and Spice-only.** `cosmographia.ts`
+   `parseCosmographiaCatalog` does `items.findIndex(... first spacecraft ...)` and
+   returns a flat `SpacecraftCatalog` for that one item with a hard
+   `trajectory.type !== 'Spice'` rejection. `cosmographiaGeometryToNative` (Globe,
+   Rings) exists but is never called from a multi-item import. There is no path that
+   turns a Cosmographia file with N bodies + spacecraft + geometry + rotationModel +
+   instruments into a `BesselCatalog`.
+
+5. **No exporter.** There is no `toCosmographia`, so there is no round-trip and no
+   round-trip test. Compatibility is import-only and lossy.
+
+6. **Per-item visual config not honored.** `trajectoryPlot` (lead/trail/duration/
+   color/fade/sampleCount) and per-item `label` (text/color/show) are in the schema
+   on `body` and `spacecraft`, but `native-types.ts` `CatalogBody`/`CatalogSpacecraft`
+   omit both fields and `generic-mission.ts` synthesizes its own trajectory color
+   ramp and labels, ignoring the catalog's. The declared visual intent is dropped.
+
+7. **Cosmographia input renders nothing.** `apps/web/src/catalog-load.ts` routes
+   Cosmographia input to `parseCosmographiaCatalog` and returns a one-entry list;
+   only `kind === 'native'` carries a `catalog` for `renderNativeMission`. So a
+   dropped Cosmographia file never reaches the scene builder.
+
+### 16.2 Field-level coverage table
+
+Cosmographia construct names follow the cosmoguide.org catalog reference. "Status"
+is the **target** after this section's work lands; the current state is in 16.1.
+
+| Cosmographia construct | Bessel native equivalent | Status (target) | Note |
+| --- | --- | --- | --- |
+| `trajectory.type = "Spice"` (target, center, frame) | `Trajectory{ type:'Spice', target, center, frame }` | Done (today) | Already sampled via `spkpos`/`spkezr` in `sampler.ts`. Add explicit `target` field (today the spacecraft `id` carries it). |
+| `trajectory.type = "InterpolatedStates"` / sampled states | `Trajectory{ type:'Sampled', source, frame, center }` | New | Sample table from a referenced states source (XYZ/OEM-like). Wire to an in-memory sampler; SPICE not required. |
+| `trajectory.type = "Keplerian"` (period, sma, ecc, inc, raan, argp, M0, epoch) | `Trajectory{ type:'Keplerian', elements:{ a,e,i,raan,argp,m0,epoch }, center, frame, mu? }` | New | Wire to `@bessel/propagator` `propagateMeanElements` (CSPICE `conics`), reuses the existing Kepler math. |
+| `trajectory.type = "TLE"` / two-line element | `Trajectory{ type:'Tle', line1, line2, center?, frame? }` | New | Wire to `parseTle` + `sgp4init`/`sgp4` (TEME), rotate with `temeToJ2000AtEt`. Earth-centric. |
+| `trajectory.type = "FixedPoint"` (position) | `Trajectory{ type:'Fixed', position:[x,y,z], center, frame }` | New | Constant position; no propagation. Landmarks, fixed stations. |
+| `rotationModel.type = "Spice"` (frame) | `Orientation{ type:'Spice', frame }` | Done | `bodyRotation`/`resolveAttitude` consume it via `pxform`. |
+| `rotationModel.type = "Fixed"` (quaternion) | `Orientation{ type:'Fixed', quaternion }` | Done | `resolveAttitude` kind `fixed`. |
+| `rotationModel.type = "UniformRotation"` (axis, rate, epoch) | `Orientation{ type:'UniformRotation', axis, ratePerSec, epoch }` | Done | `resolveAttitude` kind `uniform`. |
+| `rotationModel.type = "TwoVector"` (primary/secondary axis + target) | `Orientation{ type:'TwoVector', primary, secondary }` | New | Add axis/target params; resolve both directions via SPICE, build the basis, hand a quaternion to the attitude path. |
+| `geometry.type = "Globe"` (baseMap, normalMap, nightTexture, cloudMap, specular, atmosphere) | `Geometry{ type:'Globe', ... }` | Done | `cosmographiaGeometryToNative` maps `baseMap`->`texture` and the rest; rendered by `body-material.ts`. |
+| `geometry.type = "RingSystem"` (inner/outer/texture) | `Geometry{ type:'Rings', innerRadius, outerRadius, texture }` | Done | `cosmographiaGeometryToNative` + `ringSpecFromGeometry`. |
+| `geometry.type` Mesh / DSK / ParticleSystem / KeplerianSwarm / TimeSwitched | matching native geometry `$defs` | Partial->Done | TS types and renderers exist; importer must map them (today only Globe/Rings are mapped). |
+| `label` (color, fadeSize/visibility) | `label{ text, color, show }` | New | Add to `CatalogBody`/`CatalogSpacecraft` TS; honor in `generic-mission.ts` label build. |
+| `trajectoryPlot` (lead, trail, duration, sampleCount, color, fade) | `trajectoryPlot{ ... }` (schema has it) | New (wire) | Add to TS body/spacecraft; honor lead/trail/color/sampleCount in the trajectory polyline build. |
+| Sensor catalog (`sensor`, `frame`, FOV shape/angles, range, target) | `instrument{ id, parent, sensor, targets, fov }` | Done (import new) | TS + renderer exist; importer must read the per-sensor files into the `targets`-array collapse. |
+| Observation catalog (intervals, footprint color) | `observation{ instrument, target, intervals, footprintColor }` | Done (import new) | TS + renderer exist; importer must map. |
+| Catalog List (multi-file include) | flattened into one `BesselCatalog` | New | Importer resolves includes and merges items. |
+
+### 16.3 Target end-state
+
+**Full bidirectional round-trip.** `fromCosmographia(raw) -> BesselCatalog` and
+`toCosmographia(catalog) -> CosmographiaCatalog`, with a property/fixture test
+asserting that on the **lossless subset** the round-trip
+`cosmo -> native -> cosmo` is identity up to canonical key ordering and unit
+normalization.
+
+**Lossless subset (round-trips exactly):**
+- Items: body and spacecraft with `id`/`name`.
+- Trajectory: `Spice`, `Keplerian`, `Tle`, `Fixed`, `Sampled` (all five names map
+  1:1 in both directions).
+- Orientation: `Spice`, `Fixed`, `UniformRotation`, `TwoVector`.
+- Geometry: `Globe`, `Rings`, `Mesh`, `DSK`, `ParticleSystem`, `KeplerianSwarm`,
+  `TimeSwitched`.
+- `label`, `trajectoryPlot`, `mass` (string and object forms), and the
+  `instrument` + `observation` collapse.
+
+**Documented lossy constructs (asserted lossy, not silently dropped):**
+- Cosmographia per-sensor-per-target file explosion collapses into one
+  `instrument.targets` array: exporting re-expands deterministically but file
+  *names* are synthesized, not preserved. Lossy on filenames, lossless on content.
+- Cosmographia visual fields with no native equivalent (e.g. unmodeled shader
+  knobs) are recorded in a `besselExtra`/passthrough bag on export and re-emitted on
+  import, or, if dropped, logged via a typed `CatalogWarning` so loss is explicit.
+- Atmosphere remains permissive (schema `geometryGlobe.atmosphere` is an open
+  object); its sub-fields round-trip verbatim through the passthrough bag.
+
+### 16.4 Implementation-ready design (items 1-5 + export)
+
+#### Item 1: reconcile schema <-> TS trajectory/orientation names
+
+Pick the **schema names as canonical** (schema is the validation source of truth).
+- Schema `trajectory.type` enum stays `Spice | Keplerian | Tle | Fixed | Sampled`
+  (add `Tle`).
+- `native-types.ts` `Trajectory.type` changes `InterpolatedStates -> Sampled` and
+  `FixedPoint -> Fixed`, adds `Tle`. Grep for the old names across the workspace
+  (`InterpolatedStates`, `FixedPoint`) and update consumers; none are referenced in
+  `generic-mission.ts` today, so the blast radius is the type and any test fixtures.
+- Add a `schema.test.ts` assertion that every TS `Trajectory['type']` /
+  `Orientation['type']` union member equals a schema enum member (a compile-time
+  + runtime cross-check, so future drift fails the gate).
+
+#### Item 2: TLE trajectory (model + wire sgp4)
+
+Schema `$defs.trajectory` gains, under a `Tle` discriminant:
+```jsonc
+{ "type": "Tle", "line1": "string", "line2": "string",
+  "center": { "$ref": "#/$defs/id" }, "frame": { "type": "string" } }
+```
+TS:
+```ts
+| { readonly type: 'Tle'; readonly line1: string; readonly line2: string;
+    readonly center?: string; readonly frame?: string }
+```
+Wiring (new `apps/web/src/trajectory/tle.ts`, called from the scene builder, not
+in core, to keep the layering rule): `parseTle(line1,line2)` -> `sgp4init` ->
+for each sample epoch `sgp4(rec, (et - epochEt)/60)` gives a TEME state, then
+`temeToJ2000AtEt(state, et)` (from `@bessel/propagator` frames) rotates it into
+J2000, expressed relative to Earth (`center` default `EARTH`/`399`). Output a flat
+`[x,y,z]` table in the same shape `EphemerisTable.byBody` expects, so the polyline
+and centering reuse the existing path. SGP4 epoch comes from `Tle.epochUtc` via
+`spice.str2et`.
+
+#### Item 3: Keplerian + Fixed + Sampled trajectory params (wire conics/interp)
+
+Schema `$defs.trajectory` becomes a `oneOf` discriminated union (replacing the
+stub), one branch per type, each `additionalProperties:false`:
+- `Keplerian`: `{ type, elements:{ a,e,i,raan,argp,m0,epoch }, center, frame, mu? }`
+  where angles are radians and `epoch` is UTC; `a` km. Reuse `$defs` for the
+  element block.
+- `Fixed`: `{ type, position:[x,y,z], center, frame }` (km in `frame`).
+- `Sampled`: `{ type, source, format?, center, frame }` where `source` is a
+  PAL-resolvable URL to a states table (XYZ rows or OEM); `format` enum
+  `xyz|oem`.
+- `Spice`: `{ type, target?, center, frame }` (unchanged plus optional `target`).
+
+TS mirrors each branch as a discriminated union member (`Trajectory` becomes a
+union, not a single interface; `Arc.trajectory` and body/spacecraft `trajectory`
+already reference it).
+
+Wiring:
+- **Keplerian** -> `@bessel/propagator` `propagateMeanElements(spice, el, body,
+  etGrid, frame)` where `el: ClassicalElements` is the catalog elements (with
+  `epoch` converted via `str2et`) and `body: CentralBody` is `{ gm, j2:0, re:0 }`
+  (two-body unless J2 is later declared); `mu` from the catalog or `bodvrd(center,
+  'GM')`. It already returns a propagator `EphemerisTable`; adapt rows into the
+  app `EphemerisTable` shape.
+- **Fixed** -> emit the constant `position` for every sample epoch (no SPICE).
+- **Sampled** -> fetch via the PAL `KernelSource`/`FileSystem` (never read bytes
+  directly, per the architecture rule), parse XYZ/OEM into a states table, and
+  interpolate with the existing `positionAt` Hermite/linear path.
+
+A new `apps/web/src/trajectory/index.ts` exposes
+`sampleTrajectory(spice, pal, trajectory, etGrid, center): Promise<Float64Array>`
+that switches on `trajectory.type` and returns the flat table. `generic-mission.ts`
+calls this **instead of** unconditionally `sampleEphemeris`-by-NAIF-id, so non-SPICE
+trajectories finally reach the scene. SPICE remains the path for `type:'Spice'`.
+
+#### Item 4: full `fromCosmographia` importer
+
+New `fromCosmographia(raw): BesselCatalog` in `cosmographia.ts` (the existing
+single-item `parseCosmographiaCatalog` stays for back-compat / the quick-entry
+path). It:
+1. Resolves Catalog-List includes (merge `items` across referenced files; for the
+   web path, includes are pre-bundled or rejected loudly).
+2. Iterates **all** items, classifying each by `class` into `bodies` vs
+   `spacecraft` (default: has `geometry.Globe`/no trajectory -> body; has a
+   trajectory -> spacecraft).
+3. Maps each item's `trajectory` through a new `cosmographiaTrajectoryToNative`
+   covering all five types (Spice/Keplerian/Tle/Fixed/Sampled), not just Spice.
+4. Maps `rotationModel` -> `Orientation` (all four types incl. TwoVector).
+5. Maps `geometry` through `cosmographiaGeometryToNative`, extended to Mesh/DSK/
+   ParticleSystem/KeplerianSwarm/TimeSwitched (today only Globe/Rings).
+6. Reads Sensor + Observation catalogs into `instruments[]` (collapsing
+   per-sensor-per-target files into the `targets` array) and `observations[]`.
+7. Carries `label`, `trajectoryPlot`, and `mass` per item.
+8. Validates the assembled object against the schema (`parseBesselCatalog`) so the
+   importer output is guaranteed schema-valid, and fails loudly with a located
+   `CatalogError` on any bad reference.
+
+`catalog-load.ts` changes: `parseAnyCatalog` routes Cosmographia input through
+`fromCosmographia` and returns `{ kind:'cosmographia', entries:
+nativeEntries(catalog), catalog }` so Cosmographia files now carry a `catalog` and
+reach `renderNativeMission` exactly like native ones.
+
+#### Item 5: honor `trajectoryPlot` + `label`, and TwoVector params
+
+- TS: add `readonly label?: Label` and `readonly trajectoryPlot?: TrajectoryPlot`
+  to `CatalogBody` and `CatalogSpacecraft`, mirroring the schema `$defs`.
+- `generic-mission.ts`: replace the hardcoded color ramp with the catalog
+  `trajectoryPlot.color`/`fade` when present; bound the polyline by `lead`/`trail`/
+  `duration` around the cursor epoch; use `sampleCount` for the polyline density.
+  Replace the synthesized `labels` array entries with the catalog `label.text`/
+  `color`, honoring `show:false` (omit the label).
+- TwoVector: add `primary`/`secondary` `{ axis:[x,y,z], target?:id, frame? }` to the
+  schema and TS `Orientation`. In a new `resolveTwoVector` (scene side), resolve the
+  two direction vectors via `spkpos`/`pxform`, Gram-Schmidt them into an orthonormal
+  basis, convert to a quaternion, and feed the existing `kind:'fixed'`-style
+  attitude path per epoch (or a small per-frame evaluator if it must track).
+
+#### Export: `toCosmographia` + round-trip
+
+New `toCosmographia(catalog: BesselCatalog): CosmographiaCatalog` in
+`cosmographia.ts`, the inverse of `fromCosmographia` on the lossless subset:
+- Emit one Cosmographia item per body/spacecraft with `class`, `name`,
+  `startTime`/`endTime` from the first arc, the trajectory (reversing each of the
+  five type maps), `rotationModel`, `geometry` (reversing the geometry maps,
+  e.g. `texture`->`baseMap`), `label`, `trajectoryPlot`, `mass`.
+- Re-expand `instruments[].targets` into per-target sensor items; synthesize stable
+  file/item names (documented lossy on names only).
+- Carry any `besselExtra` passthrough bag back into the item verbatim.
+
+Round-trip test (new `cosmographia-roundtrip.test.ts` in `packages/catalog`):
+- A real multi-item fixture (`packages/catalog/test/fixtures/cosmographia-multi.json`)
+  exercising at least one of each lossless trajectory/orientation/geometry type plus
+  an instrument + observation.
+- Assert `canonicalize(toCosmographia(fromCosmographia(fixture)))` deep-equals
+  `canonicalize(fixture)` on the lossless subset (canonicalize = sort keys, drop
+  synthesized filenames, normalize units/number formatting).
+- A property test (fast-check style, if available, else table-driven): for generated
+  catalogs over the lossless grammar, `fromCosmographia(toCosmographia(x))` is
+  identity on `x` for every native catalog `x` in the subset.
+- A negative test: a known-lossy construct emits a typed `CatalogWarning` rather
+  than silently dropping, satisfying the loud-failure rule.
+
+### 16.5 Section 2 status delta
+
+When this lands, Section 2 row 1 ("JSON catalog parsing ... five catalog types")
+flips **Partial -> Done**: the importer covers all item/trajectory/rotation/
+geometry types and the lossless round-trip is asserted by
+`cosmographia-roundtrip.test.ts`. The scorecard line `2. Catalog and data model`
+moves from `3 Done / 1 Partial` to `4 Done / 0 Partial`. The remaining lossy
+constructs are recorded as **By-design** (filename non-preservation) rather than a
+gap, with the warning path as evidence.
+
+---
+
 ## Sources
 
 - SPICE-Enhanced Cosmographia User's Guide, cosmoguide.org: Geometry Types
