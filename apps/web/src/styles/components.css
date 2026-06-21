@@ -880,6 +880,52 @@ button[aria-pressed='true'] {
   padding-right: 0;
 }
 
+/* The shared analysis context bar at the top of the dock: a sticky, wrapping row of
+   compact labelled inputs that every tab reads by default. */
+.bessel-analysis-context-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.bessel-analysis-context-bar label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-1);
+}
+
+.bessel-context-epoch {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}
+
+.bessel-context-time {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.bessel-context-frame-custom {
+  width: 8rem;
+}
+
+.bessel-shared-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-1);
+}
+
 /* One-click sample mission chip and the load-from-URL field (B4). */
 .bessel-loader-sample {
   font-size: 0.8rem;

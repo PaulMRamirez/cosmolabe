@@ -83,8 +83,10 @@ test('analysis tools honor user-supplied parameters (span, target, secondary)', 
   await loadCassiniSample(page);
   await openAnalyze(page, 'access');
 
-  // The shared parameter form drives the span-based and target-based tools.
+  // Tools use the shared context by default; turn the override on to drive the
+  // span-based and target-based tools with this tab's own parameters.
   await expect(page.getByTestId('analysis-params')).toBeVisible();
+  await page.getByTestId('analysis-use-shared').uncheck();
   await page.getByTestId('param-span-days').fill('2');
   await page.getByTestId('param-target').selectOption('Saturn');
 

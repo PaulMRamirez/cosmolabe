@@ -48,7 +48,7 @@ import {
   newBookmarkId,
   type Bookmark,
 } from '../bookmarks.ts';
-import type { AppStore, AnalyzeTab } from '../store/index.ts';
+import type { AppStore, AnalysisContext, AnalyzeTab } from '../store/index.ts';
 import { bootScene, loadInstrument, type EngineCore } from './bootstrap.ts';
 import { applyViewModel } from './apply-view.ts';
 import { type HpopForceModel } from './hpop-model.ts';
@@ -984,6 +984,11 @@ export class BesselEngine {
   /** Select an Analyze dock tab, opening the dock if it is closed. */
   setAnalyzeTab(tab: AnalyzeTab): void {
     this.store.setState(() => ({ analyzeOpen: true, analyzeTab: tab }));
+  }
+
+  /** Patch the shared analysis context (span, step, target, observer, frame). */
+  setAnalysisContext(patch: Partial<AnalysisContext>): void {
+    this.store.setState((s) => ({ analysisContext: { ...s.analysisContext, ...patch } }));
   }
 
   stepRate(dir: -1 | 1): void {

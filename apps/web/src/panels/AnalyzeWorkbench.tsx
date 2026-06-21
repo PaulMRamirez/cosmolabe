@@ -7,6 +7,7 @@
 // stays lazy (panels/lazy.tsx), so the first-paint shell budget is unaffected.
 
 import { useCallback, type KeyboardEvent } from 'react';
+import { AnalysisContextBar } from './AnalysisContextBar.tsx';
 import {
   AnalysisPanel,
   MissionPanel,
@@ -67,6 +68,7 @@ export function AnalyzeWorkbench(props: AnalyzeWorkbenchProps): JSX.Element {
           <span aria-hidden="true">✕</span>
         </button>
       </div>
+      <AnalysisContextBar engine={engine} store={store} />
       <div className="bessel-tabs" role="tablist" aria-label="Analysis tools" onKeyDown={onKeyNav}>
         {TABS.map((t) => (
           <button

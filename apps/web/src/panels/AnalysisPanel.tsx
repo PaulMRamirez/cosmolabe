@@ -116,31 +116,37 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   const objects = useStore(store, (s) => s.objects);
   const names = useMemo(() => objects.map((o) => o.name), [objects]);
 
-  // Shared analysis parameters: a time span and step the span-based tools use, an
-  // optional target object for range/access, and a secondary object for conjunction.
-  // Empty target/secondary mean "use the tool default" (center body or the Sun).
+  // The span-based tools read their span, step, and target from the shared analysis
+  // context by default; a per-tool override reveals the local inputs below. The
+  // secondary (conjunction) object stays local: it is conjunction-specific, not shared.
+  const ctx = useStore(store, (s) => s.analysisContext);
+  const [useShared, setUseShared] = useState(true);
   const [spanDays, setSpanDays] = useState(1);
   const [stepSec, setStepSec] = useState(120);
   const [target, setTarget] = useState('');
   const [secondary, setSecondary] = useState('');
-  const spanSec = Math.max(60, spanDays * 86400);
-  const span = { spanSec, stepSec: Math.max(1, stepSec) };
+
+  const effSpanSec = useShared ? ctx.spanSec : Math.max(60, spanDays * 86400);
+  const effStepSec = useShared ? ctx.stepSec : Math.max(1, stepSec);
+  const effTarget = useShared ? ctx.target : target;
+  const span = { spanSec: effSpanSec, stepSec: effStepSec };
+  const targetSpan = { ...span, ...(effTarget ? { target: effTarget } : {}) };
 
   // Run-parameter metadata stamped onto every exported CSV so a result is reproducible.
   const epochLabel = useStore(store, (s) => s.epochLabel);
+  const timeSystem = useStore(store, (s) => s.timeSystem);
   const runMeta = useMemo(
     () => ({
       epoch: epochLabel || undefined,
-      timeSystem: 'UTC' as const,
-      frame: 'J2000',
-      span: `${spanDays} d`,
-      step: `${Math.max(1, stepSec)} s`,
-      ...(target ? { target } : {}),
+      timeSystem,
+      frame: useShared ? ctx.frame : 'J2000',
+      span: `${(effSpanSec / 86400).toFixed(2)} d`,
+      step: `${effStepSec} s`,
+      ...(effTarget ? { target: effTarget } : {}),
       ...(secondary ? { secondary } : {}),
     }),
-    [epochLabel, spanDays, stepSec, target, secondary],
+    [epochLabel, timeSystem, useShared, ctx.frame, effSpanSec, effStepSec, effTarget, secondary],
   );
-  const targetSpan = { ...span, ...(target ? { target } : {}) };
 
   const eclipseUmbra = useStore(store, (s) => s.eclipseUmbra);
   const eclipseSpan = useStore(store, (s) => s.eclipseSpan);
@@ -163,40 +169,59 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           Load a spacecraft to analyze. Tools below run on sample data.
         </p>
       ) : null}
-      {/* Shared parameters threaded into the span-based and target-based tools. */}
+      {/* Span/step/target come from the shared context bar by default; the override
+          reveals the local inputs. Secondary (conjunction) is always local. */}
       <div className="bessel-analysis-params" data-testid="analysis-params">
-        <label>
-          Span (days)
+        <label className="bessel-shared-toggle">
           <input
-            type="number"
-            min={0.01}
-            step={0.5}
-            value={spanDays}
-            onChange={(ev) => setSpanDays(Math.max(0.01, Number(ev.target.value)))}
-            data-testid="param-span-days"
+            type="checkbox"
+            checked={useShared}
+            onChange={(ev) => setUseShared(ev.target.checked)}
+            data-testid="analysis-use-shared"
           />
+          Use shared context
         </label>
-        <label>
-          Step (s)
-          <input
-            type="number"
-            min={1}
-            value={stepSec}
-            onChange={(ev) => setStepSec(Math.max(1, Number(ev.target.value)))}
-            data-testid="param-step-sec"
-          />
-        </label>
-        <label>
-          Target (range/access)
-          <select value={target} onChange={(ev) => setTarget(ev.target.value)} data-testid="param-target">
-            <option value="">(default)</option>
-            {names.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        {useShared ? (
+          <p className="bessel-loader-hint" data-testid="analysis-shared-indicator">
+            Using shared context: {(ctx.spanSec / 86400).toFixed(2)} d span, {ctx.stepSec} s step
+            {ctx.target ? `, target ${ctx.target}` : ''}.
+          </p>
+        ) : (
+          <>
+            <label>
+              Span (days)
+              <input
+                type="number"
+                min={0.01}
+                step={0.5}
+                value={spanDays}
+                onChange={(ev) => setSpanDays(Math.max(0.01, Number(ev.target.value)))}
+                data-testid="param-span-days"
+              />
+            </label>
+            <label>
+              Step (s)
+              <input
+                type="number"
+                min={1}
+                value={stepSec}
+                onChange={(ev) => setStepSec(Math.max(1, Number(ev.target.value)))}
+                data-testid="param-step-sec"
+              />
+            </label>
+            <label>
+              Target (range/access)
+              <select value={target} onChange={(ev) => setTarget(ev.target.value)} data-testid="param-target">
+                <option value="">(default)</option>
+                {names.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
         <label>
           Secondary (conjunction)
           <select value={secondary} onChange={(ev) => setSecondary(ev.target.value)} data-testid="param-secondary">

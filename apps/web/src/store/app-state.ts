@@ -13,6 +13,20 @@ import { createStore, type Store } from './create-store.ts';
 /** The active tab in the consolidated Analyze dock. */
 export type AnalyzeTab = 'propagation' | 'maneuver' | 'od' | 'access' | 'report' | 'compare';
 
+/** Shared analysis parameters that every analysis tab reads by default (a tool can
+ *  override locally). The run epoch is not held here: it is the live timeline epoch,
+ *  so every tool already shares it; this slice holds the span, grid, and pointing. */
+export interface AnalysisContext {
+  readonly spanSec: number;
+  readonly stepSec: number;
+  /** '' means the tool default (center body / Sun). */
+  readonly target: string;
+  /** '' means the tool default. */
+  readonly observer: string;
+  /** Validated SPICE frame name; free entry is allowed and fails loudly at run. */
+  readonly frame: string;
+}
+
 export interface AppState {
   // Lifecycle.
   status: string;
@@ -29,6 +43,8 @@ export interface AppState {
   analyzeOpen: boolean;
   /** The active tab in the Analyze dock. */
   analyzeTab: AnalyzeTab;
+  /** Shared analysis parameters the dock's tabs read by default. */
+  analysisContext: AnalysisContext;
   // Camera and selection.
   focus: string;
   selection: readonly string[];
@@ -254,6 +270,7 @@ export const initialAppState: AppState = {
   timeSystem: 'UTC',
   analyzeOpen: false,
   analyzeTab: 'access',
+  analysisContext: { spanSec: 86400, stepSec: 120, target: '', observer: '', frame: 'J2000' },
   // Default to a heliocentric whole-system view; a loaded mission recenters on
   // its own center body.
   focus: 'Sun',

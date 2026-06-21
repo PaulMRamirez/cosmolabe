@@ -11,7 +11,8 @@ test('report workbench runs a provider and exports CSV', async ({ page }) => {
   await loadCassiniSample(page);
 
   await openAnalyze(page, 'report');
-  // Default provider is range; pick Cassini -> Saturn and run.
+  // Default provider is range; override the shared context to pick Cassini -> Saturn.
+  await page.getByTestId('report-use-shared').uncheck();
   await page.getByTestId('report-observer').selectOption('Cassini');
   await page.getByTestId('report-target').selectOption('Saturn');
   await page.getByTestId('run-report').click();
