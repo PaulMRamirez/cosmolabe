@@ -32,6 +32,36 @@ test('the scripting console runs a cosmoscripting program against the viewer', a
   expect(output).toContain('setTimeRate 3600');
 });
 
+test('the scripting console saves, reloads, and runs a named script with Cmd+Enter', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await page.getByTestId('welcome-explore').click();
+
+  await page.getByTestId('script-menu').click();
+  const input = page.getByTestId('script-input');
+  await input.fill('gotoObject Mars\nsetTimeRate 60');
+
+  // Save the program under a name, then edit the editor away from it.
+  await page.getByTestId('script-name').fill('mars-run');
+  await page.getByTestId('script-save').click();
+  await input.fill('pause');
+
+  // Reloading the saved script from the menu restores its source.
+  await page.getByTestId('script-load').selectOption('mars-run');
+  await expect(input).toHaveValue('gotoObject Mars\nsetTimeRate 60');
+
+  // Cmd/Ctrl+Enter in the editor runs without clicking the button.
+  await input.focus();
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect.poll(async () =>
+    page.getByTestId('viewport').getAttribute('data-cam-target'),
+  ).toBe('Mars');
+  const output = await page.getByTestId('script-output').textContent();
+  expect(output).toContain('gotoObject Mars');
+});
+
 test('the scripting console reports a bad line loudly without aborting prior verbs', async ({
   page,
 }) => {

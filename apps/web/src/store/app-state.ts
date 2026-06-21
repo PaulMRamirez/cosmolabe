@@ -8,6 +8,7 @@ import type { PredictedVsActual } from '@bessel/state';
 import type { TimelineAnnotation } from '@bessel/timeline';
 import { DEFAULT_OBJECT_ENTRIES } from '../catalog-load.ts';
 import type { Bookmark } from '../bookmarks.ts';
+import type { SavedScript } from '../scripts.ts';
 import { createStore, type Store } from './create-store.ts';
 
 /** The active tab in the consolidated Analyze dock. */
@@ -152,6 +153,8 @@ export interface AppState {
   spacecraftQuat: readonly [number, number, number, number] | null;
   // Saved views.
   bookmarks: readonly Bookmark[];
+  // Named scripts persisted through PAL Storage, for the scripting console.
+  savedScripts: readonly SavedScript[];
 }
 
 export interface Series {
@@ -369,6 +372,7 @@ export const initialAppState: AppState = {
   annotations: [],
   spacecraftQuat: null,
   bookmarks: [],
+  savedScripts: [],
 };
 
 export type AppStore = Store<AppState>;

@@ -36,6 +36,7 @@ import {
   type KeyboardAction,
 } from '@bessel/ui';
 import { createAppStore, useStore, type AppStore } from './store/index.ts';
+import { SCRIPT_VERBS } from './script-runner.ts';
 import { useBesselEngine } from './engine/index.ts';
 import { createMissionRegistry } from './missions.ts';
 import { AppShell, resolvePanel, pluginPanelIds } from './shell/index.ts';
@@ -130,8 +131,19 @@ export function BesselViewer(): JSX.Element {
     const result = engine.runScript(scriptSource);
     const lines = [...result.echoLines];
     if (result.error) lines.push(`error on line ${result.error.line}: ${result.error.message}`);
-    setScriptLog(lines.length ? lines : ['(no verbs to run)']);
+    const run = lines.length ? lines : ['(no verbs to run)'];
+    // Accumulate a run-log: a divider then this run's echo, keeping the tail bounded
+    // so a long session does not grow the DOM without limit.
+    setScriptLog((prev) => [...prev, '--- run ---', ...run].slice(-200));
   }, [engine, scriptSource]);
+
+  const loadSavedScript = useCallback(
+    (name: string): void => {
+      const found = store.getState().savedScripts.find((s) => s.name === name);
+      if (found) setScriptSource(found.source);
+    },
+    [store],
+  );
 
   const status = useStore(store, (s) => s.status);
   const ready = useStore(store, (s) => s.ready);
@@ -176,6 +188,7 @@ export function BesselViewer(): JSX.Element {
   const welcomeSeen = useStore(store, (s) => s.welcomeSeen);
   const measurement = useStore(store, (s) => s.measurement);
   const bookmarks = useStore(store, (s) => s.bookmarks);
+  const savedScripts = useStore(store, (s) => s.savedScripts);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -276,6 +289,12 @@ export function BesselViewer(): JSX.Element {
             onChange={setScriptSource}
             onRun={runScript}
             log={scriptLog}
+            onClearLog={() => setScriptLog([])}
+            verbs={SCRIPT_VERBS}
+            savedScriptNames={savedScripts.map((s) => s.name)}
+            onSave={(name) => void engine?.saveScript(name, scriptSource)}
+            onLoadSaved={loadSavedScript}
+            onDeleteSaved={(name) => void engine?.deleteScript(name)}
           />
         </PanelSuspense>
       </Popover>

@@ -1650,6 +1650,48 @@ button[aria-pressed='true'] {
   min-height: 1.5rem;
 }
 
+/* Save/load named scripts: a name field, save, load menu, delete. */
+.bessel-script-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bessel-script-name {
+  flex: 1 1 6rem;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--text-0);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem var(--space-2);
+}
+
+/* Collapsible verb reference. */
+.bessel-script-ref {
+  font-size: 0.78rem;
+  color: var(--text-1);
+}
+
+.bessel-script-verbs {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.1rem var(--space-2);
+}
+
+.bessel-script-verbs code {
+  color: var(--text-0);
+}
+
+.bessel-script-arity {
+  color: var(--text-2);
+}
+
 /* Utilities -------------------------------------------------------------- */
 
 .bessel-visually-hidden {

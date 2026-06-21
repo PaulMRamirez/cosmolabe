@@ -49,6 +49,7 @@ import {
   newBookmarkId,
   type Bookmark,
 } from '../bookmarks.ts';
+import { loadSavedScripts, persistSavedScripts, upsertScript } from '../scripts.ts';
 import {
   KEPT_SNAPSHOT_LIMIT,
   type AppStore,
@@ -183,6 +184,7 @@ export class BesselEngine {
       this.store.setState({ status: 'Ready', ready: true });
       void this.loadBookmarksFromStorage();
       void this.loadWelcomeSeenFromStorage();
+      void this.loadSavedScriptsFromStorage();
     } catch (err) {
       if (!this.disposed) {
         this.store.setState({
@@ -1030,6 +1032,31 @@ export class BesselEngine {
     if (!e) return;
     const bookmarks = await loadBookmarks(e.storage);
     if (!this.disposed) this.store.setState({ bookmarks });
+  }
+
+  private async loadSavedScriptsFromStorage(): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    const savedScripts = await loadSavedScripts(e.storage);
+    if (!this.disposed) this.store.setState({ savedScripts });
+  }
+
+  /** Save (or replace) a named script and persist the list through PAL Storage. */
+  async saveScript(name: string, source: string): Promise<void> {
+    const e = this.core;
+    if (!e || !name.trim()) return;
+    const next = upsertScript(this.store.getState().savedScripts, name.trim(), source);
+    this.store.setState({ savedScripts: next });
+    await persistSavedScripts(e.storage, next);
+  }
+
+  /** Delete a named script and persist the trimmed list. */
+  async deleteScript(name: string): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    const next = this.store.getState().savedScripts.filter((s) => s.name !== name);
+    this.store.setState({ savedScripts: next });
+    await persistSavedScripts(e.storage, next);
   }
 
   private async loadWelcomeSeenFromStorage(): Promise<void> {

@@ -107,6 +107,11 @@ const VERBS: Readonly<Record<string, VerbSpec>> = {
   viewAlongVelocity: { arity: 0, apply: (s) => void s.viewAlongVelocity() },
 };
 
+/** The accepted verb names, each with its argument count, for the console reference. */
+export const SCRIPT_VERBS: readonly { readonly verb: string; readonly arity: number }[] = Object.entries(
+  VERBS,
+).map(([verb, spec]) => ({ verb, arity: spec.arity }));
+
 /** Split a line into tokens, honoring double-quoted string literals. */
 function tokenize(line: number, text: string): string[] {
   const tokens: string[] = [];

@@ -9,6 +9,7 @@ import { SearchBox } from './SearchBox.tsx';
 import { ObjectInspector } from './ObjectInspector.tsx';
 import { MeasurePanel } from './MeasurePanel.tsx';
 import { BookmarksPanel } from './BookmarksPanel.tsx';
+import { ScriptConsole } from './ScriptConsole.tsx';
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]): string => renderToStaticMarkup(el);
 
@@ -123,6 +124,45 @@ describe('@bessel/ui MeasurePanel', () => {
     expect(out).toContain('Saturn');
     expect(out).toContain('data-testid="measure-angle"');
     expect(out).toContain('12.35 deg');
+  });
+});
+
+describe('@bessel/ui ScriptConsole', () => {
+  const noop = (): void => undefined;
+  const base = {
+    source: 'gotoObject Earth',
+    onChange: noop,
+    onRun: noop,
+    log: ['1: gotoObject Earth'],
+    onClearLog: noop,
+    verbs: [
+      { verb: 'gotoObject', arity: 1 },
+      { verb: 'pause', arity: 0 },
+    ],
+    savedScriptNames: ['flyby', 'survey'],
+    onSave: noop,
+    onLoadSaved: noop,
+    onDeleteSaved: noop,
+  };
+
+  it('renders the editor, run/clear actions, save/load controls, and the verb reference', () => {
+    const out = html(createElement(ScriptConsole, base));
+    expect(out).toContain('data-testid="script-input"');
+    expect(out).toContain('data-testid="script-run"');
+    expect(out).toContain('data-testid="script-clear-log"');
+    expect(out).toContain('data-testid="script-save"');
+    expect(out).toContain('data-testid="script-load"');
+    expect(out).toContain('data-testid="script-verbs"');
+    // The saved names appear as load options and the verbs in the reference list.
+    expect(out).toContain('flyby');
+    expect(out).toContain('survey');
+    expect(out).toContain('gotoObject');
+    expect(out).toContain('Verb reference (2)');
+  });
+
+  it('disables Save with an empty name field by default', () => {
+    const out = html(createElement(ScriptConsole, base));
+    expect(out).toMatch(/<button[^>]*\bdisabled\b[^>]*data-testid="script-save"/);
   });
 });
 
