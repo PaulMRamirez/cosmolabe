@@ -158,6 +158,21 @@ export function orbitFade(ratio: number): number {
   );
 }
 
+/**
+ * Located, typed scene error (fail loudly, CLAUDE.md). Thrown for graph-level
+ * invariants the caller must fix, e.g. an objectId collision between a spacecraft
+ * and a body (which would make picking non-deterministic and co-locate both meshes).
+ */
+export class SceneError extends Error {
+  constructor(
+    message: string,
+    readonly location: string,
+  ) {
+    super(message);
+    this.name = 'SceneError';
+  }
+}
+
 interface BodyNode {
   readonly def: PlanetDef;
   readonly mesh: Mesh;
@@ -244,6 +259,19 @@ export class SolarSystemScene {
   }
 
   setBodies(defs: readonly PlanetDef[]): void {
+    // A body name doubles as its objectId (picking key); a spacecraft already in the
+    // scene that shares a body name would collide on that key, so reject it loudly
+    // rather than co-locating both meshes under one ambiguous id.
+    if (this.spacecraft) {
+      for (const def of defs) {
+        if (def.name === this.spacecraft.name) {
+          throw new SceneError(
+            `Body name "${def.name}" collides with the spacecraft objectId; ids must be unique`,
+            'SolarSystemScene.setBodies',
+          );
+        }
+      }
+    }
     this.hasCloudShell = false;
     for (const def of defs) {
       const material = buildBodyMaterial(def, {
@@ -307,6 +335,15 @@ export class SolarSystemScene {
   }
 
   setSpacecraft(name: string, radiusKm = 200): void {
+    // The objectId is keyed by name; a spacecraft sharing a body name would make
+    // picking non-deterministic and co-locate both meshes. Reject the collision
+    // loudly so the caller assigns a distinct id (CLAUDE.md: fail loudly).
+    if (this.bodies.has(name)) {
+      throw new SceneError(
+        `Spacecraft name "${name}" collides with a body objectId; ids must be unique`,
+        'SolarSystemScene.setSpacecraft',
+      );
+    }
     const material = new MeshStandardMaterial({
       color: new Color('#e6e9ef'),
       emissive: new Color('#9fb4ff'),

@@ -41,10 +41,29 @@ class WebShare implements Share {
     };
     if (nav?.share) {
       await nav.share({ title: request.title, url: request.url });
-    } else if (nav?.clipboard) {
-      await nav.clipboard.writeText(request.url);
+      return request.url;
     }
-    return request.url;
+    if (nav?.clipboard?.writeText) {
+      // writeText rejects in an insecure or permission-blocked context; surface
+      // that loudly rather than reporting a copy that never happened (CLAUDE.md).
+      try {
+        await nav.clipboard.writeText(request.url);
+      } catch (err) {
+        throw new PalError(
+          `Clipboard write was blocked: ${err instanceof Error ? err.message : String(err)}`,
+          'not-supported',
+          'WebShare.shareLink',
+        );
+      }
+      return request.url;
+    }
+    // Neither the Web Share API nor the clipboard is available: fail loudly so the
+    // UI does not claim the link was shared or copied when nothing happened.
+    throw new PalError(
+      'No share or clipboard path is available to share the link',
+      'not-supported',
+      'WebShare.shareLink',
+    );
   }
   async shareFile(request: ShareFileRequest): Promise<void> {
     const blob = new Blob([request.data], { type: request.mimeType });
