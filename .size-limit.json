@@ -13,7 +13,7 @@
       "!apps/web/dist/assets/vendor-*.js",
       "!apps/web/dist/assets/spice.worker-*.js"
     ],
-    "limit": "46 KB",
+    "limit": "48 KB",
     "gzip": true
   },
   {

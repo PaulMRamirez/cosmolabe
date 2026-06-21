@@ -16,6 +16,18 @@ export type AnalyzeTab = 'propagation' | 'maneuver' | 'od' | 'access' | 'report'
 /** Per-tool run status: a compute action is idle, running, succeeded, or failed loudly. */
 export type RunStatus = 'idle' | 'running' | 'ok' | { readonly error: string };
 
+/** A kept analysis result snapshot, for side-by-side trade comparison. */
+export interface KeptSnapshot {
+  readonly id: string;
+  /** The tool the snapshot came from (access | conjunction | link); compared same-tool. */
+  readonly tool: string;
+  readonly name: string;
+  readonly metrics: readonly { readonly label: string; readonly value: string }[];
+}
+
+/** Maximum number of kept snapshots in the compare tray. */
+export const KEPT_SNAPSHOT_LIMIT = 4;
+
 /** Shared analysis parameters that every analysis tab reads by default (a tool can
  *  override locally). The run epoch is not held here: it is the live timeline epoch,
  *  so every tool already shares it; this slice holds the span, grid, and pointing. */
@@ -54,6 +66,8 @@ export interface AppState {
   timelineError: string | null;
   /** Per-tool run status keyed by the tool's action id (= its button data-testid). */
   runStatus: Readonly<Record<string, RunStatus>>;
+  /** Kept analysis snapshots shown in the compare tray. */
+  keptSnapshots: readonly KeptSnapshot[];
   // Camera and selection.
   focus: string;
   selection: readonly string[];
@@ -283,6 +297,7 @@ export const initialAppState: AppState = {
   welcomeSeen: false,
   timelineError: null,
   runStatus: {},
+  keptSnapshots: [],
   // Default to a heliocentric whole-system view; a loaded mission recenters on
   // its own center body.
   focus: 'Sun',

@@ -49,7 +49,14 @@ import {
   newBookmarkId,
   type Bookmark,
 } from '../bookmarks.ts';
-import type { AppStore, AnalysisContext, AnalyzeTab, RunStatus } from '../store/index.ts';
+import {
+  KEPT_SNAPSHOT_LIMIT,
+  type AppStore,
+  type AppState,
+  type AnalysisContext,
+  type AnalyzeTab,
+  type RunStatus,
+} from '../store/index.ts';
 import { bootScene, loadInstrument, type EngineCore } from './bootstrap.ts';
 import { applyViewModel } from './apply-view.ts';
 import { type HpopForceModel } from './hpop-model.ts';
@@ -88,10 +95,48 @@ export interface ShareResult {
   readonly copied: boolean;
 }
 
+type Metrics = readonly { readonly label: string; readonly value: string }[];
+
+/** Build the comparable metrics for a tool's current result, or null if there is none. */
+function snapshotMetrics(tool: 'access' | 'conjunction' | 'link', s: AppState): Metrics | null {
+  const n = (v: number, d = 2): string => (Number.isFinite(v) ? v.toFixed(d) : '-');
+  if (tool === 'access') {
+    const f = s.accessFom;
+    if (!f) return null;
+    return [
+      { label: 'coverage %', value: n(f.percentCoverage * 100, 1) },
+      { label: 'passes', value: String(f.accessCount) },
+      { label: 'max gap (min)', value: n(f.maxGapSec / 60, 1) },
+    ];
+  }
+  if (tool === 'conjunction') {
+    const c = s.conjunction;
+    if (!c) return null;
+    return [
+      { label: 'Pc', value: c.pc.toExponential(2) },
+      { label: 'miss (km)', value: n(c.missKm) },
+      { label: 'rel speed (km/s)', value: n(c.relSpeedKmS, 3) },
+    ];
+  }
+  const link = s.linkSeries;
+  if (!link || link.value.length === 0) return null;
+  let min = Infinity;
+  let sum = 0;
+  for (const v of link.value) {
+    if (v < min) min = v;
+    sum += v;
+  }
+  return [
+    { label: 'min Eb/N0 (dB)', value: n(min, 1) },
+    { label: 'mean Eb/N0 (dB)', value: n(sum / link.value.length, 1) },
+  ];
+}
+
 export class BesselEngine {
   private core: EngineCore | null = null;
   private raf = 0;
   private lastTs = 0;
+  private snapSeq = 0;
   private labelAccum = 0;
   private instrumentAccum = 0;
   private readoutAccum = 0;
@@ -548,6 +593,28 @@ export class BesselEngine {
 
   private setRunStatus(id: string, status: RunStatus): void {
     this.store.setState((s) => ({ runStatus: { ...s.runStatus, [id]: status } }));
+  }
+
+  /** Keep the current result of an analysis tool as a named snapshot for comparison.
+   *  A no-op when the tool has no result yet or the tray is already full. */
+  keepSnapshot(tool: 'access' | 'conjunction' | 'link'): void {
+    const s = this.store.getState();
+    if (s.keptSnapshots.length >= KEPT_SNAPSHOT_LIMIT) return;
+    const metrics = snapshotMetrics(tool, s);
+    if (!metrics) return;
+    const seq = (this.snapSeq += 1);
+    const snapshot = { id: `snap-${seq}`, tool, name: `${tool} ${seq}`, metrics };
+    this.store.setState({ keptSnapshots: [...s.keptSnapshots, snapshot] });
+  }
+
+  /** Remove a kept snapshot by id. */
+  removeSnapshot(id: string): void {
+    this.store.setState((s) => ({ keptSnapshots: s.keptSnapshots.filter((k) => k.id !== id) }));
+  }
+
+  /** Clear the compare tray. */
+  clearSnapshots(): void {
+    this.store.setState({ keptSnapshots: [] });
   }
 
   /** Lighting analysis: the spacecraft's umbra intervals over a day. */

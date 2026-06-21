@@ -10,7 +10,7 @@ import { Button } from '@bessel/selene-design';
 import { GroundTrackMap, PanelContainer } from '@bessel/ui';
 import { seriesToCsv, intervalsToCsv } from '@bessel/interop';
 import type { BesselEngine } from '../engine/index.ts';
-import { useStore, type AppStore, type RunStatus } from '../store/index.ts';
+import { useStore, KEPT_SNAPSHOT_LIMIT, type AppStore, type RunStatus } from '../store/index.ts';
 import { IntervalResult, SeriesResult, StatResult } from './analysis-result.tsx';
 import { RunStatusNote } from './RunStatus.tsx';
 
@@ -46,6 +46,15 @@ function Action(props: {
   );
 }
 
+/** A "Keep for compare" button that snapshots a result into the compare tray. */
+function Keep(props: { tool: string; disabled: boolean; onKeep: () => void }): JSX.Element {
+  return (
+    <Button variant="ghost" testId={`keep-${props.tool}`} disabled={props.disabled} onClick={props.onKeep}>
+      Keep for compare
+    </Button>
+  );
+}
+
 export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   const { engine, store } = props;
   const objects = useStore(store, (s) => s.objects);
@@ -71,6 +80,7 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   const epochLabel = useStore(store, (s) => s.epochLabel);
   const timeSystem = useStore(store, (s) => s.timeSystem);
   const runStatus = useStore(store, (s) => s.runStatus);
+  const trayFull = useStore(store, (s) => s.keptSnapshots.length) >= KEPT_SNAPSHOT_LIMIT;
   const runMeta = useMemo(
     () => ({
       epoch: epochLabel || undefined,
@@ -247,6 +257,7 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           }
         />
         <RunStatusNote status={runStatus['compute-access']} id="compute-access" />
+        <Keep tool="access" disabled={!accessFom || trayFull} onKeep={() => engine?.keepSnapshot('access')} />
         <Action
           status={runStatus['compute-eclipse']}
           onClick={() => void engine?.computeEclipse(span)}
@@ -287,6 +298,7 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           hint="Plot the downlink Eb/N0 to a DSN station."
         />
         <RunStatusNote status={runStatus['compute-link']} id="compute-link" />
+        <Keep tool="link" disabled={!linkSeries || trayFull} onKeep={() => engine?.keepSnapshot('link')} />
       </PanelContainer>
 
       <PanelContainer title="Conjunction" testId="analysis-section-conjunction">
@@ -311,6 +323,7 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           )}
         </StatResult>
         <RunStatusNote status={runStatus['compute-conjunction']} id="compute-conjunction" />
+        <Keep tool="conjunction" disabled={!conjunction || trayFull} onKeep={() => engine?.keepSnapshot('conjunction')} />
       </PanelContainer>
 
       <PanelContainer title="Constellation" testId="analysis-section-constellation">

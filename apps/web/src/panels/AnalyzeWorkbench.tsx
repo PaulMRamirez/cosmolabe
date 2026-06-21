@@ -10,6 +10,7 @@ import { useCallback, type KeyboardEvent } from 'react';
 import { AnalysisContextBar } from './AnalysisContextBar.tsx';
 import {
   AnalysisPanel,
+  CompareTray,
   MissionPanel,
   OdPanel,
   PanelSuspense,
@@ -105,6 +106,7 @@ export function AnalyzeWorkbench(props: AnalyzeWorkbenchProps): JSX.Element {
           {activeTab === 'report' && <ReportPanel engine={engine} store={store} />}
           {activeTab === 'compare' && (
             <>
+              <CompareTray engine={engine} store={store} />
               {!props.hasSpacecraft ? (
                 <p className="bessel-loader-hint" data-testid="telemetry-empty-notice">
                   Load a spacecraft to analyze.

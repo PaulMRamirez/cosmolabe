@@ -949,6 +949,38 @@ button[aria-pressed='true'] {
   color: var(--text-1);
 }
 
+/* The compare tray (B21): kept snapshots tabulated per tool. */
+.bessel-compare-tray {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bessel-compare-tools {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.bessel-compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.bessel-snapshot-remove {
+  margin-left: var(--space-1);
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.bessel-snapshot-remove:hover {
+  color: var(--text-0);
+}
+
 /* A located run error under a compute action (B24). Text stays AA (text-1, weight 600)
    with a red left border, rather than low-contrast red body text. */
 .bessel-run-error {

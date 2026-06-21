@@ -56,6 +56,9 @@ export const OdPanel = lazy(() => import('./OdPanel.tsx').then((m) => ({ default
 export const ReportPanel = lazy(() =>
   import('./ReportPanel.tsx').then((m) => ({ default: m.ReportPanel })),
 );
+export const CompareTray = lazy(() =>
+  import('./CompareTray.tsx').then((m) => ({ default: m.CompareTray })),
+);
 
 // The shell menus surfaced from @bessel/ui. They are lightweight but only appear inside
 // an open menu, so loading them on first open keeps them out of the first render tree.
