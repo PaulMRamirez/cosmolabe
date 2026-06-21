@@ -1276,6 +1276,19 @@ button[aria-pressed='true'] {
   margin: 0;
 }
 
+.bessel-measure-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+/* The active Measure-mode toggle reads as engaged via the amber accent. */
+.bessel-measure-mode[aria-pressed='true'] {
+  border-color: var(--amber);
+  color: var(--text-0);
+}
+
 /* Saved views ------------------------------------------------------------ */
 
 .bessel-bookmark-form {

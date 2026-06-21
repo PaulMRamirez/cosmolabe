@@ -14,6 +14,13 @@ export interface MeasurePanelProps {
   readonly angleDeg?: number | null;
   /** The observer the angle is measured from (the mission spacecraft). */
   readonly observer?: string | null;
+  /** True when Measure mode is active (canvas clicks build the measured pair). */
+  readonly measureMode?: boolean;
+  readonly onToggleMode?: () => void;
+  /** Clear the current selection; omit (or no selection) to hide the control. */
+  readonly onClear?: () => void;
+  /** True when at least one object is selected, gating the Clear control. */
+  readonly hasSelection?: boolean;
 }
 
 function formatDistance(km: number): string {
@@ -27,11 +34,41 @@ function formatSpeed(kmS: number): string {
   return `${Math.abs(kmS).toFixed(3)} km/s ${trend}`;
 }
 
+/** The Measure-mode toggle and Clear-selection controls, shared by both states. */
+function MeasureControls(props: MeasurePanelProps): JSX.Element | null {
+  if (!props.onToggleMode && !props.onClear) return null;
+  return (
+    <div className="bessel-measure-controls" role="group" aria-label="Measure controls">
+      {props.onToggleMode ? (
+        <button
+          type="button"
+          className="bessel-measure-mode"
+          aria-pressed={!!props.measureMode}
+          onClick={props.onToggleMode}
+          data-testid="measure-mode"
+        >
+          Measure mode: {props.measureMode ? 'on' : 'off'}
+        </button>
+      ) : null}
+      {props.onClear && props.hasSelection ? (
+        <button type="button" onClick={props.onClear} data-testid="measure-clear">
+          Clear selection
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function MeasurePanel(props: MeasurePanelProps): JSX.Element {
   if (props.from === null || props.to === null || props.distanceKm === null) {
     return (
       <div className="bessel-measure" data-testid="measure-panel">
-        <p className="bessel-measure-empty">Select two objects to measure</p>
+        <p className="bessel-measure-empty">
+          {props.measureMode
+            ? 'Measure mode: click two objects in the view'
+            : 'Select two objects to measure'}
+        </p>
+        <MeasureControls {...props} />
       </div>
     );
   }
@@ -53,6 +90,7 @@ export function MeasurePanel(props: MeasurePanelProps): JSX.Element {
           {props.angleDeg.toFixed(2)} deg apart from {props.observer ?? 'the spacecraft'}
         </div>
       ) : null}
+      <MeasureControls {...props} />
     </div>
   );
 }

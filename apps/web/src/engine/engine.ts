@@ -29,7 +29,7 @@ import { HttpKernelSource } from '@bessel/pal-web';
 import { furnishMissionKernels } from './load-mission.ts';
 import { positionAt, velocityAt, rangeRate } from '../sampler.ts';
 import { fovRim, footprint } from '../instruments.ts';
-import { toggleSelection } from '../selection.ts';
+import { toggleSelection, rollMeasurePair } from '../selection.ts';
 import {
   parseAnyCatalog,
   nativeEntries,
@@ -567,7 +567,27 @@ export class BesselEngine {
     }
     const ndc = pointerToNdc(clientX, clientY, rect);
     const id = core.scene.pickObjectAt(ndc.x, ndc.y);
-    if (id) this.centerOn(id);
+    if (!id) return;
+    // In Measure mode a click builds the measured pair (rolling two picks) rather
+    // than recentering the camera; otherwise it frames the picked body as before.
+    if (this.store.getState().measureMode) this.addToMeasurePair(id);
+    else this.centerOn(id);
+  }
+
+  // Add a picked id to the measured pair, keeping only the most recent two distinct
+  // picks so a third click rolls the oldest body out of the measurement.
+  private addToMeasurePair(id: string): void {
+    this.store.setState((s) => ({ selection: rollMeasurePair(s.selection, id) }));
+  }
+
+  /** Enter or leave Measure mode (canvas clicks build the measured pair). */
+  toggleMeasureMode(): void {
+    this.store.setState((s) => ({ measureMode: !s.measureMode }));
+  }
+
+  /** Clear the current multi-object selection (and so the active measurement). */
+  clearSelection(): void {
+    this.store.setState({ selection: [] });
   }
 
   centerOn(body: string, animate = true): void {

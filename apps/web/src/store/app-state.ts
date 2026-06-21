@@ -141,6 +141,9 @@ export interface AppState {
   loadError: string | null;
   // Measurement: distance between the first two selected objects.
   measurement: Measurement | null;
+  // Measure mode: when on, a canvas click adds to the measured pair (rolling two)
+  // instead of recentering, so two clicks measure between two bodies.
+  measureMode: boolean;
   // Telemetry: latest predicted-versus-actual residual (km), or null.
   telemetryResidualKm: number | null;
   /** Full predicted-versus-actual series for the on-screen telemetry overlay. */
@@ -366,6 +369,7 @@ export const initialAppState: AppState = {
   loadedName: null,
   loadError: null,
   measurement: null,
+  measureMode: false,
   telemetryResidualKm: null,
   telemetryOverlay: [],
   telemetryFault: null,

@@ -23,3 +23,23 @@ test('measuring the distance between two selected objects', async ({ page }) => 
   await expect(page.getByTestId('measure-speed')).toContainText('km/s');
   await expect(page.getByTestId('measure-angle')).toContainText('deg apart');
 });
+
+test('Measure mode and Clear selection are explicit affordances', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await loadCassiniSample(page);
+
+  // Entering Measure mode flips the toggle and switches the guidance copy.
+  const toggle = page.getByTestId('measure-mode');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('measure-panel')).toContainText('click two objects');
+
+  // Clear selection empties the measured pair; with nothing selected the Clear
+  // control retires but the panel stays open because Measure mode is on.
+  await expect(page.getByTestId('measure-clear')).toBeVisible();
+  await page.getByTestId('measure-clear').click();
+  await expect(page.getByTestId('measure-clear')).toHaveCount(0);
+  await expect(page.getByTestId('measure-mode')).toHaveAttribute('aria-pressed', 'true');
+});

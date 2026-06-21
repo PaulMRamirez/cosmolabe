@@ -12,3 +12,13 @@ export function toggleSelection(
 export function isSelected(selection: readonly string[], id: string): boolean {
   return selection.includes(id);
 }
+
+/** Roll an id into a measured pair: keep the most recent two distinct picks, so a
+ *  third pick drops the oldest. An already-selected id leaves the pair unchanged. */
+export function rollMeasurePair(
+  selection: readonly string[],
+  id: string,
+): readonly string[] {
+  if (selection.includes(id)) return selection;
+  return [...selection, id].slice(-2);
+}

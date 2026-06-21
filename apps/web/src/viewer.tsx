@@ -187,6 +187,7 @@ export function BesselViewer(): JSX.Element {
   const loadError = useStore(store, (s) => s.loadError);
   const welcomeSeen = useStore(store, (s) => s.welcomeSeen);
   const measurement = useStore(store, (s) => s.measurement);
+  const measureMode = useStore(store, (s) => s.measureMode);
   const bookmarks = useStore(store, (s) => s.bookmarks);
   const savedScripts = useStore(store, (s) => s.savedScripts);
 
@@ -511,7 +512,7 @@ export function BesselViewer(): JSX.Element {
       {/* Always-visible geometry, bound to the tracked/focused object, so a canvas
           click that clears the selection does not blank the live numbers. */}
       {showLiveReadout ? <LiveGeometryReadout target={focus} readouts={readouts} /> : null}
-      {selection.length > 0 ? (
+      {selection.length > 0 || measureMode ? (
         <aside
           className="bessel-inspector-card"
           aria-label="Selection details"
@@ -525,6 +526,10 @@ export function BesselViewer(): JSX.Element {
             distanceKm={measurement?.distanceKm ?? null}
             relativeSpeedKmS={measurement?.relativeSpeedKmS ?? null}
             angleDeg={measurement?.angleDeg ?? null}
+            measureMode={measureMode}
+            onToggleMode={() => engine?.toggleMeasureMode()}
+            onClear={() => engine?.clearSelection()}
+            hasSelection={selection.length > 0}
           />
           <StateVectorPanel
             target={focus}

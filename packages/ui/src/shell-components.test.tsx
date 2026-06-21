@@ -125,6 +125,43 @@ describe('@bessel/ui MeasurePanel', () => {
     expect(out).toContain('data-testid="measure-angle"');
     expect(out).toContain('12.35 deg');
   });
+
+  it('shows the Measure-mode toggle and mode-aware guidance', () => {
+    const out = html(
+      createElement(MeasurePanel, {
+        from: null,
+        to: null,
+        distanceKm: null,
+        measureMode: true,
+        onToggleMode: () => undefined,
+      }),
+    );
+    expect(out).toContain('Measure mode: click two objects in the view');
+    expect(out).toMatch(/<button[^>]*aria-pressed="true"[^>]*data-testid="measure-mode"/);
+  });
+
+  it('offers Clear only when there is a selection', () => {
+    const withSel = html(
+      createElement(MeasurePanel, {
+        from: null,
+        to: null,
+        distanceKm: null,
+        onClear: () => undefined,
+        hasSelection: true,
+      }),
+    );
+    expect(withSel).toContain('data-testid="measure-clear"');
+    const noSel = html(
+      createElement(MeasurePanel, {
+        from: null,
+        to: null,
+        distanceKm: null,
+        onClear: () => undefined,
+        hasSelection: false,
+      }),
+    );
+    expect(noSel).not.toContain('data-testid="measure-clear"');
+  });
 });
 
 describe('@bessel/ui ScriptConsole', () => {
