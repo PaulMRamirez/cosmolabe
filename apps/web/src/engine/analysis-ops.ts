@@ -225,7 +225,7 @@ export async function computeAccessTool(
   const sc = e.identity.spacecraftName;
   const body = e.identity.centerBody;
   if (!sc || !body) {
-    store.setState({ accessWindow: null, accessSpan: null });
+    store.setState({ accessResult: null });
     return;
   }
   const target = opts.target ?? 'SUN';
@@ -244,18 +244,20 @@ export async function computeAccessTool(
     const fom = figureOfMerit(window, span);
     if (!isDisposed()) {
       store.setState({
-        accessWindow: window,
-        accessSpan: span,
-        accessLabel: `${sc} to ${target}`,
-        accessFom: {
-          percentCoverage: fom.percentCoverage,
-          accessCount: fom.accessCount,
-          maxGapSec: fom.maxGapSec,
+        accessResult: {
+          window,
+          span,
+          label: `${sc} to ${target}`,
+          fom: {
+            percentCoverage: fom.percentCoverage,
+            accessCount: fom.accessCount,
+            maxGapSec: fom.maxGapSec,
+          },
         },
       });
     }
   } catch (err) {
-    if (!isDisposed()) store.setState({ accessWindow: null, accessSpan: span, accessFom: null });
+    if (!isDisposed()) store.setState({ accessResult: null });
     console.error('access analysis failed', err);
     throw err;
   }
@@ -287,7 +289,7 @@ export async function computeInstrumentFovWindows(
     !e.table.byBody.has(sc) ||
     !e.table.byBody.has(center)
   ) {
-    store.setState({ fovWindow: null, fovSpan: null, fovLabel: '', fovFom: null });
+    store.setState({ fovResult: null });
     return;
   }
   // Clamp the sweep to the sampled ephemeris window: positionAt clamps out-of-range
@@ -313,18 +315,20 @@ export async function computeInstrumentFovWindows(
     const fom = figureOfMerit(window, span);
     if (!isDisposed()) {
       store.setState({
-        fovWindow: window,
-        fovSpan: span,
-        fovLabel: `${inst.descriptor.name} sees ${target}`,
-        fovFom: {
-          percentCoverage: fom.percentCoverage,
-          accessCount: fom.accessCount,
-          maxGapSec: fom.maxGapSec,
+        fovResult: {
+          window,
+          span,
+          label: `${inst.descriptor.name} sees ${target}`,
+          fom: {
+            percentCoverage: fom.percentCoverage,
+            accessCount: fom.accessCount,
+            maxGapSec: fom.maxGapSec,
+          },
         },
       });
     }
   } catch (err) {
-    if (!isDisposed()) store.setState({ fovWindow: null, fovSpan: span, fovLabel: '', fovFom: null });
+    if (!isDisposed()) store.setState({ fovResult: null });
     console.error('instrument FOV analysis failed', err);
     throw err;
   }

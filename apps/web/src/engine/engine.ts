@@ -103,7 +103,7 @@ type Metrics = readonly { readonly label: string; readonly value: string }[];
 function snapshotMetrics(tool: 'access' | 'conjunction' | 'link', s: AppState): Metrics | null {
   const n = (v: number, d = 2): string => (Number.isFinite(v) ? v.toFixed(d) : '-');
   if (tool === 'access') {
-    const f = s.accessFom;
+    const f = s.accessResult?.fom;
     if (!f) return null;
     return [
       { label: 'coverage %', value: n(f.percentCoverage * 100, 1) },

@@ -82,8 +82,12 @@ describe('AnalysisPanel result tables (B18)', () => {
         value: new Float64Array([10, 20]),
         label: 'range (km)',
       },
-      accessWindow: [[0, 100]],
-      accessSpan: [0, 200],
+      accessResult: {
+        window: [[0, 100]],
+        span: [0, 200],
+        label: 'Probe to SUN',
+        fom: { percentCoverage: 0.5, accessCount: 1, maxGapSec: 100 },
+      },
     });
     const out = renderToStaticMarkup(
       createElement(AnalysisPanel, { engine: null, store, hasSpacecraft: true }),

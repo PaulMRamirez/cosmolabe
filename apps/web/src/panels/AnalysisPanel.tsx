@@ -10,7 +10,13 @@ import { Button } from '@bessel/selene-design';
 import { GroundTrackMap, PanelContainer } from '@bessel/ui';
 import { seriesToCsv, intervalsToCsv } from '@bessel/interop';
 import type { BesselEngine } from '../engine/index.ts';
-import { useStore, KEPT_SNAPSHOT_LIMIT, type AppStore, type RunStatus } from '../store/index.ts';
+import {
+  useStore,
+  KEPT_SNAPSHOT_LIMIT,
+  type AppStore,
+  type RunStatus,
+  type AccessFom,
+} from '../store/index.ts';
 import { IntervalResult, SeriesResult, StatResult } from './analysis-result.tsx';
 import { RunStatusNote } from './RunStatus.tsx';
 
@@ -22,6 +28,25 @@ export interface AnalysisPanelProps {
 
 const fmt = (n: number, digits = 2): string =>
   Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: digits }) : '-';
+
+/** The coverage figure-of-merit note shared by the interval tools (access, in-FOV):
+ *  "<verb> N%, M <noun>(s), max gap K min". Null when there is no result yet. */
+function FomNote(props: {
+  readonly fom: AccessFom | null | undefined;
+  readonly verb: string;
+  readonly noun: string;
+  readonly plural: string;
+  readonly testId: string;
+}): JSX.Element | null {
+  const { fom } = props;
+  if (!fom) return null;
+  return (
+    <p className="bessel-analysis-stat" data-testid={props.testId}>
+      {props.verb} {fmt(fom.percentCoverage * 100, 1)}%, {fom.accessCount} {props.noun}
+      {fom.accessCount === 1 ? '' : props.plural}, max gap {fmt(fom.maxGapSec / 60, 1)} min
+    </p>
+  );
+}
 
 /** A panel action button (selene). While its tool is running it disables and reads
  *  "Computing...", driven by the per-tool run status. */
@@ -98,14 +123,8 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   const eclipseUmbra = useStore(store, (s) => s.eclipseUmbra);
   const eclipseSpan = useStore(store, (s) => s.eclipseSpan);
   const rangeSeries = useStore(store, (s) => s.rangeSeries);
-  const accessWindow = useStore(store, (s) => s.accessWindow);
-  const accessSpan = useStore(store, (s) => s.accessSpan);
-  const accessLabel = useStore(store, (s) => s.accessLabel);
-  const accessFom = useStore(store, (s) => s.accessFom);
-  const fovWindow = useStore(store, (s) => s.fovWindow);
-  const fovSpan = useStore(store, (s) => s.fovSpan);
-  const fovLabel = useStore(store, (s) => s.fovLabel);
-  const fovFom = useStore(store, (s) => s.fovFom);
+  const accessResult = useStore(store, (s) => s.accessResult);
+  const fovResult = useStore(store, (s) => s.fovResult);
   const fovOk = useStore(store, (s) => s.fovOk);
   const linkSeries = useStore(store, (s) => s.linkSeries);
   const conjunction = useStore(store, (s) => s.conjunction);
@@ -241,10 +260,10 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           Compute access
         </Action>
         <IntervalResult
-          intervals={accessWindow}
-          span={accessSpan}
-          title={`${accessLabel} access`}
-          label={`${accessLabel} access`}
+          intervals={accessResult?.window ?? null}
+          span={accessResult?.span ?? null}
+          title={`${accessResult?.label ?? ''} access`}
+          label={`${accessResult?.label ?? ''} access`}
           resultTestId="access-result"
           timelineTestId="access-timeline"
           hint="Find the spacecraft line-of-sight access to the Sun."
@@ -253,17 +272,10 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             filename: 'access.csv',
             build: (i) => intervalsToCsv(i, { meta: runMeta }),
           }}
-          extra={
-            accessFom ? (
-              <p className="bessel-analysis-stat" data-testid="access-fom">
-                Coverage {fmt(accessFom.percentCoverage * 100, 1)}%, {accessFom.accessCount} access
-                {accessFom.accessCount === 1 ? '' : 'es'}, max gap {fmt(accessFom.maxGapSec / 60, 1)} min
-              </p>
-            ) : null
-          }
+          extra={<FomNote fom={accessResult?.fom} verb="Coverage" noun="access" plural="es" testId="access-fom" />}
         />
         <RunStatusNote status={runStatus['compute-access']} id="compute-access" />
-        <Keep tool="access" disabled={!accessFom || trayFull} onKeep={() => engine?.keepSnapshot('access')} />
+        <Keep tool="access" disabled={!accessResult || trayFull} onKeep={() => engine?.keepSnapshot('access')} />
         <Action
           status={runStatus['compute-fov']}
           disabled={!fovOk}
@@ -273,10 +285,10 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
           Compute in-FOV
         </Action>
         <IntervalResult
-          intervals={fovWindow}
-          span={fovSpan}
-          title={`${fovLabel || 'Instrument'} in-FOV`}
-          label={`${fovLabel || 'Instrument'} in-FOV`}
+          intervals={fovResult?.window ?? null}
+          span={fovResult?.span ?? null}
+          title={`${fovResult?.label || 'Instrument'} in-FOV`}
+          label={`${fovResult?.label || 'Instrument'} in-FOV`}
           resultTestId="fov-result"
           timelineTestId="fov-timeline"
           hint="Find when the target falls within the active sensor's nadir-pointed FOV."
@@ -285,14 +297,7 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
             filename: 'in-fov.csv',
             build: (i) => intervalsToCsv(i, { meta: runMeta }),
           }}
-          extra={
-            fovFom ? (
-              <p className="bessel-analysis-stat" data-testid="fov-fom">
-                In view {fmt(fovFom.percentCoverage * 100, 1)}%, {fovFom.accessCount} window
-                {fovFom.accessCount === 1 ? '' : 's'}, max gap {fmt(fovFom.maxGapSec / 60, 1)} min
-              </p>
-            ) : null
-          }
+          extra={<FomNote fom={fovResult?.fom} verb="In view" noun="window" plural="s" testId="fov-fom" />}
         />
         <RunStatusNote status={runStatus['compute-fov']} id="compute-fov" />
         <Action

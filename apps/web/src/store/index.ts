@@ -7,6 +7,8 @@ export {
   type AnalysisContext,
   type AnalyzeTab,
   type KeptSnapshot,
+  type AccessFom,
+  type IntervalAnalysisResult,
   type AppState,
   type AppStore,
   type Measurement,

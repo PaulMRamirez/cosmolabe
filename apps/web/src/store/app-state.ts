@@ -86,16 +86,9 @@ export interface AppState {
   /** Range time series (spacecraft to center body) from the last range analysis. */
   rangeSeries: Series | null;
   /** Line-of-sight access windows (spacecraft to the Sun) from the last access run. */
-  accessWindow: readonly (readonly [number, number])[] | null;
-  accessSpan: readonly [number, number] | null;
-  accessLabel: string;
-  /** Figure-of-merit reduction of the access window (coverage %, gaps), or null. */
-  accessFom: AccessFom | null;
+  accessResult: IntervalAnalysisResult | null;
   /** Instrument-target-visibility windows (target within the nadir-pointed FOV). */
-  fovWindow: readonly (readonly [number, number])[] | null;
-  fovSpan: readonly [number, number] | null;
-  fovLabel: string;
-  fovFom: AccessFom | null;
+  fovResult: IntervalAnalysisResult | null;
   /** Downlink Eb/N0 (dB) time series (spacecraft to Earth) from the last link run. */
   linkSeries: Series | null;
   /** Closest-approach + collision-probability summary from the last conjunction run. */
@@ -111,7 +104,7 @@ export interface AppState {
   /** SGP4-propagated TLE orbit (altitude series + ground track) from the last run. */
   tleOrbit: TleOrbit | null;
   /** Ground-station visible-pass windows (elevation mask intersected with sunlit). */
-  stationAccess: StationAccess | null;
+  stationAccess: IntervalAnalysisResult | null;
   /** Altitude (km) from a numerical (HPOP, 2-body + J2) propagation of the TLE state. */
   hpopAltitude: Series | null;
   /** Result of the last Mission Control Sequence (MCS) design run, or null. */
@@ -232,8 +225,11 @@ export interface ReportResult {
   readonly label: string;
 }
 
-export interface StationAccess {
-  /** Visible-pass intervals (ET seconds): above the elevation mask and sunlit. */
+/** One interval-analysis result: visibility/access windows over a span, reduced to a
+ *  figure of merit, with a human label. Shared by the access, in-FOV, and ground-station
+ *  tools so the result shape (and its reset/render paths) cannot drift between them. */
+export interface IntervalAnalysisResult {
+  /** Interval pairs (ET seconds), e.g. line-of-sight passes or in-FOV windows. */
   readonly window: readonly (readonly [number, number])[];
   readonly span: readonly [number, number];
   readonly fom: AccessFom;
@@ -331,14 +327,8 @@ export const initialAppState: AppState = {
   eclipseUmbra: null,
   eclipseSpan: null,
   rangeSeries: null,
-  accessWindow: null,
-  accessSpan: null,
-  accessLabel: '',
-  accessFom: null,
-  fovWindow: null,
-  fovSpan: null,
-  fovLabel: '',
-  fovFom: null,
+  accessResult: null,
+  fovResult: null,
   linkSeries: null,
   conjunction: null,
   constellation: null,
