@@ -164,9 +164,13 @@ export function symInverse(a: Mat): Mat {
 }
 
 /**
- * General dense solve A x = b by Gaussian elimination with partial pivoting. Used for
- * the normal equations where assembling an SPD guarantee is awkward; throws
- * SingularMatrixError on a (near) zero pivot.
+ * General dense solve A x = b by Gaussian elimination with SCALED partial pivoting. Used for the
+ * normal equations where assembling an SPD guarantee is awkward; throws SingularMatrixError on a
+ * pivot that is negligible relative to its row's scale (a rank-deficient direction). The old
+ * absolute floor (1e-300) accepted a near-singular pivot and returned a garbage step with an
+ * over-optimistic covariance; the scaled criterion compares each pivot to the magnitude of the
+ * data in its own row, so a badly conditioned but full-rank system (a uniformly large normal
+ * matrix) still solves while a collapsed (rank-deficient) row is rejected.
  */
 export function gaussSolve(a: Mat, b: ArrayLike<number>): Float64Array {
   const n = a.rows;
@@ -178,19 +182,48 @@ export function gaussSolve(a: Mat, b: ArrayLike<number>): Float64Array {
     for (let j = 0; j < n; j++) m[i * (n + 1) + j] = a.data[i * n + j]!;
     m[i * (n + 1) + n] = b[i]!;
   }
+  // Per-row scale: the largest magnitude in each original row of A. The singularity test compares
+  // a pivot to the scale of the row it came from (scaled / implicit pivoting), which is invariant
+  // to the overall magnitude of the system and so rejects only a genuinely rank-deficient row, not
+  // a uniformly ill-scaled but full-rank one.
+  const rowScale = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let s = 0;
+    for (let j = 0; j < n; j++) {
+      const v = Math.abs(a.data[i * n + j]!);
+      if (v > s) s = v;
+    }
+    rowScale[i] = s;
+  }
   for (let col = 0; col < n; col++) {
-    // Partial pivot: largest magnitude in the column at or below the diagonal.
+    // Scaled partial pivot: choose the row maximizing |pivot| / rowScale among rows at or below the
+    // diagonal, so the pivot is the most significant relative to its own row's magnitude.
     let piv = col;
-    let best = Math.abs(m[col * (n + 1) + col]!);
-    for (let r = col + 1; r < n; r++) {
-      const v = Math.abs(m[r * (n + 1) + col]!);
-      if (v > best) {
-        best = v;
+    let bestRatio = -1;
+    for (let r = col; r < n; r++) {
+      const s = rowScale[r]! || 1;
+      const ratio = Math.abs(m[r * (n + 1) + col]!) / s;
+      if (ratio > bestRatio) {
+        bestRatio = ratio;
         piv = r;
       }
     }
-    if (best < 1e-300) throw new SingularMatrixError(`gaussSolve: singular pivot at column ${col}`);
+    // Reject when the best available pivot is negligible relative to its row scale: that column has
+    // no significant entry left, i.e. the system is rank-deficient (under-observed) to working
+    // precision. The floor is a small fraction of machine epsilon so a genuinely collapsed
+    // direction (scaled ratio at the rounding floor) is caught, while a merely badly conditioned
+    // but full-rank iterate (scaled ratio a few times epsilon) still solves and is left for the
+    // caller's own divergence/condition handling.
+    const SINGULAR_RATIO = Number.EPSILON / 4;
+    if (bestRatio <= SINGULAR_RATIO) {
+      throw new SingularMatrixError(
+        `gaussSolve: rank-deficient at column ${col} (scaled pivot ratio ${bestRatio} <= ${SINGULAR_RATIO})`,
+      );
+    }
     if (piv !== col) {
+      const ts = rowScale[col]!;
+      rowScale[col] = rowScale[piv]!;
+      rowScale[piv] = ts;
       for (let j = 0; j <= n; j++) {
         const tmp = m[col * (n + 1) + j]!;
         m[col * (n + 1) + j] = m[piv * (n + 1) + j]!;

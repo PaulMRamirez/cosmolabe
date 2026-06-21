@@ -13,6 +13,10 @@ const fixture = (name: string) =>
   new Uint8Array(readFileSync(fileURLToPath(new URL(`../../../kernels/fixtures/${name}`, import.meta.url))));
 
 const STATION: Facility = { body: 'EARTH', bodyFrame: 'IAU_EARTH', lonRad: 0, latRad: 0, altKm: 0 };
+// A mid-latitude station where the geodetic normal and the geocentric radial diverge most
+// (~0.19 deg at 45 deg latitude on Earth), so the two up conventions give measurably different
+// elevation windows for a grazing source.
+const MID_LAT_STATION: Facility = { body: 'EARTH', bodyFrame: 'IAU_EARTH', lonRad: 0, latRad: Math.PI / 4, altKm: 0 };
 
 describe('computeElevationAccess', () => {
   let spice: SpiceEngine;
@@ -60,5 +64,20 @@ describe('computeElevationAccess', () => {
         expect(await solarElevationDeg(b)).toBeCloseTo(maskDeg, 2); // boundary at the 10 deg mask
       }
     }
+  });
+
+  it('defaults to the geodetic (STK topocentric) up, with a documented geocentric option', async () => {
+    // The default and the explicit geodetic option are identical: the documented convention is
+    // the geodetic surface normal, matching an STK topocentric elevation.
+    const span: [number, number] = [t0, t1];
+    const geodeticDefault = await computeElevationAccess(spice, MID_LAT_STATION, 'SUN', span, 600, 0);
+    const geodeticExplicit = await computeElevationAccess(spice, MID_LAT_STATION, 'SUN', span, 600, 0, 'NONE', 'geodetic');
+    expect(windowMeasure(geodeticDefault)).toBeCloseTo(windowMeasure(geodeticExplicit), 6);
+
+    // The geocentric-radial option is a genuinely different horizon at a mid-latitude site (the
+    // up vectors differ by ~0.19 deg), so the daylight window differs measurably from geodetic.
+    const geocentric = await computeElevationAccess(spice, MID_LAT_STATION, 'SUN', span, 600, 0, 'NONE', 'geocentric');
+    expect(windowMeasure(geocentric)).toBeGreaterThan(0);
+    expect(Math.abs(windowMeasure(geocentric) - windowMeasure(geodeticDefault))).toBeGreaterThan(1);
   });
 });

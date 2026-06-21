@@ -124,9 +124,10 @@ function mapPartialToReception(
     for (let k = 0; k < 3; k++) dhTx[i * 6 + k] = jacTx[i * 6 + k]! * ltFactor;
     for (let k = 3; k < 6; k++) dhTx[i * 6 + k] = jacTx[i * 6 + k]!;
   }
-  // Compose Phi(t_tx, t_rx) = Phi(t_tx, t0) * Phi(t_rx, t0)^-1.
-  const phiRx = arc.stmAt(tRx);
-  const phiRxInv = invert6(phiRx);
+  // Compose Phi(t_tx, t_rx) = Phi(t_tx, t0) * Phi(t_rx, t0)^-1. Phi(t_rx, t0)^-1 depends only on
+  // the arc and the reception epoch, not on the (per-component) partial being rebased, so cache
+  // it by (arc, tRx) to avoid re-inverting the 6x6 on every call.
+  const phiRxInv = receptionStmInverse(arc, tRx);
   const phiTxRx = matmul6(phiTx, phiRxInv);
   // dh/dx_rx = dhTx * Phi(t_tx, t_rx).
   const out = new Float64Array(size * 6);
@@ -138,6 +139,27 @@ function mapPartialToReception(
     }
   }
   return out;
+}
+
+/**
+ * Cache of Phi(t_rx, t0)^-1 per arc. The inverse depends only on the arc and the reception
+ * epoch, so the same arc reused across many measurements at the same t_rx (the common batch
+ * pattern) inverts the 6x6 once. Keyed by arc (WeakMap, so it is collected with the arc), then
+ * by tRx. A small per-arc map suffices since a batch has few distinct reception epochs per arc.
+ */
+const receptionStmInverseCache = new WeakMap<Arc, Map<number, Float64Array>>();
+
+function receptionStmInverse(arc: Arc, tRx: number): Float64Array {
+  let perArc = receptionStmInverseCache.get(arc);
+  if (perArc === undefined) {
+    perArc = new Map();
+    receptionStmInverseCache.set(arc, perArc);
+  }
+  const hit = perArc.get(tRx);
+  if (hit !== undefined) return hit;
+  const inv = invert6(arc.stmAt(tRx));
+  perArc.set(tRx, inv);
+  return inv;
 }
 
 /** C = A * B for two row-major 6x6 matrices. */

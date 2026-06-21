@@ -2,7 +2,14 @@
 // as the sensor moves (a sweep covers more than a stare). (STK_PARITY_SPEC §4.7.)
 
 import { describe, it, expect } from 'vitest';
-import { accumulateSwath, swathCovers, swathCoverageFraction, type SensorSchema, type SwathSample } from './swath.ts';
+import {
+  accumulateSwath,
+  swathCovers,
+  swathCoverageFraction,
+  type SensorSchema,
+  type SwathSample,
+  type SwathOccluder,
+} from './swath.ts';
 import type { Vec3 } from './index.ts';
 
 const schema: SensorSchema = { name: 'cam', kind: 'conic', halfAngleRad: 0.1 };
@@ -29,6 +36,27 @@ describe('swath coverage', () => {
     const samples = [sampleAt(0)];
     expect(swathCovers({ x: 0, y: 0, z: 1 }, samples, schema)).toBe(true); // north pole sub-point
     expect(swathCovers({ x: 1, y: 0, z: 0 }, samples, schema)).toBe(false); // equator, out of FOV
+  });
+
+  it('does NOT cover a far-hemisphere point when occlusion is checked (wide nadir FOV)', () => {
+    // A very wide nadir sensor at the north pole apex. Its FOV cone is wide enough to nominally
+    // include the SOUTH pole point (x=0,y=0,z=-1), which lies inside the cone but behind the body.
+    const wide: SensorSchema = { name: 'wide', kind: 'conic', halfAngleRad: Math.PI / 2 - 0.01 };
+    const apex: Vec3 = { x: 0, y: 0, z: 2 };
+    const samples: SwathSample[] = [{ apex, boresight: { x: 0, y: 0, z: -1 } }];
+    const occ: SwathOccluder = { center, radius };
+    const nearPoint: Vec3 = { x: 0, y: 0, z: 1 }; // north pole, sub-satellite (visible)
+    const farPoint: Vec3 = { x: 0, y: 0, z: -1 }; // south pole, behind the body (occluded)
+
+    // Without an occluder the cone alone over-reports: both points test "covered".
+    expect(swathCovers(nearPoint, samples, wide)).toBe(true);
+    expect(swathCovers(farPoint, samples, wide)).toBe(true);
+    // With the occluder, the near point stays covered but the far-hemisphere point is rejected.
+    expect(swathCovers(nearPoint, samples, wide, occ)).toBe(true);
+    expect(swathCovers(farPoint, samples, wide, occ)).toBe(false);
+    // The coverage fraction over both points halves once occlusion is enforced.
+    expect(swathCoverageFraction([nearPoint, farPoint], samples, wide)).toBeCloseTo(1, 12);
+    expect(swathCoverageFraction([nearPoint, farPoint], samples, wide, occ)).toBeCloseTo(0.5, 12);
   });
 
   it('a moving sweep covers more test points than a single stare', () => {

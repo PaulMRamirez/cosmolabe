@@ -7,12 +7,7 @@
 // app; the core sweep is a plain async function here. (STK_PARITY_SPEC §4.4,
 // COV-1/COV-2/COV-3.)
 
-import {
-  windowIntersect,
-  windowUnionAll,
-  type EphemerisTime,
-  type Window,
-} from '@bessel/timeline';
+import { windowUnionAll, type EphemerisTime, type Window } from '@bessel/timeline';
 import { computeElevationAccess, type Facility } from '@bessel/access';
 import type { AberrationCorrection, SpiceEngine } from '@bessel/spice';
 import { figureOfMerit, type FigureOfMerit } from './index.ts';
@@ -96,45 +91,57 @@ function validate(grid: GridSpec): void {
 }
 
 /**
- * Count the span fraction covered by at least 1..N assets simultaneously. Builds the
- * k-fold window as the union of every k-subset intersection. With N small (the usual
- * constellation-coverage case) this is the exact STK N-fold figure; the union keeps
- * it disjoint. nFold[k] is for "at least (k+1) assets".
+ * Count the span fraction covered by at least 1..N assets simultaneously via a single
+ * endpoint sweep. Each per-asset interval contributes a +1 at its start and a -1 at its
+ * stop; sorting the 2*M endpoints and tracking a running cover-count gives, between any
+ * two adjacent endpoints, exactly how many assets are simultaneously in view. The time
+ * spent at cover-count >= k accumulates the k-fold duration. This is O(M log M) in the
+ * total interval count M, replacing the old union-over-every-k-subset which was O(2^N)
+ * per cell and hung the worker on a real constellation (e.g. 24 satellites). nFold[k] is
+ * for "at least (k+1) assets". (Per-asset windows are already disjoint and sorted, so an
+ * asset can contribute at most +1 to the live count at any instant.)
  */
-function nFoldFractions(
+export function nFoldFractions(
   perAsset: readonly Window[],
   span: readonly [EphemerisTime, EphemerisTime],
 ): number[] {
   const [t0, t1] = span;
   const duration = t1 - t0;
   const n = perAsset.length;
-  const out: number[] = [];
-  for (let k = 1; k <= n; k++) {
-    // Union over all k-subsets of the k-way intersection.
-    const subsets: Window[] = [];
-    forEachKSubset(n, k, (idx) => {
-      let acc: Window = perAsset[idx[0]!]!;
-      for (let m = 1; m < idx.length; m++) acc = windowIntersect(acc, perAsset[idx[m]!]!);
-      subsets.push(acc);
-    });
-    const kFold = subsets.length ? windowUnionAll(subsets) : [];
-    const measure = kFold.reduce((s, [a, b]) => s + (b - a), 0);
-    out.push(duration > 0 ? measure / duration : 0);
-  }
-  return out;
-}
+  // Accumulated duration at exactly each cover-count, atLeast[k] = time with >= k assets.
+  const atLeast = new Float64Array(n + 1);
+  if (duration <= 0 || n === 0) return new Array(n).fill(0) as number[];
 
-/** Enumerate every k-subset of [0,n) and call `fn` with the index array. */
-function forEachKSubset(n: number, k: number, fn: (idx: number[]) => void): void {
-  const idx = Array.from({ length: k }, (_, i) => i);
-  while (true) {
-    fn([...idx]);
-    let i = k - 1;
-    while (i >= 0 && idx[i] === n - k + i) i--;
-    if (i < 0) break;
-    idx[i]!++;
-    for (let j = i + 1; j < k; j++) idx[j] = idx[j - 1]! + 1;
+  // Merge all interval endpoints into one delta stream, then sweep.
+  type Endpoint = { t: number; delta: number };
+  const endpoints: Endpoint[] = [];
+  for (const w of perAsset) {
+    for (const [a, b] of w) {
+      if (b <= a) continue; // skip measure-zero / reversed
+      endpoints.push({ t: a, delta: +1 });
+      endpoints.push({ t: b, delta: -1 });
+    }
   }
+  // Sort by time; at a tie, apply stops (-1) before starts (+1) so two abutting intervals
+  // do not momentarily over-count, and an interval boundary never double-counts.
+  endpoints.sort((p, q) => (p.t === q.t ? p.delta - q.delta : p.t - q.t));
+
+  let cover = 0;
+  let prevT = endpoints.length ? endpoints[0]!.t : t0;
+  for (const ep of endpoints) {
+    if (ep.t > prevT && cover > 0) {
+      const dt = ep.t - prevT;
+      // The segment [prevT, ep.t] is covered by exactly `cover` assets, hence by
+      // >= 1, >= 2, ..., >= cover assets.
+      for (let k = 1; k <= cover; k++) atLeast[k]! += dt;
+    }
+    cover += ep.delta;
+    prevT = ep.t;
+  }
+
+  const out: number[] = [];
+  for (let k = 1; k <= n; k++) out.push(atLeast[k]! / duration);
+  return out;
 }
 
 /**

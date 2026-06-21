@@ -113,4 +113,5 @@ export {
   type SensorSchema,
   type SwathSample,
   type Swath,
+  type SwathOccluder,
 } from './swath.ts';

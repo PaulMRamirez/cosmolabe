@@ -7,7 +7,7 @@
 // any fine sampling. Pure: objects arrive as sampled ephemerides, so the package
 // stays free of SPICE and propagation. (STK_PARITY_SPEC §4.8, CAT-SCR-1/CAT-TCA-1.)
 
-import { closestApproachLinear, collisionProbability2D, type Vec3 } from './index.ts';
+import { collisionProbability2D, type Vec3 } from './index.ts';
 
 /** A sampled inertial ephemeris for one screened object (km, km/s). */
 export interface SampledEphemeris {
@@ -140,48 +140,76 @@ function assertSharedGrid(objects: readonly SampledEphemeris[]): void {
   }
 }
 
+const sep = (a: SampledEphemeris, b: SampledEphemeris, k: number): number => {
+  const pa = posAt(a, k);
+  const pb = posAt(b, k);
+  return Math.hypot(pb.x - pa.x, pb.y - pa.y, pb.z - pa.z);
+};
+
+const relSpeedAt = (a: SampledEphemeris, b: SampledEphemeris, k: number): number => {
+  const va = velAt(a, k);
+  const vb = velAt(b, k);
+  return Math.hypot(vb.x - va.x, vb.y - va.y, vb.z - va.z);
+};
+
 /**
- * Refine the closest approach of a flagged pair from the shared sample grid: find
- * the sample index of minimum separation, then linearize the relative motion across
- * the bracketing samples and solve for the range-rate zero (Foster TCA). The
- * relative state is linearized inside the bracket, which matches the rectilinear
- * closest-approach model the package already uses.
+ * Refine the closest approach of a flagged pair from the shared sample grid by fitting a
+ * quadratic to the squared separation across the three samples bracketing the discrete
+ * minimum, then taking the parabola's vertex as the sub-sample TCA. The true closest approach
+ * generally falls BETWEEN samples; refining from a single endpoint and propagating with that
+ * endpoint's stale relative velocity across the whole bracket mis-places the TCA and over-states
+ * the miss for curved (non-rectilinear) motion. The squared-separation quadratic d2(t) = a t^2 +
+ * b t + c through (t_lo, t_min, t_hi) is exact for constant-acceleration relative motion and a
+ * good local model otherwise; its vertex t* = -b/(2a) lands the TCA between samples, and the miss
+ * is the quadratic minimum sqrt(d2(t*)). The miss is never reported worse than the discrete grid
+ * minimum.
  */
 function refinePair(a: SampledEphemeris, b: SampledEphemeris): ConjunctionEvent {
   const n = a.et.length;
   let kMin = 0;
   let dMin = Infinity;
   for (let k = 0; k < n; k++) {
-    const pa = posAt(a, k);
-    const pb = posAt(b, k);
-    const d = Math.hypot(pb.x - pa.x, pb.y - pa.y, pb.z - pa.z);
+    const d = sep(a, b, k);
     if (d < dMin) {
       dMin = d;
       kMin = k;
     }
   }
-  // Bracket around the discrete minimum and linearize relative motion there.
-  const k0 = kMin === 0 ? 0 : kMin - 1;
-  const k1 = kMin === n - 1 ? n - 1 : kMin + 1;
-  const t0 = a.et[k0]!;
-  const pa0 = posAt(a, k0);
-  const pb0 = posAt(b, k0);
-  const va0 = velAt(a, k0);
-  const vb0 = velAt(b, k0);
-  const relPos: Vec3 = { x: pb0.x - pa0.x, y: pb0.y - pa0.y, z: pb0.z - pa0.z };
-  const relVel: Vec3 = { x: vb0.x - va0.x, y: vb0.y - va0.y, z: vb0.z - va0.z };
-  const ca = closestApproachLinear(relPos, relVel);
-  // Clamp the linear TCA into the bracket so a near-tangent geometry cannot run away.
-  const span = a.et[k1]! - t0;
-  const tcaRel = Math.max(0, Math.min(span, ca.tca));
-  const tca = t0 + tcaRel;
-  // Recompute miss at the clamped time from the linearized relative motion.
-  const missVec: Vec3 = {
-    x: relPos.x + relVel.x * tcaRel,
-    y: relPos.y + relVel.y * tcaRel,
-    z: relPos.z + relVel.z * tcaRel,
-  };
-  const missKm = Math.min(dMin, Math.hypot(missVec.x, missVec.y, missVec.z));
+  const kLo = kMin === 0 ? 0 : kMin - 1;
+  const kHi = kMin === n - 1 ? n - 1 : kMin + 1;
+  const tLo = a.et[kLo]!;
+  const tMin = a.et[kMin]!;
+  const tHi = a.et[kHi]!;
+
+  let tca = tMin;
+  let missKm = dMin;
+  // Fit only when kMin is interior with a real bracket on both sides; an edge minimum has no
+  // bracket so the discrete sample is the best available estimate.
+  if (kLo < kMin && kMin < kHi) {
+    // Squared separations at the three bracket samples, parameterized by time offset from tMin.
+    const xLo = tLo - tMin;
+    const xHi = tHi - tMin;
+    const yLo = sep(a, b, kLo) ** 2;
+    const yMin = dMin * dMin;
+    const yHi = sep(a, b, kHi) ** 2;
+    // Lagrange-fit d2(x) = A x^2 + B x + C through (xLo,yLo),(0,yMin),(xHi,yHi). Vertex at -B/2A.
+    const denom = xLo * xHi * (xLo - xHi);
+    if (denom !== 0) {
+      const A = (xHi * (yLo - yMin) - xLo * (yHi - yMin)) / denom;
+      const B = (xLo * xLo * (yHi - yMin) - xHi * xHi * (yLo - yMin)) / denom;
+      if (A > 0) {
+        // Upward parabola: its vertex is the minimum. Clamp into the bracket [xLo, xHi].
+        const xStar = Math.max(xLo, Math.min(xHi, -B / (2 * A)));
+        const d2Star = A * xStar * xStar + B * xStar + yMin;
+        tca = tMin + xStar;
+        missKm = Math.min(dMin, Math.sqrt(Math.max(0, d2Star)));
+      }
+    }
+  }
+
+  // Relative speed near TCA: the change in separation is second order at the minimum, so the
+  // sampled relative speed at the bracketed minimum sample is the representative encounter speed.
+  const relSpeedKmS = relSpeedAt(a, b, kMin);
 
   let pc: number | null = null;
   if (a.radiusKm !== undefined && b.radiusKm !== undefined && a.sigmaKm !== undefined && b.sigmaKm !== undefined) {
@@ -196,7 +224,7 @@ function refinePair(a: SampledEphemeris, b: SampledEphemeris): ConjunctionEvent 
       missYKm: 0,
     });
   }
-  return { primaryId: a.id, secondaryId: b.id, tca, missKm, relSpeedKmS: ca.relSpeedKmS, pc };
+  return { primaryId: a.id, secondaryId: b.id, tca, missKm, relSpeedKmS, pc };
 }
 
 /**

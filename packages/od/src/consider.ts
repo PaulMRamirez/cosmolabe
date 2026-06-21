@@ -17,7 +17,8 @@
 // Loewner sense: the consider covariance can only grow the uncertainty, never shrink it.
 // (Tapley-Schutz-Born §4.13, "consider covariance analysis"; Vallado §10.8.)
 
-import { mat, matmul, symInverse, symmetrize, transpose, type Mat } from './linalg.ts';
+import { cholesky, mat, matmul, symInverse, symmetrize, transpose, type Mat } from './linalg.ts';
+import { SingularMatrixError } from './errors.ts';
 
 /**
  * The consider blocks the batch estimator accumulates: the cross information Lambda_xc and the
@@ -52,12 +53,47 @@ export interface ConsiderSensitivity {
  * Lambda_xx (6x6 row-major) and the consider blocks. Returns Pc (6x6 row-major). Throws via
  * symInverse if Lambda_xx is not SPD. The result is symmetric and, by construction, Pc >= Pxx.
  */
+/**
+ * Assert a symmetric matrix is positive semidefinite by Cholesky-factoring it with a tiny
+ * diagonal jitter. The jitter (a relative fraction of the matrix scale) admits a genuinely
+ * semidefinite Pcc (a zero pivot from a rank-deficient but valid covariance) while a negative
+ * eigenvalue still drives a pivot below the jittered floor and throws. Loud and located.
+ */
+function assertPsd(a: Mat): void {
+  const n = a.rows;
+  let scale = 0;
+  for (let i = 0; i < n; i++) {
+    const d = Math.abs(a.data[i * n + i]!);
+    if (d > scale) scale = d;
+  }
+  const jitter = (scale || 1) * n * Number.EPSILON;
+  const jittered = new Float64Array(a.data);
+  for (let i = 0; i < n; i++) jittered[i * n + i]! += jitter;
+  try {
+    cholesky(mat(n, n, jittered));
+  } catch (e) {
+    throw new SingularMatrixError(
+      `considerCovariance: a-priori consider covariance Pcc is not positive semidefinite (${
+        e instanceof Error ? e.message : String(e)
+      })`,
+    );
+  }
+}
+
 export function considerCovariance(informationXx: Float64Array, blocks: ConsiderBlocks): Float64Array {
   const nc = blocks.count;
   const lambdaXx = symmetrize(mat(6, 6, Float64Array.from(informationXx)));
   const pxx = symInverse(lambdaXx); // 6x6
   const lambdaXc: Mat = mat(6, nc, Float64Array.from(blocks.crossInformation)); // 6 x nc
-  const pcc: Mat = mat(nc, nc, Float64Array.from(blocks.considerCovariance)); // nc x nc
+  // Symmetrize Pcc on entry (a-priori covariances arrive with rounding asymmetry) and assert it
+  // is positive semidefinite. Pcc is used raw in the inflation Sxc Pcc Sxc^T; if it were
+  // asymmetric or indefinite that quadratic could come out indefinite too, breaking the
+  // guarantee Pc >= Pxx. Cholesky on the symmetrized matrix throws on a negative pivot, so an
+  // indefinite Pcc fails loudly here rather than silently producing an under-stated covariance.
+  // A small jitter admits a genuinely semidefinite (rank-deficient) Pcc, e.g. a perfectly
+  // correlated consider pair, without rejecting it for a zero pivot.
+  const pcc: Mat = symmetrize(mat(nc, nc, Float64Array.from(blocks.considerCovariance))); // nc x nc
+  assertPsd(pcc);
 
   // Sensitivity Sxc = -Pxx Lambda_xc (6 x nc).
   const sxc = matmul(pxx, lambdaXc);

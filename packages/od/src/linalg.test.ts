@@ -70,6 +70,28 @@ describe('linalg', () => {
     expect(() => gaussSolve(a, Float64Array.of(1, 2))).toThrow(SingularMatrixError);
   });
 
+  it('gaussSolve rejects a rank-deficient system by a SCALED (relative) pivot threshold', () => {
+    // A large-scale EXACTLY rank-deficient matrix: row 2 is a scalar multiple of row 1, so after
+    // elimination the second pivot collapses to ~0 relative to the 1e6 row scale. The old absolute
+    // 1e-300 floor would accept it (the pivot is not exactly zero in floating point) and return a
+    // garbage solution with an over-optimistic covariance; the scaled relative criterion catches
+    // the collapsed direction and throws.
+    const big = 1e6;
+    const a = mat(2, 2, Float64Array.of(big, 2 * big, 3 * big, 6 * big)); // row2 = 3 * row1: rank 1
+    expect(() => gaussSolve(a, Float64Array.of(big, 3 * big))).toThrow(SingularMatrixError);
+    // A badly conditioned but FULL-RANK system at the same large scale still solves (the scaled
+    // pivot stays a few times epsilon, above the rounding floor), so we do not over-reject.
+    const cond = mat(2, 2, Float64Array.of(big, big, big, big + 1)); // pivot ~1/1e6 ~ 1e-6 ratio
+    const xc = gaussSolve(cond, Float64Array.of(2 * big + 1, 2 * big + 1));
+    expect(xc[0]!).toBeCloseTo(2, 4);
+    expect(xc[1]!).toBeCloseTo(0, 4);
+    // A plainly well-conditioned matrix at the same scale solves exactly.
+    const ok = mat(2, 2, Float64Array.of(big, 0, 0, big));
+    const x = gaussSolve(ok, Float64Array.of(big, 2 * big));
+    expect(x[0]!).toBeCloseTo(1, 9);
+    expect(x[1]!).toBeCloseTo(2, 9);
+  });
+
   it('isPositiveDefinite distinguishes SPD from indefinite', () => {
     expect(isPositiveDefinite(mat(2, 2, Float64Array.of(2, 0, 0, 3)))).toBe(true);
     expect(isPositiveDefinite(mat(2, 2, Float64Array.of(1, 2, 2, 1)))).toBe(false);

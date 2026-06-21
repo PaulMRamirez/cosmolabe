@@ -40,14 +40,34 @@ export interface LambertSolution {
  * Solve Lambert's problem between r1 and r2 with time of flight `tof` (s) about a
  * central body of gravitational parameter `mu`. `prograde` selects the transfer
  * direction. Throws if the geometry is degenerate or no solution converges.
+ *
+ * The transfer direction (short way vs long way) is decided by the sign of the
+ * out-of-plane component of r1 x r2. Keying that off world +Z (the old behavior) is wrong
+ * for any non-equatorial geometry: a polar transfer has (r1 x r2).z == 0, collapsing both
+ * prograde and retrograde to the long way. Supply `orbitNormal` (the desired angular-momentum
+ * direction, e.g. the transfer plane's normal) so the direction is taken against the real
+ * orbit plane; when omitted the reference is world +Z, valid only for an equatorial transfer.
  */
-export function lambert(r1: Vec3, r2: Vec3, tof: number, mu: number, prograde = true): LambertSolution {
+export function lambert(
+  r1: Vec3,
+  r2: Vec3,
+  tof: number,
+  mu: number,
+  prograde = true,
+  orbitNormal?: Vec3,
+): LambertSolution {
   const r1m = mag(r1);
   const r2m = mag(r2);
   const cosdnu = dot(r1, r2) / (r1m * r2m);
-  const crossZ = cross(r1, r2).z;
-  // Transfer-angle sign: prograde transfers have positive out-of-plane component.
-  const tm = prograde ? (crossZ >= 0 ? 1 : -1) : crossZ < 0 ? 1 : -1;
+  // Out-of-plane component of r1 x r2, projected onto the chosen reference normal. Against the
+  // true orbit normal a prograde transfer has a positive projection (the swept angle is in the
+  // +normal sense), a retrograde one negative; this stays well-defined for polar geometry where
+  // the world-Z component vanishes.
+  const c = cross(r1, r2);
+  const ref = orbitNormal ?? { x: 0, y: 0, z: 1 };
+  const proj = dot(c, ref);
+  // Transfer-angle sign: prograde transfers sweep in the +normal sense (positive projection).
+  const tm = prograde ? (proj >= 0 ? 1 : -1) : proj < 0 ? 1 : -1;
   const A = tm * Math.sqrt(r1m * r2m * (1 + cosdnu));
   if (Math.abs(A) < 1e-9) throw new Error('lambert: degenerate transfer (A ~ 0)');
 

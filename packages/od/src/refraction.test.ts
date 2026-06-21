@@ -10,7 +10,7 @@
 // References: Bennett 1982 (J. Navigation 35:255); Vallado section 4.4. (STK-class OD.)
 
 import { describe, expect, it } from 'vitest';
-import { bennettRefraction } from './refraction.ts';
+import { bennettRefraction, MIN_REFRACTION_ELEVATION_RAD } from './refraction.ts';
 import { predict } from './measurements.ts';
 import type { AnglesMeasurement } from './types.ts';
 
@@ -35,6 +35,21 @@ describe('Bennett tropospheric refraction', () => {
       expect(r).toBeLessThan(prev);
       prev = r;
     }
+  });
+
+  it('returns zero below the horizon floor instead of a spurious large bend', () => {
+    // Just above the floor (within the modeled band) the correction is still a finite positive
+    // bend, but BELOW the floor the target is sub-horizon and the contribution must be zero, not
+    // the large positive value Bennett's formula returns when evaluated there (which would lift a
+    // sub-horizon target into a fake pass).
+    const justAbove = bennettRefraction(MIN_REFRACTION_ELEVATION_RAD + 1e-4);
+    expect(justAbove).toBeGreaterThan(0);
+    expect(bennettRefraction(MIN_REFRACTION_ELEVATION_RAD - 1e-6)).toBe(0);
+    expect(bennettRefraction(-1 * DEG)).toBe(0); // well below the horizon
+    expect(bennettRefraction(-5 * DEG)).toBe(0);
+    // The floor is a small negative elevation (the horizon dip), not a large one.
+    expect(MIN_REFRACTION_ELEVATION_RAD).toBeLessThan(0);
+    expect(MIN_REFRACTION_ELEVATION_RAD).toBeGreaterThan(-1 * DEG);
   });
 
   it('scales up with site pressure and down with temperature (denser air bends more)', () => {

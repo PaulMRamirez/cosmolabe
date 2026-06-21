@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { batchLeastSquares } from './batch-ls.ts';
 import { considerCovariance } from './consider.ts';
+import { SingularMatrixError } from './errors.ts';
 import { mat, matVec, sub } from './linalg.ts';
 import {
   earthForceModel,
@@ -41,6 +42,40 @@ describe('consider covariance (closed form)', () => {
     expect(pc[0]!).toBeCloseTo(expected00, 12);
     // Components 1..5 had zero cross term, so they are unchanged: Pc[i,i] = 1/100 = 0.01.
     for (let i = 1; i < 6; i++) expect(pc[i * 6 + i]!).toBeCloseTo(0.01, 12);
+  });
+
+  it('rejects an indefinite a-priori consider covariance loudly', () => {
+    const lambdaXx = new Float64Array(36);
+    for (let i = 0; i < 6; i++) lambdaXx[i * 6 + i] = 4;
+    const lambdaXc = new Float64Array(12); // 6 x 2
+    lambdaXc[0] = 3;
+    lambdaXc[7] = 2;
+    // A symmetric but INDEFINITE 2x2 Pcc (eigenvalues 1 +/- 2 => one negative). Used raw it could
+    // make the inflation indefinite and break Pc >= Pxx, so it must be rejected on entry.
+    const indefinitePcc = Float64Array.of(1, 2, 2, 1);
+    expect(() =>
+      considerCovariance(lambdaXx, { crossInformation: lambdaXc, considerCovariance: indefinitePcc, count: 2 }),
+    ).toThrow(SingularMatrixError);
+  });
+
+  it('symmetrizes a slightly asymmetric (but PSD) consider covariance instead of failing', () => {
+    const lambdaXx = new Float64Array(36);
+    for (let i = 0; i < 6; i++) lambdaXx[i * 6 + i] = 4;
+    const lambdaXc = new Float64Array(12); // 6 x 2
+    lambdaXc[0] = 3;
+    lambdaXc[7] = 2;
+    // PSD matrix [[2, 0.5],[0.5, 2]] given with a rounding asymmetry in the off-diagonal.
+    const asymPcc = Float64Array.of(2, 0.5, 0.5 + 1e-12, 2);
+    const pc = considerCovariance(lambdaXx, {
+      crossInformation: lambdaXc,
+      considerCovariance: asymPcc,
+      count: 2,
+    });
+    expect(pc).toHaveLength(36);
+    // Inflation grows the affected diagonals above the estimate-only 1/4 = 0.25. Param 0 couples
+    // to state 0 (lambdaXc[0]) and param 1 to state 3 (lambdaXc[7] = row 3, col 1).
+    expect(pc[0]!).toBeGreaterThan(0.25);
+    expect(pc[21]!).toBeGreaterThan(0.25); // Pc[3,3]
   });
 });
 

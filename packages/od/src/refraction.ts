@@ -19,6 +19,16 @@ const DEG = Math.PI / 180;
 const P0_MBAR = 1010;
 const T0_K = 283.15;
 
+/**
+ * Lowest geometric elevation at which refraction is modeled (rad), about -0.5 deg. A target
+ * whose geometric elevation is below the horizon is not visible (no ray bends a sub-horizon
+ * target into view in this single-station model), and Bennett's formula, evaluated below the
+ * horizon, returns a spuriously large positive correction. Below this floor the refraction
+ * contribution is zero. The small negative margin admits a target just beneath the geometric
+ * horizon that standard refraction genuinely lifts into view (the ~34 arcmin horizon dip).
+ */
+export const MIN_REFRACTION_ELEVATION_RAD = -0.5 * (Math.PI / 180);
+
 /** Site weather for the pressure/temperature scaling of the refraction (optional). */
 export interface RefractionConditions {
   /** Surface pressure (millibar / hPa). Default 1010. */
@@ -30,14 +40,18 @@ export interface RefractionConditions {
 /**
  * Bennett tropospheric refraction angle (radians) at a geometric (true) elevation `elRad`. The
  * apparent elevation is el + R(el). Positive for elevations below the zenith, monotonically
- * decreasing in elevation; clamped to be non-negative (no negative refraction is modeled). For
- * elevations at or below the horizon the formula is evaluated at a small positive floor so the
- * correction stays finite. Optional site pressure/temperature scale the standard value linearly.
+ * decreasing in elevation; clamped to be non-negative (no negative refraction is modeled).
+ * Below MIN_REFRACTION_ELEVATION_RAD the target is beneath the horizon and the contribution is
+ * zero: applying Bennett's formula there returns a spuriously large positive bend that would lift
+ * a sub-horizon target into a fake pass. Optional site pressure/temperature scale it linearly.
  */
 export function bennettRefraction(elRad: number, conditions?: RefractionConditions): number {
+  // Below the horizon floor refraction is not modeled: return no correction rather than a bogus
+  // large value. The geometry finder must not raise a sub-horizon target into view.
+  if (elRad < MIN_REFRACTION_ELEVATION_RAD) return 0;
   const elDeg = elRad / DEG;
-  // Bennett's argument; floor the elevation a hair above the horizon to keep cot finite.
-  const elArg = Math.max(elDeg, -1);
+  // Bennett's argument; the elevation is at or above the horizon floor so cot stays finite.
+  const elArg = elDeg;
   const arg = (elArg + 7.31 / (elArg + 4.4)) * DEG;
   const rDeg = (1 / 60) / Math.tan(arg); // standard-conditions refraction (degrees)
   let r = rDeg * DEG; // radians

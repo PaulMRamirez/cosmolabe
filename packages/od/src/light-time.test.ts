@@ -106,6 +106,47 @@ describe('light-time correction', () => {
     }
   });
 
+  it('caches the reception-epoch STM inverse: same result, one inversion per (arc, tRx)', () => {
+    // Phi(t_rx, t0)^-1 depends only on the arc and the reception epoch, not on the measurement
+    // component being rebased. Wrap the arc to count stmAt(tRx) calls and confirm two predictions
+    // at the SAME reception epoch invert that STM only once (the second hits the cache), while a
+    // prediction at a DIFFERENT reception epoch inverts its own STM (a fresh cache entry). Results
+    // must be byte-for-byte identical to the uncached reference.
+    const truth = truthState();
+    const base = arcFor(truth, 300);
+    let stmRxCalls = 0;
+    const TOL = 1e-9;
+    const counting: Arc = {
+      stateAt: (et) => base.stateAt(et),
+      stmAt: (et) => {
+        if (Math.abs(et - T_RX) < TOL) stmRxCalls += 1;
+        return base.stmAt(et);
+      },
+      result: base.result,
+    };
+    const m1: Measurement = { kind: 'range', epoch: T_RX, observer: OBS, sigma: 1e-3, value: 0 };
+    const m2: Measurement = { kind: 'rangeRate', epoch: T_RX, observer: OBS, sigma: 1e-6, value: 0 };
+
+    const ref1 = predictLightTime(m1, base);
+    const ref2 = predictLightTime(m2, base);
+    const got1 = predictLightTime(m1, counting);
+    const got2 = predictLightTime(m2, counting); // same tRx, must reuse the cached inverse
+    // Parity with the uncached reference (jac and value identical for both components).
+    expect(Array.from(got1.jac)).toEqual(Array.from(ref1.jac));
+    expect(got1.value[0]!).toBe(ref1.value[0]!);
+    expect(Array.from(got2.jac)).toEqual(Array.from(ref2.jac));
+    expect(got2.value[0]!).toBe(ref2.value[0]!);
+    // mapPartialToReception requests stmAt(tRx) only on the FIRST call; the second reuses the
+    // cached Phi(tRx)^-1 (later predictLightTime steps may read stmAt at OTHER epochs, e.g. tTx,
+    // which this counter ignores). So across two same-tRx predictions tRx is inverted once.
+    expect(stmRxCalls).toBe(1);
+
+    // A prediction at a different reception epoch builds its own cache entry (a second inversion).
+    const m3: Measurement = { kind: 'range', epoch: T_RX + 30, observer: OBS, sigma: 1e-3, value: 0 };
+    predictLightTime(m3, counting);
+    expect(stmRxCalls).toBe(1); // still 1: T_RX itself was not re-inverted
+  });
+
   it('reduces to the instantaneous partial in the c -> infinity limit (no light time)', () => {
     // Driving the light time to zero (a huge tolerance with the iteration starting at tau=0, or
     // physically c -> infinity) must collapse the corrected observable onto the plain predict.

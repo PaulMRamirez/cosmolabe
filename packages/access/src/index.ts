@@ -62,7 +62,7 @@ export async function computeAccess(spice: SpiceEngine, req: AccessRequest): Pro
   return windowIntersectAll(windows);
 }
 
-export { computeElevationAccess, type Facility } from './facility.ts';
+export { computeElevationAccess, type Facility, type ElevationUp } from './facility.ts';
 
 /** One hop of an access chain: an observer seeing a target under constraints. */
 export interface AccessLink {

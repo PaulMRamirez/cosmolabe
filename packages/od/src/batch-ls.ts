@@ -12,7 +12,7 @@
 
 import type { ForceModel } from '@bessel/propagator';
 import { considerCovariance, type ConsiderSensitivity } from './consider.ts';
-import { ConvergenceError } from './errors.ts';
+import { ConvergenceError, SingularMatrixError } from './errors.ts';
 import { gaussSolve, mat, symInverse, symmetrize, type Mat } from './linalg.ts';
 import { noiseVariances, predict, residual } from './measurements.ts';
 import { propagateArc, type Arc } from './propagate.ts';
@@ -84,6 +84,22 @@ function jacTimesStm(jac: Float64Array, size: number, phi: Float64Array): Mat {
     }
   }
   return mat(size, 6, out);
+}
+
+/**
+ * Levenberg-Marquardt ridge: add a small fraction of the diagonal magnitude to each diagonal entry
+ * of a 6x6 normal matrix so a rank-deficient (collapsed) iterate yields a defined, damped step
+ * instead of an undefined Gauss-Newton step. Used only as a fallback when the un-damped normal
+ * matrix is singular; the damping shrinks the step toward gradient descent and lets the
+ * residual-growth guard observe the divergence over consecutive iterations.
+ */
+function ridge(lambda: Mat): Mat {
+  let maxDiag = 0;
+  for (let i = 0; i < 6; i++) maxDiag = Math.max(maxDiag, Math.abs(lambda.data[i * 6 + i]!));
+  const lam = Float64Array.from(lambda.data);
+  const eps = (maxDiag || 1) * 1e-6;
+  for (let i = 0; i < 6; i++) lam[i * 6 + i]! += eps;
+  return mat(6, 6, lam);
 }
 
 /**
@@ -211,7 +227,22 @@ export function batchLeastSquares(
     prevResidualRms = residualRms;
     lastResidualRms = residualRms;
 
-    const dx = gaussSolve(lambda, rhsN); // solve Lambda dx = N (throws if singular)
+    // Solve the normal equations for the Gauss-Newton step. gaussSolve uses scaled partial pivoting
+    // and rejects a pivot that is negligible RELATIVE to its row scale (a genuinely rank-deficient
+    // normal matrix), which the old absolute 1e-300 floor missed, returning a garbage step and an
+    // over-optimistic covariance. A merely ill-conditioned but full-rank iterate still solves.
+    // If the normal matrix at this iterate is rank-deficient (a wildly-off iterate whose
+    // linearization has collapsed), fall back to a Levenberg-Marquardt-damped step: add a small
+    // ridge proportional to the diagonal so the step is defined, then let the residual-growth guard
+    // above detect the resulting divergence over consecutive iterations. The FINAL covariance still
+    // goes through symInverse (Cholesky), which independently asserts the converged matrix is SPD.
+    let dx: Float64Array;
+    try {
+      dx = gaussSolve(lambda, rhsN);
+    } catch (e) {
+      if (!(e instanceof SingularMatrixError)) throw e;
+      dx = gaussSolve(ridge(lambda), rhsN);
+    }
     for (let i = 0; i < 6; i++) x0[i]! += dx[i]!;
 
     let sq = 0;

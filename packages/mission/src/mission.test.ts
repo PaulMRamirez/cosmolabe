@@ -26,6 +26,40 @@ describe('lambert', () => {
     expect(deltaVMagnitude(sol.v1)).toBeGreaterThan(1);
     expect(deltaVMagnitude(sol.v1)).toBeLessThan(15);
   });
+
+  it('distinguishes short-way vs long-way for a POLAR transfer via the orbit normal', () => {
+    // A transfer in a meridian plane (the orbit plane contains the z-axis): r1 along +x, r2 along
+    // +z. Here (r1 x r2).z == 0, so keying the transfer direction off world +Z collapses both
+    // mirror solutions to the same long-way branch. The orbit normal is along the y-axis; the two
+    // signs of that normal pick the short way vs the long way.
+    const r1 = { x: 7000, y: 0, z: 0 };
+    const r2 = { x: 0, y: 0, z: 7000 };
+    const tof = 1800; // 30 min, a sub-orbit transfer where short and long way clearly differ
+    const nMinus = { x: 0, y: -1, z: 0 };
+    const nPlus = { x: 0, y: 1, z: 0 };
+
+    // The orbit plane is the x-z plane: r1 x r2 = (0, -7000^2, 0), i.e. along -y. Against -y the
+    // projection is positive (short way, tm=+1); against +y it is negative (long way, tm=-1).
+    const shortWay = lambert(r1, r2, tof, MU_EARTH, true, nMinus);
+    const longWay = lambert(r1, r2, tof, MU_EARTH, true, nPlus);
+
+    // Both solutions stay in the meridian (x-z) plane: no y-velocity for a planar transfer.
+    expect(shortWay.v1.y).toBeCloseTo(0, 6);
+    expect(longWay.v1.y).toBeCloseTo(0, 6);
+    // The two branches are genuinely different (the bug collapsed them to one). The short-way
+    // initial velocity carries the spacecraft toward +z (the 90 deg sweep), the long way away.
+    expect(shortWay.v1.z).toBeGreaterThan(0);
+    expect(longWay.v1.z).toBeLessThan(0);
+    expect(Math.abs(shortWay.v1.z - longWay.v1.z)).toBeGreaterThan(0.5);
+
+    // The branch is driven jointly by the prograde flag and the orbit normal: flipping BOTH (a
+    // prograde transfer about +normal vs a retrograde transfer about -normal) selects the same
+    // physical sweep direction, so the velocities coincide. The world-Z fallback cannot express
+    // this for a meridian-plane transfer because its angular momentum projects onto +Z as zero.
+    const progradePlus = lambert(r1, r2, tof, MU_EARTH, true, nPlus);
+    const retroMinus = lambert(r1, r2, tof, MU_EARTH, false, nMinus);
+    expect(retroMinus.v1.z).toBeCloseTo(progradePlus.v1.z, 9);
+  });
 });
 
 describe('maneuver frames', () => {

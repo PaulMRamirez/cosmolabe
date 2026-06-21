@@ -98,6 +98,53 @@ describe('screenAllVsAll', () => {
     expect(() => screenAllVsAll([a, b], { thresholdKm: 5 })).toThrow(/share one screening grid/);
   });
 
+  it('places the TCA and miss between samples for a closest approach off the grid', () => {
+    // Coarse 20 s grid. The relative motion is built directly so the true closest approach is at
+    // t = 130 s (between the samples at 120 and 140), with a 0.5 km miss, while the discrete grid
+    // minimum sits at a sample with a much larger separation. The relative velocity also changes
+    // sample to sample (curved, non-rectilinear motion), so a refiner that anchors on a bracket
+    // edge with that edge's stale velocity mis-locates the TCA; refining about the bracketed
+    // minimum sample recovers it.
+    const et = grid(0, 21, 20); // 0..400, samples every 20 s
+    const n = et.length;
+    const posA = new Float64Array(n * 3);
+    const velA = new Float64Array(n * 3);
+    const posB = new Float64Array(n * 3);
+    const velB = new Float64Array(n * 3);
+    const R = 7000;
+    // Object A: straight line through (R,0,0) along +y at 5 km/s.
+    // Object B: tracks A in y but approaches in x as a steep parabola minimized (0.5 km) at
+    // t = 130 s, so the separation is 0.5 km at t=130 but ~5.5 km at the bracketing 120/140 s
+    // samples. B's per-sample velocity changes each step (the dx slope and a curving y), so a
+    // refiner anchored on a bracket edge with that edge's stale velocity mis-locates the TCA.
+    for (let k = 0; k < n; k++) {
+      const t = et[k]!;
+      posA[k * 3] = R;
+      posA[k * 3 + 1] = 5 * (t - 130);
+      posA[k * 3 + 2] = 0;
+      velA[k * 3] = 0;
+      velA[k * 3 + 1] = 5;
+      velA[k * 3 + 2] = 0;
+      const dtm = t - 130;
+      posB[k * 3] = R + 0.5 + 0.05 * dtm * dtm; // dx: 0.5 at t=130, 5.5 at t=120/140
+      posB[k * 3 + 1] = 5 * dtm + 0.001 * dtm * dtm;
+      posB[k * 3 + 2] = 0;
+      velB[k * 3] = 0.1 * dtm; // changing x-velocity sample to sample
+      velB[k * 3 + 1] = 5 + 0.002 * dtm;
+      velB[k * 3 + 2] = 0;
+    }
+    const a: SampledEphemeris = { id: 'A', et, pos: posA, vel: velA, radiusKm: 0.005, sigmaKm: 0.1 };
+    const b: SampledEphemeris = { id: 'B', et, pos: posB, vel: velB, radiusKm: 0.005, sigmaKm: 0.1 };
+    const events = screenAllVsAll([a, b], { thresholdKm: 5 });
+    expect(events).toHaveLength(1);
+    const ev = events[0]!;
+    // TCA recovered between the 120 s and 140 s samples (not snapped to either), miss ~0.5 km.
+    expect(ev.tca).toBeGreaterThan(120);
+    expect(ev.tca).toBeLessThan(140);
+    expect(ev.tca).toBeCloseTo(130, 0);
+    expect(ev.missKm).toBeLessThan(2.0); // true 0.5 km, far below the ~5.5 km discrete-grid minimum
+  });
+
   it('fails loudly on malformed input', () => {
     const et = grid(0, 3, 10);
     const bad: SampledEphemeris = { id: 'X', et, pos: new Float64Array(6), vel: new Float64Array(9) };
