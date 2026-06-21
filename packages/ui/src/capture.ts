@@ -58,6 +58,12 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;
+  // Firefox only dispatches the click when the anchor is in the document.
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Revoking synchronously after click() cancels in-flight multi-MB downloads;
+  // defer it so the browser has handed the blob to the download manager first.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

@@ -29,7 +29,13 @@ function formatDistance(km: number): string {
   return base;
 }
 
-function formatSpeed(kmS: number): string {
+// Below this range rate (km/s) the pair is effectively neither closing nor
+// separating; routing an exactly-zero (or sub-mm/s) rate to "separating" reads as
+// a false trend, so it gets a neutral label instead.
+const STEADY_EPS_KMS = 1e-6;
+
+export function formatSpeed(kmS: number): string {
+  if (Math.abs(kmS) < STEADY_EPS_KMS) return `${Math.abs(kmS).toFixed(3)} km/s steady`;
   const trend = kmS < 0 ? 'closing' : 'separating';
   return `${Math.abs(kmS).toFixed(3)} km/s ${trend}`;
 }

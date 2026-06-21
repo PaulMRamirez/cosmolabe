@@ -55,8 +55,16 @@ export function DockLayout(props: DockLayoutProps): JSX.Element {
 
   if (narrow) return <NarrowDock {...props} />;
 
+  // react-resizable-panels reads defaultSize only at mount, then renormalizes the last
+  // sizes on layout changes. Toggling the right column off would otherwise keep the old
+  // 20/56 split (the freed width is not reclaimed). Keying the group by the right
+  // column's presence remounts it so the canvas takes the full 20/80 default.
   return (
-    <PanelGroup direction="horizontal" className="bessel-dock">
+    <PanelGroup
+      key={props.right ? 'with-right' : 'no-right'}
+      direction="horizontal"
+      className="bessel-dock"
+    >
       <Panel order={1} defaultSize={20} minSize={12} className="bessel-dock-side">
         {props.left}
       </Panel>

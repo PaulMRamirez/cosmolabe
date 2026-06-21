@@ -7,7 +7,7 @@ import { PanelContainer } from './PanelContainer.tsx';
 import { Tooltip } from './Tooltip.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ObjectInspector } from './ObjectInspector.tsx';
-import { MeasurePanel } from './MeasurePanel.tsx';
+import { MeasurePanel, formatSpeed } from './MeasurePanel.tsx';
 import { BookmarksPanel } from './BookmarksPanel.tsx';
 import { ScriptConsole } from './ScriptConsole.tsx';
 
@@ -138,6 +138,15 @@ describe('@bessel/ui MeasurePanel', () => {
     );
     expect(out).toContain('Measure mode: click two objects in the view');
     expect(out).toMatch(/<button[^>]*aria-pressed="true"[^>]*data-testid="measure-mode"/);
+  });
+
+  it('labels the range-rate trend, with a neutral "steady" at (and near) zero', () => {
+    // A real closing/separating rate keeps its trend word.
+    expect(formatSpeed(-1.25)).toBe('1.250 km/s closing');
+    expect(formatSpeed(1.25)).toBe('1.250 km/s separating');
+    // Exactly zero (and sub-epsilon) must not read as "separating".
+    expect(formatSpeed(0)).toBe('0.000 km/s steady');
+    expect(formatSpeed(1e-9)).toBe('0.000 km/s steady');
   });
 
   it('offers Clear only when there is a selection', () => {

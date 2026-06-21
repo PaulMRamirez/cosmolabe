@@ -25,16 +25,18 @@ export function Popover(props: PopoverProps): JSX.Element {
 
   useEffect(() => {
     if (!open) return undefined;
-    const onPointer = (e: MouseEvent): void => {
+    // pointerdown (not mousedown) so a touch tap outside dismisses on the PWA and
+    // Capacitor targets; mousedown does not fire for touch on those platforms.
+    const onPointer = (e: PointerEvent): void => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setOpen(false);
     };
-    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('pointerdown', onPointer);
     document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('pointerdown', onPointer);
       document.removeEventListener('keydown', onKey);
     };
   }, [open]);

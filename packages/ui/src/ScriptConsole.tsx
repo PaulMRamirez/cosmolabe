@@ -29,7 +29,12 @@ const PLACEHOLDER = ['gotoObject Earth', 'setTimeRate 3600', 'show orbits', '# u
 
 export function ScriptConsole(props: ScriptConsoleProps): JSX.Element {
   const [name, setName] = useState('');
+  // The load <select> resets to '' after each pick so re-selecting the SAME saved
+  // name re-fires onChange (the reset-to-saved workflow must re-run, not be swallowed
+  // by a controlled value already holding that name). The delete target is tracked
+  // separately so the Delete control still knows which script the user last chose.
   const [selected, setSelected] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState('');
 
   return (
     <section className="bessel-script" aria-label="Scripting console">
@@ -92,8 +97,13 @@ export function ScriptConsole(props: ScriptConsoleProps): JSX.Element {
           id="bessel-script-load"
           value={selected}
           onChange={(e) => {
-            setSelected(e.target.value);
-            if (e.target.value) props.onLoadSaved(e.target.value);
+            const picked = e.target.value;
+            if (picked) {
+              setDeleteTarget(picked);
+              props.onLoadSaved(picked);
+            }
+            // Always snap back to the placeholder so re-selecting the same name fires.
+            setSelected('');
           }}
           data-testid="script-load"
         >
@@ -106,9 +116,10 @@ export function ScriptConsole(props: ScriptConsoleProps): JSX.Element {
         </select>
         <button
           type="button"
-          disabled={!selected}
+          disabled={!deleteTarget || !props.savedScriptNames.includes(deleteTarget)}
           onClick={() => {
-            if (selected) props.onDeleteSaved(selected);
+            if (deleteTarget) props.onDeleteSaved(deleteTarget);
+            setDeleteTarget('');
             setSelected('');
           }}
           data-testid="script-delete"

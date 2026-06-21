@@ -17,6 +17,24 @@ export interface ReportPanelProps {
   readonly store: AppStore;
 }
 
+/**
+ * Clamp a remembered selection against the current option names. The local
+ * observer/target selects capture a default only at first mount; after loading a
+ * different mission the held name can be absent from the new options, so Run would
+ * submit a stale pair. Keep the selection when it still exists, otherwise fall back to
+ * the name at `fallbackIndex` (then the first name, then the given default), never a
+ * name that is not in the list.
+ */
+export function reconcileName(
+  selected: string,
+  names: readonly string[],
+  fallbackIndex: number,
+  dflt: string,
+): string {
+  if (names.includes(selected)) return selected;
+  return names[fallbackIndex] ?? names[0] ?? dflt;
+}
+
 export function ReportPanel(props: ReportPanelProps): JSX.Element {
   const { engine, store } = props;
   const objects = useStore(store, (s) => s.objects);
@@ -36,8 +54,10 @@ export function ReportPanel(props: ReportPanelProps): JSX.Element {
 
   // The observer/target pair, frame, and grid come from the shared context by default;
   // the override reveals the local inputs. The provider kind is always tool-local.
-  const effObserver = useShared ? ctx.observer || names[0] || 'Sun' : observer;
-  const effTarget = useShared ? ctx.target || names[1] || names[0] || 'Earth' : target;
+  // In local mode the held observer/target may name an object from a previously loaded
+  // mission; reconcile against the current names so Run never submits a stale pair.
+  const effObserver = useShared ? ctx.observer || names[0] || 'Sun' : reconcileName(observer, names, 0, 'Sun');
+  const effTarget = useShared ? ctx.target || names[1] || names[0] || 'Earth' : reconcileName(target, names, 1, 'Earth');
   const effFrame = useShared ? ctx.frame : frame;
   const effDurationS = useShared ? ctx.spanSec : durationMin * 60;
   const effStepS = useShared ? ctx.stepSec : stepS;
@@ -98,7 +118,7 @@ export function ReportPanel(props: ReportPanelProps): JSX.Element {
         <>
           <label>
             Observer
-            <select value={observer} onChange={(e) => setObserver(e.target.value)} data-testid="report-observer">
+            <select value={effObserver} onChange={(e) => setObserver(e.target.value)} data-testid="report-observer">
               {names.map((n) => (
                 <option key={n} value={n}>
                   {n}
@@ -108,7 +128,7 @@ export function ReportPanel(props: ReportPanelProps): JSX.Element {
           </label>
           <label>
             Target
-            <select value={target} onChange={(e) => setTarget(e.target.value)} data-testid="report-target">
+            <select value={effTarget} onChange={(e) => setTarget(e.target.value)} data-testid="report-target">
               {names.map((n) => (
                 <option key={n} value={n}>
                   {n}

@@ -97,7 +97,9 @@ export function TelemetryOverlay(props: TelemetryOverlayProps): JSX.Element {
     actualPts.push(`${px},${y(s.residualKm, vMax, h).toFixed(2)}`);
   }
 
-  const nowX = x(props.nowEt, t0, t1, w).toFixed(2);
+  // The live clock can run ahead of the last sample (or before the first); clamp the
+  // now-line into the plot box so it pins to the edge instead of drawing off-chart.
+  const nowX = Math.max(PAD, Math.min(w - PAD, x(props.nowEt, t0, t1, w))).toFixed(2);
   const thresholdY = y(threshold, vMax, h).toFixed(2);
 
   return (

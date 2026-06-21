@@ -93,6 +93,19 @@ describe('GroundTrackMap', () => {
     );
     expect((out.match(/bessel-groundtrack-line/g) ?? []).length).toBe(2);
   });
+
+  it('renders a single-point segment (trapped between two wraps) as a dot', () => {
+    // Each sample wraps relative to its neighbour, so every segment holds exactly one
+    // point. These must not be dropped: they render as circles, not polylines.
+    const out = html(
+      createElement(GroundTrackMap, {
+        lon: [3.0, -3.0, 3.0],
+        lat: [0, 0, 0],
+      }),
+    );
+    expect((out.match(/bessel-groundtrack-line/g) ?? []).length).toBe(0);
+    expect((out.match(/bessel-groundtrack-point/g) ?? []).length).toBe(3);
+  });
 });
 
 describe('ReportTable', () => {

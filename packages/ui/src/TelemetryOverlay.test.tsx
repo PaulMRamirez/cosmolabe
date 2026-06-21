@@ -61,6 +61,23 @@ describe('@bessel/ui TelemetryOverlay', () => {
     expect(nowX(mid)).toBeGreaterThan(nowX(start));
   });
 
+  it('clamps the now-line into the plot box when the clock runs past the samples', () => {
+    const nowX = (s: string): number => {
+      const seg = s.slice(s.indexOf('class="bessel-telemetry-now"'));
+      const m = seg.match(/x1="([\d.]+)"/);
+      return m ? Number(m[1]) : NaN;
+    };
+    const w = 280;
+    const pad = 4;
+    // Samples span et 100..102; a clock far past the last sample would extrapolate
+    // off the right edge without the clamp. It must pin to w - PAD instead.
+    const ahead = html(createElement(TelemetryOverlay, { series: series([1, 2, 3]), nowEt: 500, width: w }));
+    expect(nowX(ahead)).toBeCloseTo(w - pad, 5);
+    // A clock before the first sample pins to the left edge (PAD).
+    const behind = html(createElement(TelemetryOverlay, { series: series([1, 2, 3]), nowEt: 0, width: w }));
+    expect(nowX(behind)).toBeCloseTo(pad, 5);
+  });
+
   it('shows a fault banner when the adapter reports an error', () => {
     const out = html(
       createElement(TelemetryOverlay, {

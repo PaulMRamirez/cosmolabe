@@ -29,16 +29,22 @@ const CAMERA_HELP: readonly { keys: string; description: string }[] = [
 
 export function KeyboardHelp(props: KeyboardHelpProps): JSX.Element | null {
   const ref = useRef<HTMLDivElement>(null);
+  // Reference onClose through a ref so the focus effect can depend on props.open
+  // alone. Depending on props (or an inline onClose) re-ran the effect on every
+  // viewer re-render: while the clock plays the dialog re-grabbed focus each tick,
+  // yanking it off the Close button and making the interior keyboard-unreachable.
+  const onCloseRef = useRef(props.onClose);
+  onCloseRef.current = props.onClose;
 
   useEffect(() => {
-    if (!props.open) return;
+    if (!props.open) return undefined;
     ref.current?.focus();
     const onKey = (ev: KeyboardEvent): void => {
-      if (ev.key === 'Escape') props.onClose();
+      if (ev.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [props.open, props]);
+  }, [props.open]);
 
   if (!props.open) return null;
   return (

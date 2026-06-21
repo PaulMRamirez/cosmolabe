@@ -44,9 +44,11 @@ export function GroundTrackMap(props: GroundTrackMapProps): JSX.Element {
   const yMax = Y_MAX[kind];
 
   // Project each sample, normalize to the SVG box (north up), and split the polyline
-  // where longitude wraps across the antimeridian so the track does not streak.
-  const segments: string[] = [];
-  let current: string[] = [];
+  // where longitude wraps across the antimeridian so the track does not streak. A
+  // segment with a single point (one sample trapped between two wraps) cannot draw as
+  // a polyline, so it is kept and rendered as a dot rather than silently dropped.
+  const segments: { x: number; y: number }[][] = [];
+  let current: { x: number; y: number }[] = [];
   let prevX = NaN;
   for (let i = 0; i < n; i++) {
     const lat = Math.max(-WEB_MERCATOR_MAX_LAT, Math.min(WEB_MERCATOR_MAX_LAT, props.lat[i]!));
@@ -54,13 +56,13 @@ export function GroundTrackMap(props: GroundTrackMapProps): JSX.Element {
     const x = ((p.x + Math.PI) / (2 * Math.PI)) * w;
     const y = ((yMax - p.y) / (2 * yMax)) * h;
     if (!Number.isNaN(prevX) && Math.abs(x - prevX) > w / 2) {
-      if (current.length >= 2) segments.push(current.join(' '));
+      if (current.length >= 1) segments.push(current);
       current = [];
     }
-    current.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+    current.push({ x, y });
     prevX = x;
   }
-  if (current.length >= 2) segments.push(current.join(' '));
+  if (current.length >= 1) segments.push(current);
 
   return (
     <svg
@@ -76,9 +78,24 @@ export function GroundTrackMap(props: GroundTrackMapProps): JSX.Element {
       {/* Equator and prime meridian for orientation. */}
       <line className="bessel-groundtrack-grid" x1={0} y1={h / 2} x2={w} y2={h / 2} />
       <line className="bessel-groundtrack-grid" x1={w / 2} y1={0} x2={w / 2} y2={h} />
-      {segments.map((pts, i) => (
-        <polyline key={i} className="bessel-groundtrack-line" fill="none" points={pts} />
-      ))}
+      {segments.map((pts, i) =>
+        pts.length >= 2 ? (
+          <polyline
+            key={i}
+            className="bessel-groundtrack-line"
+            fill="none"
+            points={pts.map((q) => `${q.x.toFixed(2)},${q.y.toFixed(2)}`).join(' ')}
+          />
+        ) : (
+          <circle
+            key={i}
+            className="bessel-groundtrack-point"
+            cx={pts[0]!.x.toFixed(2)}
+            cy={pts[0]!.y.toFixed(2)}
+            r={1.5}
+          />
+        ),
+      )}
     </svg>
   );
 }
