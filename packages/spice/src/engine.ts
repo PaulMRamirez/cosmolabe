@@ -35,6 +35,9 @@ export async function createSpiceEngine(options?: SpiceEngineOptions): Promise<S
     async et2utc(et, format, precision) {
       return bindings.et2utc(et, format, precision);
     },
+    async et2tdb(et, precision) {
+      return bindings.et2tdb(et, precision);
+    },
     async utc2et(utc) {
       return bindings.utc2et(utc);
     },

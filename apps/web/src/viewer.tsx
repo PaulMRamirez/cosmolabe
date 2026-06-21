@@ -11,6 +11,7 @@ import {
   CameraFrameControls,
   CaptureControls,
   CatalogLoader,
+  DEFAULT_LADDER,
   KeyboardHelp,
   MeasurePanel,
   ObjectBrowser,
@@ -19,12 +20,14 @@ import {
   PanelContainer,
   ReadoutPanel,
   SearchBox,
+  severityFor,
   SettingsPanel,
   ThemeToggle,
   TimelineControls,
   Tooltip,
   ViewControls,
   useKeyboardShortcuts,
+  type CatalogSample,
   type KeyboardAction,
 } from '@bessel/ui';
 import { createAppStore, useStore, type AppStore } from './store/index.ts';
@@ -51,19 +54,41 @@ const SPICE_IDS: Readonly<Record<string, string>> = Object.fromEntries(
   SOLAR_SYSTEM.map((p) => [p.name, p.spiceId]),
 );
 
-// The residual (km) at which the HUD glyph escalates to a hard fault. Mirrors the
-// telemetry overlay's DEFAULT_LADDER.critical; inlined so this eager shell module
-// does not pull the lazy overlay code into the first-paint chunk.
-const HUD_FAULT_RESIDUAL_KM = 4;
+/** A bundled, recognizable sample mission offered as a one-click load in the Mission
+ *  menu. Resolved under the deploy base path so it works on the GitHub Pages subpath. */
+const SAMPLE_CATALOGS: readonly CatalogSample[] = [
+  { label: 'Cassini at Saturn', url: `${import.meta.env.BASE_URL}samples/cassini-saturn.json` },
+];
 
 /** A selene StatusDot tone for the status HUD, derived purely from existing app
  *  state. The visible status text is unchanged; the dot only adds a color cue. */
 function hudTone(status: string, fault: string | null, residualKm: number | null): StatusTone {
   if (status.startsWith('Error')) return 'fault';
   if (fault != null) return 'critical';
-  if (residualKm != null && residualKm >= HUD_FAULT_RESIDUAL_KM) return 'critical';
+  if (residualKm != null && residualKm >= DEFAULT_LADDER.critical) return 'critical';
   if (status === 'Ready') return 'nominal';
   return 'caution';
+}
+
+/** Collapse the telemetry severity ladder onto a StatusDot tone for the HUD residual. */
+function toneForHud(severity: ReturnType<typeof severityFor>): StatusTone {
+  if (severity === 'critical' || severity === 'severe') return 'critical';
+  if (severity === 'distress') return 'fault';
+  if (severity === 'watch' || severity === 'warning') return 'caution';
+  return 'nominal';
+}
+
+/** The HUD residual readout: a short text and its tone, or a "sample data" note when
+ *  there is no live telemetry. Reuses the @bessel/ui ladder so the word matches the
+ *  Telemetry overlay. */
+function hudResidual(
+  residualKm: number | null,
+  fault: string | null,
+): { readonly text: string; readonly tone: StatusTone } {
+  if (fault != null) return { text: `fault: ${fault}`, tone: 'fault' };
+  if (residualKm == null) return { text: 'sample data', tone: 'nominal' };
+  const severity = severityFor(residualKm, DEFAULT_LADDER);
+  return { text: `RES ${residualKm.toFixed(2)} km (${severity})`, tone: toneForHud(severity) };
 }
 
 export function BesselViewer(): JSX.Element {
@@ -75,6 +100,18 @@ export function BesselViewer(): JSX.Element {
   const [query, setQuery] = useState('');
   const [scriptSource, setScriptSource] = useState('gotoObject Earth\nsetTimeRate 3600');
   const [scriptLog, setScriptLog] = useState<readonly string[]>([]);
+  const [shareNote, setShareNote] = useState<{ url: string; copied: boolean } | null>(null);
+  const [bookmarkImportError, setBookmarkImportError] = useState<string | null>(null);
+  const noteTimer = useRef<number | null>(null);
+
+  // Surface a transient "view link copied" confirmation, or the link in a selectable
+  // field when the clipboard was unavailable (so the link is never silently lost).
+  const showShare = useCallback((r: { url: string; copied: boolean } | null): void => {
+    if (!r) return;
+    setShareNote(r);
+    if (noteTimer.current) window.clearTimeout(noteTimer.current);
+    if (r.copied) noteTimer.current = window.setTimeout(() => setShareNote(null), 4000);
+  }, []);
 
   const runScript = useCallback((): void => {
     if (!engine) return;
@@ -91,6 +128,7 @@ export function BesselViewer(): JSX.Element {
   const et = useStore(store, (s) => s.et);
   const bounds = useStore(store, (s) => s.bounds);
   const epochLabel = useStore(store, (s) => s.epochLabel);
+  const timeSystem = useStore(store, (s) => s.timeSystem);
   const focus = useStore(store, (s) => s.focus);
   const instruments = useStore(store, (s) => s.instruments);
   const footprintPoints = useStore(store, (s) => s.footprintPoints);
@@ -112,6 +150,7 @@ export function BesselViewer(): JSX.Element {
   const telemetryOverlay = useStore(store, (s) => s.telemetryOverlay);
   const telemetryFault = useStore(store, (s) => s.telemetryFault);
   const statusTone = hudTone(status, telemetryFault, telemetryResidualKm);
+  const residual = hudResidual(telemetryResidualKm, telemetryFault);
   const missionAnnotations = useStore(store, (s) => s.annotations);
   const spacecraftQuat = useStore(store, (s) => s.spacecraftQuat);
   const objects = useStore(store, (s) => s.objects);
@@ -176,13 +215,15 @@ export function BesselViewer(): JSX.Element {
           onLoad={(file) => void engine?.loadCatalog(file)}
           status={loadedName ? `Loaded ${loadedName}: ${objects.length} objects` : null}
           error={loadError}
+          samples={SAMPLE_CATALOGS}
+          onLoadSample={(url) => void engine?.loadCatalogUrl(url)}
+          onLoadUrl={(url) => void engine?.loadCatalogUrl(url)}
         />
         <div className="bessel-menu-section" data-testid="panel-ops">
           <OpsPanel
             missions={missions}
             onLoadMission={(id) => void engine?.loadMission(registryRef.current, id)}
             onRunTour={() => engine?.runTour()}
-            telemetryResidualKm={telemetryResidualKm}
           />
         </div>
       </Popover>
@@ -236,22 +277,34 @@ export function BesselViewer(): JSX.Element {
           onSave={(name) => void engine?.saveBookmark(name)}
           onApply={(id) => void engine?.applyBookmark(id)}
           onDelete={(id) => void engine?.deleteBookmark(id)}
+          onCopyLink={(id) => void engine?.copyBookmarkLink(id).then(showShare)}
+          onExport={() => engine?.exportBookmarks()}
+          onImport={(text) => {
+            setBookmarkImportError(null);
+            void Promise.resolve()
+              .then(() => engine?.importBookmarks(text))
+              .catch((err: unknown) =>
+                setBookmarkImportError(err instanceof Error ? err.message : String(err)),
+              );
+          }}
+          importError={bookmarkImportError}
         />
       </Popover>
-      {hasSpacecraft ? (
-        <Popover label="Analysis" title="Analysis" align="right" testId="analysis-menu">
-          <PanelSuspense>
-            <AnalysisPanel engine={engine} store={store} />
-          </PanelSuspense>
-        </Popover>
-      ) : null}
-      {hasSpacecraft ? (
-        <Popover label="Telemetry" title="Predicted versus actual" align="right" testId="telemetry-menu">
-          <PanelSuspense>
-            <TelemetryOverlay series={telemetryOverlay} nowEt={et} fault={telemetryFault} />
-          </PanelSuspense>
-        </Popover>
-      ) : null}
+      <Popover label="Analysis" title="Analysis" align="right" testId="analysis-menu">
+        <PanelSuspense>
+          <AnalysisPanel engine={engine} store={store} hasSpacecraft={hasSpacecraft} />
+        </PanelSuspense>
+      </Popover>
+      <Popover label="Telemetry" title="Predicted versus actual" align="right" testId="telemetry-menu">
+        <PanelSuspense>
+          {!hasSpacecraft ? (
+            <p className="bessel-loader-hint" data-testid="telemetry-empty-notice">
+              Load a spacecraft to analyze.
+            </p>
+          ) : null}
+          <TelemetryOverlay series={telemetryOverlay} nowEt={et} fault={telemetryFault} />
+        </PanelSuspense>
+      </Popover>
       <Tooltip label="Toggle light / dark theme">
         <ThemeToggle theme={theme} onToggle={toggleTheme} />
       </Tooltip>
@@ -305,14 +358,36 @@ export function BesselViewer(): JSX.Element {
         data-cam-mode={track ? 'track' : cameraMode}
         data-selection={selection.join(',')}
         data-epoch={epochLabel}
+        data-time-system={timeSystem}
         data-sc-quat={spacecraftQuat ? spacecraftQuat.map((v) => v.toFixed(4)).join(',') : ''}
         data-testid="viewport"
       />
-      <div className="bessel-hud" data-testid="status">
-        <span aria-hidden="true" style={{ display: 'inline-flex', marginRight: 6, verticalAlign: 'middle' }}>
-          <StatusDot tone={statusTone} halo={statusTone === 'critical'} />
+      <div className="bessel-hud" role="status" aria-label="Operations status">
+        <span className="bessel-hud-cell">
+          <span aria-hidden="true" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+            <StatusDot tone={statusTone} halo={statusTone === 'critical'} />
+          </span>
+          <span className="bessel-hud-status" data-testid="status">
+            {status}
+          </span>
         </span>
-        {status}
+        {hasSpacecraft ? (
+          <>
+            <span className="bessel-hud-sep" aria-hidden="true" />
+            <span className="bessel-hud-cell">
+              <span aria-hidden="true" style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+                <StatusDot tone={residual.tone} />
+              </span>
+              <span className="bessel-hud-residual" data-testid="hud-residual" data-severity={residual.tone}>
+                {residual.text}
+              </span>
+            </span>
+            <span className="bessel-hud-sep" aria-hidden="true" />
+            <span className="bessel-hud-track" data-testid="hud-track">
+              {focus}
+            </span>
+          </>
+        ) : null}
       </div>
       <div className="bessel-viewcontrols" role="group" aria-label="Instruments and sharing">
         {hasSpacecraft && (
@@ -335,9 +410,25 @@ export function BesselViewer(): JSX.Element {
             </button>
           </>
         )}
-        <button type="button" onClick={() => void engine?.share()} data-testid="share">
+        <button type="button" onClick={() => void engine?.share().then(showShare)} data-testid="share">
           Share view
         </button>
+        {shareNote ? (
+          shareNote.copied ? (
+            <span className="bessel-share-note" role="status" data-testid="share-confirm">
+              View link copied
+            </span>
+          ) : (
+            <input
+              className="bessel-share-fallback"
+              data-testid="share-url"
+              readOnly
+              value={shareNote.url}
+              aria-label="Shareable view link"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          )
+        ) : null}
         <span className="bessel-selection" data-testid="selection-label">
           {selection.length ? `Selected: ${selection.join(', ')}` : 'No selection'}
         </span>
@@ -382,6 +473,7 @@ export function BesselViewer(): JSX.Element {
       playing={playing}
       rate={rate}
       epochLabel={epochLabel}
+      timeSystem={timeSystem}
       min={bounds[0]}
       max={bounds[1]}
       value={et}
@@ -389,6 +481,7 @@ export function BesselViewer(): JSX.Element {
       onPlayToggle={() => engine?.togglePlay()}
       onRateChange={(r) => engine?.setRate(r)}
       onScrub={(v) => engine?.scrub(v)}
+      onTimeSystemChange={(s) => engine?.setTimeSystem(s)}
       onAnnotationSelect={(v) => engine?.scrub(v)}
     />
   );

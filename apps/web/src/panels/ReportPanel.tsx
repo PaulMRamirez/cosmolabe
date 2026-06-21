@@ -43,6 +43,14 @@ export function ReportPanel(props: ReportPanelProps): JSX.Element {
     if (!report) return;
     const csv = seriesToCsv(report.series.et, report.series.columns, report.series.names, {
       epochHeader: 'et',
+      meta: {
+        timeSystem: 'UTC',
+        frame,
+        span: `${durationMin} min`,
+        step: `${stepS} s`,
+        target,
+        secondary: observer,
+      },
     });
     downloadBlob(new Blob([csv], { type: 'text/csv' }), 'report.csv');
   };

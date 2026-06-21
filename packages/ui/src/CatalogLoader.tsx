@@ -17,11 +17,14 @@ export interface CatalogLoaderProps {
   /** Bundled sample missions offered as one-click loads (e.g. Cassini at Saturn). */
   readonly samples?: readonly CatalogSample[];
   readonly onLoadSample?: (url: string) => void;
+  /** When set, render a text field to load a catalog from an arbitrary URL. */
+  readonly onLoadUrl?: (url: string) => void;
 }
 
 export function CatalogLoader(props: CatalogLoaderProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [url, setUrl] = useState('');
 
   const read = (file: File): void => {
     void file.text().then((text) => props.onLoad({ name: file.name, text }));
@@ -60,6 +63,30 @@ export function CatalogLoader(props: CatalogLoaderProps): JSX.Element {
           {sample.label}
         </button>
       ))}
+      {props.onLoadUrl ? (
+        <form
+          className="bessel-loader-url"
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            const u = url.trim();
+            if (!u) return;
+            props.onLoadUrl?.(u);
+            setUrl('');
+          }}
+        >
+          <input
+            type="url"
+            value={url}
+            onChange={(ev) => setUrl(ev.target.value)}
+            placeholder="https://.../catalog.json"
+            aria-label="Catalog URL"
+            data-testid="load-url-input"
+          />
+          <button type="submit" data-testid="load-url-submit">
+            Load URL
+          </button>
+        </form>
+      ) : null}
       <input
         ref={inputRef}
         type="file"

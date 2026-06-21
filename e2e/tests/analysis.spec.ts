@@ -9,12 +9,16 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   await page.goto('/');
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
 
-  // The Analysis menu only appears once a spacecraft mission is loaded.
-  await expect(page.getByTestId('analysis-menu')).toHaveCount(0);
-  await loadCassiniSample(page);
+  // The Analysis menu is always visible; before a spacecraft is loaded it shows a
+  // "load a spacecraft" notice and runs its tools on sample data.
   await expect(page.getByTestId('analysis-menu')).toBeVisible();
-
   await page.getByTestId('analysis-menu').click();
+  await expect(page.getByTestId('analysis-empty-notice')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await loadCassiniSample(page);
+  await page.getByTestId('analysis-menu').click();
+  await expect(page.getByTestId('analysis-empty-notice')).toHaveCount(0);
   await page.getByTestId('compute-eclipse').click();
 
   // The result (umbra Gantt) appears, with an interval count rendered.

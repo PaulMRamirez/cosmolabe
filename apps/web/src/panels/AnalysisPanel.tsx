@@ -15,6 +15,7 @@ import { useStore, type AppStore, type Series } from '../store/index.ts';
 export interface AnalysisPanelProps {
   readonly engine: BesselEngine | null;
   readonly store: AppStore;
+  readonly hasSpacecraft: boolean;
 }
 
 const fmt = (n: number, digits = 2): string =>
@@ -118,6 +119,21 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   const [secondary, setSecondary] = useState('');
   const spanSec = Math.max(60, spanDays * 86400);
   const span = { spanSec, stepSec: Math.max(1, stepSec) };
+
+  // Run-parameter metadata stamped onto every exported CSV so a result is reproducible.
+  const epochLabel = useStore(store, (s) => s.epochLabel);
+  const runMeta = useMemo(
+    () => ({
+      epoch: epochLabel || undefined,
+      timeSystem: 'UTC' as const,
+      frame: 'J2000',
+      span: `${spanDays} d`,
+      step: `${Math.max(1, stepSec)} s`,
+      ...(target ? { target } : {}),
+      ...(secondary ? { secondary } : {}),
+    }),
+    [epochLabel, spanDays, stepSec, target, secondary],
+  );
   const targetSpan = { ...span, ...(target ? { target } : {}) };
 
   const eclipseUmbra = useStore(store, (s) => s.eclipseUmbra);
@@ -136,6 +152,11 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
 
   return (
     <div className="bessel-analysis" data-testid="analysis-panel">
+      {!props.hasSpacecraft ? (
+        <p className="bessel-loader-hint" data-testid="analysis-empty-notice">
+          Load a spacecraft to analyze. Tools below run on sample data.
+        </p>
+      ) : null}
       {/* Shared parameters threaded into the span-based and target-based tools. */}
       <div className="bessel-analysis-params" data-testid="analysis-params">
         <label>
@@ -195,7 +216,11 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
         resultTestId="eclipse-result"
         timelineTestId="eclipse-timeline"
         hint="Compute the spacecraft eclipse over the next day."
-        csv={{ testId: 'eclipse-csv', filename: 'eclipse-umbra.csv', build: (i) => intervalsToCsv(i) }}
+        csv={{
+          testId: 'eclipse-csv',
+          filename: 'eclipse-umbra.csv',
+          build: (i) => intervalsToCsv(i, { meta: runMeta }),
+        }}
       />
 
       {/* Range time series */}
@@ -207,7 +232,11 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
         resultTestId="range-result"
         chartTestId="range-chart"
         hint="Plot the spacecraft range over the next day."
-        csv={{ testId: 'range-csv', filename: 'range.csv', build: (s) => seriesToCsv(s.et, [s.value], ['range_km']) }}
+        csv={{
+          testId: 'range-csv',
+          filename: 'range.csv',
+          build: (s) => seriesToCsv(s.et, [s.value], ['range_km'], { meta: runMeta }),
+        }}
       />
 
       {/* Access windows + figure of merit */}
@@ -222,7 +251,11 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
         resultTestId="access-result"
         timelineTestId="access-timeline"
         hint="Find the spacecraft line-of-sight access to the Sun."
-        csv={{ testId: 'access-csv', filename: 'access.csv', build: (i) => intervalsToCsv(i) }}
+        csv={{
+          testId: 'access-csv',
+          filename: 'access.csv',
+          build: (i) => intervalsToCsv(i, { meta: runMeta }),
+        }}
         extra={
           accessFom ? (
             <p className="bessel-analysis-stat" data-testid="access-fom">

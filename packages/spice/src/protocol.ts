@@ -27,6 +27,7 @@ export type SpiceWorkerRequest =
   | { id: number; method: 'ktotal'; kind: string }
   | { id: number; method: 'str2et'; utc: string }
   | { id: number; method: 'et2utc'; et: number; format: string; precision: number }
+  | { id: number; method: 'et2tdb'; et: number; precision: number }
   | { id: number; method: 'utc2et'; utc: string }
   | {
       id: number;
@@ -182,6 +183,7 @@ export type SpiceWorkerResultMap = {
   ktotal: number;
   str2et: number;
   et2utc: string;
+  et2tdb: string;
   utc2et: number;
   spkpos: PositionResult;
   spkposBatch: Float64Array;

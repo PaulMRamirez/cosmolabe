@@ -41,6 +41,8 @@ export async function dispatchSpice(engine: SpiceEngine, req: SpiceWorkerRequest
       return engine.str2et(req.utc);
     case 'et2utc':
       return engine.et2utc(req.et, req.format, req.precision);
+    case 'et2tdb':
+      return engine.et2tdb(req.et, req.precision);
     case 'utc2et':
       return engine.utc2et(req.utc);
     case 'spkpos':

@@ -21,6 +21,7 @@ import {
   type KeyboardAction,
   type Recorder,
   type SettingKey,
+  type TimeSystem,
 } from '@bessel/ui';
 import { encodeView, decodeView, TelemetryAdapter, type ViewModel } from '@bessel/state';
 import type { PluginRegistry, BesselCatalog } from '@bessel/catalog';
@@ -43,6 +44,7 @@ import { MockTelemetrySocket } from '../telemetry-mock.ts';
 import {
   loadBookmarks,
   persistBookmarks,
+  parseBookmarkList,
   newBookmarkId,
   type Bookmark,
 } from '../bookmarks.ts';
@@ -78,6 +80,12 @@ const preventDefault = (ev: Event): void => ev.preventDefault();
 // the analysis packages stays behind the dynamic-import split boundary. The provider
 // kind is needed eagerly only as a type on the ReportConfig surface.
 export type { AnalysisSpan, AnalysisTargetSpan, ReportConfig } from './analysis-ops.ts';
+
+/** The outcome of a share/copy action: the link, and whether it reached the clipboard. */
+export interface ShareResult {
+  readonly url: string;
+  readonly copied: boolean;
+}
 
 export class BesselEngine {
   private core: EngineCore | null = null;
@@ -824,15 +832,68 @@ export class BesselEngine {
     };
   }
 
-  async share(): Promise<void> {
+  async share(): Promise<ShareResult> {
     const view = await this.buildViewModel();
-    if (!view) return;
+    if (!view) return { url: window.location.href, copied: false };
     window.location.hash = encodeView(view);
+    const url = window.location.href;
+    let copied = false;
     try {
-      await navigator.clipboard?.writeText(window.location.href);
+      await navigator.clipboard?.writeText(url);
+      copied = navigator.clipboard != null;
     } catch {
-      // Clipboard may be unavailable; the URL hash is still updated.
+      // Clipboard may be unavailable; the URL hash is still updated and the caller
+      // surfaces the link in a selectable field instead.
+      copied = false;
     }
+    return { url, copied };
+  }
+
+  /** Build a shareable link to a single saved view from its stored hash, or null. */
+  bookmarkLink(id: string): string | null {
+    const b = this.store.getState().bookmarks.find((x) => x.id === id);
+    if (!b) return null;
+    const { origin, pathname } = window.location;
+    return `${origin}${pathname}#${b.hash}`;
+  }
+
+  /** Copy a saved view's link to the clipboard; returns the link + whether it copied. */
+  async copyBookmarkLink(id: string): Promise<ShareResult | null> {
+    const url = this.bookmarkLink(id);
+    if (!url) return null;
+    let copied = false;
+    try {
+      await navigator.clipboard?.writeText(url);
+      copied = navigator.clipboard != null;
+    } catch {
+      copied = false;
+    }
+    return { url, copied };
+  }
+
+  /** Download the saved-views list as a JSON document. */
+  exportBookmarks(): void {
+    const blob = new Blob([JSON.stringify(this.store.getState().bookmarks, null, 2)], {
+      type: 'application/json',
+    });
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = 'bessel-saved-views.json';
+    a.click();
+    URL.revokeObjectURL(href);
+  }
+
+  /** Import saved views from a JSON document, merging by id. Throws loudly on bad JSON. */
+  async importBookmarks(json: string): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    const incoming = parseBookmarkList(json);
+    const byId = new Map(this.store.getState().bookmarks.map((b) => [b.id, b] as const));
+    for (const b of incoming) byId.set(b.id, b);
+    const next = [...byId.values()];
+    this.store.setState({ bookmarks: next });
+    await persistBookmarks(e.storage, next);
   }
 
   private async loadBookmarksFromStorage(): Promise<void> {
@@ -906,6 +967,13 @@ export class BesselEngine {
 
   setRate(rate: number): void {
     this.store.setState({ rate });
+  }
+
+  /** Switch the displayed epoch time system (display only) and re-derive the label. */
+  setTimeSystem(system: TimeSystem): void {
+    this.store.setState({ timeSystem: system });
+    const e = this.core;
+    if (e) pushEpochLabel(e.spice, this.store, e.clock.state.et, this.isDisposed);
   }
 
   stepRate(dir: -1 | 1): void {

@@ -127,6 +127,19 @@ export class SpiceBindings {
     return this.mod.UTF8ToString(out);
   }
 
+  // Ephemeris time to a TDB ISO calendar string via timout_c with a ::TDB picture, so
+  // the displayed epoch can carry its actual time system rather than implying UTC.
+  et2tdb(et: number, precision: number): string {
+    const len = 64;
+    const frac = Math.max(0, Math.min(9, Math.trunc(precision)));
+    const pic =
+      frac > 0 ? `YYYY-MM-DDTHR:MN:SC.${'#'.repeat(frac)} ::TDB` : 'YYYY-MM-DDTHR:MN:SC ::TDB';
+    const out = this.mod._malloc(len);
+    this.call('timout_c', et, this.str(pic), len, out);
+    this.checkFailed();
+    return this.mod.UTF8ToString(out);
+  }
+
   /** Rectangular (body-fixed km) to geodetic longitude/latitude (rad) and altitude (km). */
   recgeo(rectan: Vec3, re: number, f: number): { lon: number; lat: number; alt: number } {
     const r = this.mod._malloc(24);

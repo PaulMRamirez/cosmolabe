@@ -15,6 +15,8 @@ test('propagate sample TLE renders altitude series and ground track', async ({ p
   // The propagated orbit surfaces as a period readout, an altitude polyline, and a
   // ground-track polyline, all from the published SPK.
   await expect(page.getByTestId('tle-period')).toContainText('period', { timeout: 20_000 });
+  // Cold boot has no spacecraft, so the run is labelled as sample data.
+  await expect(page.getByTestId('sample-data-tag')).toBeVisible();
   await expect(page.getByTestId('tle-altitude-chart').locator('polyline')).toHaveCount(1);
   await expect(page.getByTestId('tle-ground-track').locator('polyline').first()).toBeVisible();
 

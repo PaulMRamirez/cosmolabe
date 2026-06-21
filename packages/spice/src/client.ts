@@ -60,6 +60,7 @@ export function createSpiceWorkerClient(worker: Worker): SpiceComputeEngine {
     ktotal: (kind = 'ALL') => send<number>({ method: 'ktotal', kind }),
     str2et: (utc) => send<number>({ method: 'str2et', utc }),
     et2utc: (et, format, precision) => send<string>({ method: 'et2utc', et, format, precision }),
+    et2tdb: (et, precision) => send<string>({ method: 'et2tdb', et, precision }),
     utc2et: (utc) => send<number>({ method: 'utc2et', utc }),
     spkpos: (target, et, frame, abcorr: AberrationCorrection, observer) =>
       send<PositionResult>({ method: 'spkpos', target, et, frame, abcorr, observer }),

@@ -70,6 +70,7 @@ export function createSpiceWorkerPool(workers: Worker[]): SpiceWorkerPool {
     ktotal: (kind) => next().ktotal(kind),
     str2et: (utc) => next().str2et(utc),
     et2utc: (et, format, precision) => next().et2utc(et, format, precision),
+    et2tdb: (et, precision) => next().et2tdb(et, precision),
     utc2et: (utc) => next().utc2et(utc),
     spkpos: (target, et, frame, abcorr, observer) => next().spkpos(target, et, frame, abcorr, observer),
     spkezr: (target, et, frame, abcorr, observer) => next().spkezr(target, et, frame, abcorr, observer),

@@ -2,7 +2,11 @@
 // timeline and camera controls; Phase 1 and 2 add the object browser, settings,
 // readouts, keyboard shortcuts, timeline annotations, and capture controls.
 
-export { TimelineControls, type TimelineControlsProps } from './TimelineControls.tsx';
+export {
+  TimelineControls,
+  type TimelineControlsProps,
+  type TimeSystem,
+} from './TimelineControls.tsx';
 export { ViewControls, type ViewControlsProps, type CameraBaseMode } from './ViewControls.tsx';
 export {
   CameraFrameControls,
@@ -48,7 +52,11 @@ export {
   type ObjectInspectorProps,
   type InspectorField,
 } from './ObjectInspector.tsx';
-export { CatalogLoader, type CatalogLoaderProps } from './CatalogLoader.tsx';
+export {
+  CatalogLoader,
+  type CatalogLoaderProps,
+  type CatalogSample,
+} from './CatalogLoader.tsx';
 export { MeasurePanel, type MeasurePanelProps } from './MeasurePanel.tsx';
 export { OpsPanel, type OpsPanelProps, type MissionOption } from './OpsPanel.tsx';
 export {

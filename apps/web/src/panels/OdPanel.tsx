@@ -5,7 +5,7 @@
 // it reads the odResult slice and calls the engine. (Tapley-Schutz-Born §4.3.)
 
 import { useState } from 'react';
-import { Button } from '@bessel/selene-design';
+import { Button, Tag } from '@bessel/selene-design';
 import { type BesselEngine } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
 
@@ -20,6 +20,8 @@ const fmt = (n: number, digits = 4): string =>
 export function OdPanel(props: OdPanelProps): JSX.Element {
   const { engine, store } = props;
   const result = useStore(store, (s) => s.odResult);
+  const objects = useStore(store, (s) => s.objects);
+  const isSample = !objects.some((e) => e.kind === 'spacecraft');
   const [noise, setNoise] = useState(1);
 
   return (
@@ -44,6 +46,11 @@ export function OdPanel(props: OdPanelProps): JSX.Element {
 
       {result ? (
         <div data-testid="od-result">
+          {isSample ? (
+            <span data-testid="sample-data-tag" style={{ display: 'inline-flex', marginBottom: 4 }}>
+              <Tag tone="amber">Sample data</Tag>
+            </span>
+          ) : null}
           <p className="bessel-analysis-stat" data-testid="od-rms">
             {result.label}: residual RMS {fmt(result.residualRms, 3)} over {result.observationCount}{' '}
             observations, {result.iterations} iteration{result.iterations === 1 ? '' : 's'}

@@ -6,7 +6,7 @@
 // it reads the mcsResult slice and calls the engine. (STK_PARITY_SPEC §4.3.)
 
 import { useState } from 'react';
-import { Button } from '@bessel/selene-design';
+import { Button, Tag } from '@bessel/selene-design';
 import { TimeSeriesChart } from '@bessel/ui';
 import { type BesselEngine, DEFAULT_MCS_DESIGN, type McsDesign } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
@@ -22,6 +22,8 @@ const fmt = (n: number, digits = 2): string =>
 export function MissionPanel(props: MissionPanelProps): JSX.Element {
   const { engine, store } = props;
   const result = useStore(store, (s) => s.mcsResult);
+  const objects = useStore(store, (s) => s.objects);
+  const isSample = !objects.some((e) => e.kind === 'spacecraft');
   const [design, setDesign] = useState<McsDesign>(DEFAULT_MCS_DESIGN);
 
   const set = <K extends keyof McsDesign>(key: K, value: number): void =>
@@ -82,6 +84,11 @@ export function MissionPanel(props: MissionPanelProps): JSX.Element {
 
       {result ? (
         <div data-testid="mcs-result">
+          {isSample ? (
+            <span data-testid="sample-data-tag" style={{ display: 'inline-flex', marginBottom: 4 }}>
+              <Tag tone="amber">Sample data</Tag>
+            </span>
+          ) : null}
           <p className="bessel-analysis-stat" data-testid="mcs-final-state">
             {result.label}: final radius {fmt(result.finalRadiusKm, 1)} km, speed{' '}
             {fmt(result.finalSpeedKmS, 4)} km/s

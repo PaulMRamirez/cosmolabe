@@ -67,6 +67,8 @@ export interface SpiceEngine {
 
   str2et(utc: string): Promise<number>;
   et2utc(et: number, format: string, precision: number): Promise<string>;
+  /** Ephemeris time (TDB seconds) to a TDB ISO calendar string (Barycentric Dynamical Time). */
+  et2tdb(et: number, precision: number): Promise<string>;
   utc2et(utc: string): Promise<number>;
 
   spkpos(

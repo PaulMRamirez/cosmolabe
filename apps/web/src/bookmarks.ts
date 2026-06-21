@@ -32,7 +32,7 @@ export async function persistBookmarks(
   await storage.set(KEY, JSON.stringify(bookmarks));
 }
 
-function isBookmark(value: unknown): value is Bookmark {
+export function isBookmark(value: unknown): value is Bookmark {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -40,6 +40,25 @@ function isBookmark(value: unknown): value is Bookmark {
     typeof (value as Bookmark).name === 'string' &&
     typeof (value as Bookmark).hash === 'string'
   );
+}
+
+/**
+ * Parse an imported saved-views JSON document, failing loudly (per the product value)
+ * so a malformed import is reported rather than silently dropped. Requires a JSON
+ * array whose every entry is a well-formed bookmark (id, name, hash).
+ */
+export function parseBookmarkList(json: string): Bookmark[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    throw new Error('Bookmark import: not valid JSON');
+  }
+  if (!Array.isArray(parsed)) throw new Error('Bookmark import: expected a JSON array of views');
+  if (!parsed.every(isBookmark)) {
+    throw new Error('Bookmark import: every entry needs an id, name, and view hash');
+  }
+  return parsed;
 }
 
 /** A reasonably unique id for a new bookmark, without relying on wall-clock. */

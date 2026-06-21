@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { loadBookmarks, persistBookmarks, newBookmarkId, type Bookmark } from './bookmarks.ts';
+import {
+  loadBookmarks,
+  persistBookmarks,
+  parseBookmarkList,
+  newBookmarkId,
+  type Bookmark,
+} from './bookmarks.ts';
 import type { Storage } from '@bessel/pal';
 
 function fakeStorage(initial?: string): Storage & { value: string | null } {
@@ -37,5 +43,25 @@ describe('bookmarks persistence', () => {
 
   it('generates distinct ids', () => {
     expect(newBookmarkId()).not.toBe(newBookmarkId());
+  });
+});
+
+describe('parseBookmarkList (import)', () => {
+  it('round-trips a valid exported array', () => {
+    expect(parseBookmarkList(JSON.stringify([sample]))).toEqual([sample]);
+  });
+
+  it('fails loudly on non-JSON', () => {
+    expect(() => parseBookmarkList('{ not json')).toThrow(/^Bookmark import:/);
+  });
+
+  it('fails loudly on a JSON object that is not an array', () => {
+    expect(() => parseBookmarkList(JSON.stringify(sample))).toThrow(/^Bookmark import:/);
+  });
+
+  it('fails loudly when an entry is missing its view hash', () => {
+    expect(() => parseBookmarkList(JSON.stringify([{ id: 'a', name: 'x' }]))).toThrow(
+      /^Bookmark import:/,
+    );
   });
 });

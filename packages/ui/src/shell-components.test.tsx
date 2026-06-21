@@ -145,7 +145,7 @@ describe('@bessel/ui BookmarksPanel', () => {
   it('lists each bookmark with an apply and a delete control', () => {
     const out = html(
       createElement(BookmarksPanel, {
-        bookmarks: [{ id: 'a', name: 'Earth view' }],
+        bookmarks: [{ id: 'a', name: 'Earth view', hash: 'cam=center:Earth' }],
         onSave: noop,
         onApply: noop,
         onDelete: noop,
@@ -154,5 +154,38 @@ describe('@bessel/ui BookmarksPanel', () => {
     expect(out).toContain('data-testid="bookmarks-list"');
     expect(out).toContain('Earth view');
     expect(out).toContain('aria-label="Delete Earth view"');
+  });
+
+  it('renders copy-link, export, and import controls when wired, and a loud import error', () => {
+    const out = html(
+      createElement(BookmarksPanel, {
+        bookmarks: [{ id: 'a', name: 'Earth view', hash: 'cam=center:Earth' }],
+        onSave: noop,
+        onApply: noop,
+        onDelete: noop,
+        onCopyLink: noop,
+        onExport: noop,
+        onImport: noop,
+        importError: 'Bookmark import: not valid JSON',
+      }),
+    );
+    expect(out).toContain('data-testid="bookmark-copy-a"');
+    expect(out).toContain('data-testid="bookmarks-export"');
+    expect(out).toContain('data-testid="bookmarks-import"');
+    expect(out).toMatch(/role="alert"[^>]*data-testid="bookmark-import-error"/);
+    expect(out).toContain('Bookmark import: not valid JSON');
+  });
+
+  it('disables export when there are no saved views', () => {
+    const out = html(
+      createElement(BookmarksPanel, {
+        bookmarks: [],
+        onSave: noop,
+        onApply: noop,
+        onDelete: noop,
+        onExport: noop,
+      }),
+    );
+    expect(out).toMatch(/disabled[^>]*data-testid="bookmarks-export"|data-testid="bookmarks-export"[^>]*disabled/);
   });
 });

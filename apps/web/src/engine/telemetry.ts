@@ -12,8 +12,12 @@ export function pushEpochLabel(
   et: number,
   isDisposed: () => boolean,
 ): void {
-  void spice.et2utc(et, 'ISOC', 0).then((utc) => {
-    if (!isDisposed()) store.setState({ epochLabel: utc });
+  // Display only: et stays TDB seconds. The label is converted through SPICE for the
+  // active time system, never by naive arithmetic, so UTC and TDB are both correct.
+  const label =
+    store.getState().timeSystem === 'TDB' ? spice.et2tdb(et, 0) : spice.et2utc(et, 'ISOC', 0);
+  void label.then((s) => {
+    if (!isDisposed()) store.setState({ epochLabel: s });
   });
 }
 

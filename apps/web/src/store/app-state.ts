@@ -3,7 +3,7 @@
 // mirror refs) into one object that both React (via useStore) and the imperative
 // BesselEngine (via getState/setState) share.
 
-import type { CatalogEntry, Readouts, VisualizationSettings } from '@bessel/ui';
+import type { CatalogEntry, Readouts, TimeSystem, VisualizationSettings } from '@bessel/ui';
 import type { PredictedVsActual } from '@bessel/state';
 import type { TimelineAnnotation } from '@bessel/timeline';
 import { DEFAULT_OBJECT_ENTRIES } from '../catalog-load.ts';
@@ -20,6 +20,8 @@ export interface AppState {
   et: number;
   bounds: readonly [number, number];
   epochLabel: string;
+  /** Time system the epoch label is displayed in (display only; et stays TDB seconds). */
+  timeSystem: TimeSystem;
   // Camera and selection.
   focus: string;
   selection: readonly string[];
@@ -242,6 +244,7 @@ export const initialAppState: AppState = {
   et: 0,
   bounds: [0, 1],
   epochLabel: '',
+  timeSystem: 'UTC',
   // Default to a heliocentric whole-system view; a loaded mission recenters on
   // its own center body.
   focus: 'Sun',

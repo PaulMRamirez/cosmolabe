@@ -126,11 +126,41 @@
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
   padding: var(--space-1) var(--space-2);
   background: var(--hud-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
+}
+
+.bessel-hud-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Residual + tracked-object readouts use the primary ink (AA on the HUD surface);
+   severity is carried by the decorative StatusDot, not by the text color. */
+.bessel-hud-residual {
+  color: var(--text-0);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}
+
+.bessel-hud-track {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}
+
+.bessel-hud-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
 }
 
 .bessel-viewcontrols {
@@ -765,6 +795,94 @@ button[aria-pressed='true'] {
 .bessel-loader-error:empty,
 .bessel-loader-status:empty {
   display: none;
+}
+
+/* One-click sample mission chip and the load-from-URL field (B4). */
+.bessel-loader-sample {
+  font-size: 0.8rem;
+}
+
+.bessel-loader-url {
+  display: flex;
+  gap: var(--space-1);
+  flex-basis: 100%;
+}
+
+.bessel-loader-url input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Epoch time-system toggle (B3). */
+.bessel-time-system {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: var(--space-2);
+}
+
+/* Object-browser legend: selected versus centered (B14). --text-1 matches the panel
+   hints and clears AA on the surface. */
+.bessel-body-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  color: var(--text-1);
+  font-size: 0.75rem;
+}
+
+.bessel-body-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bessel-body-legend-swatch {
+  display: inline-block;
+  width: 1.6rem;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.bessel-body-legend-glyph {
+  display: inline-flex;
+  width: 1.6rem;
+  justify-content: center;
+  color: var(--text-1);
+  line-height: 0;
+}
+
+/* Share confirmation + selectable fallback (B17). */
+.bessel-share-note {
+  color: var(--text-1);
+  font-size: 0.75rem;
+}
+
+.bessel-share-fallback {
+  width: 14rem;
+  max-width: 40vw;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+/* Per-view copy-link, the import/export toolbar, and a loud import error (B17). */
+.bessel-bookmark-copy {
+  font-size: 0.7rem;
+}
+
+.bessel-bookmark-tools {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.bessel-bookmarks-error {
+  color: #ff8a8a;
+  font-size: 0.75rem;
+  margin: var(--space-1) 0 0;
 }
 
 /* Measurement ------------------------------------------------------------ */

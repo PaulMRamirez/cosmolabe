@@ -1,7 +1,7 @@
-// Operations panel: surfaces the scripting API (a guided tour), the mission
-// plugin registry (a list of bundled missions), and the telemetry adapter (the
-// latest predicted-versus-actual residual). Presentational: the app wires the
-// handlers to the engine, registry, and store.
+// Operations panel: surfaces the scripting API (a guided tour) and the mission
+// plugin registry (a list of bundled missions). Presentational: the app wires the
+// handlers to the engine, registry, and store. The live telemetry residual is shown
+// in the always-mounted HUD ops strip, not here.
 
 export interface MissionOption {
   readonly id: string;
@@ -12,8 +12,6 @@ export interface OpsPanelProps {
   readonly missions: readonly MissionOption[];
   readonly onLoadMission: (id: string) => void;
   readonly onRunTour: () => void;
-  /** Latest predicted-versus-actual residual (km), or null when no telemetry. */
-  readonly telemetryResidualKm: number | null;
 }
 
 export function OpsPanel(props: OpsPanelProps): JSX.Element {
@@ -39,11 +37,6 @@ export function OpsPanel(props: OpsPanelProps): JSX.Element {
       <button type="button" onClick={props.onRunTour} data-testid="run-tour">
         Guided tour
       </button>
-      <div className="bessel-ops-telemetry" data-testid="telemetry-residual">
-        {props.telemetryResidualKm === null
-          ? 'Telemetry: none'
-          : `Telemetry residual: ${props.telemetryResidualKm.toFixed(2)} km`}
-      </div>
     </section>
   );
 }

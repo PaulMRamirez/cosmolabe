@@ -23,6 +23,59 @@ function csvRow(fields: readonly (string | number)[]): string {
   return fields.map((f) => (typeof f === 'number' ? quoteField(String(f)) : textCell(f))).join(',');
 }
 
+/** Time system tag for the CSV epoch column / metadata (coordinate with B3). */
+export type CsvTimeSystem = 'UTC' | 'TDB' | 'TAI';
+
+/**
+ * Optional run-parameter metadata stamped as a comment preamble on an exported CSV.
+ * Every field is optional; only present fields are emitted, in a fixed order. The
+ * preamble is comment lines ("# key: value") then a blank "#" separator, so the data
+ * header row stays the first non-comment line and the file is machine-parseable.
+ */
+export interface CsvMeta {
+  readonly mission?: string;
+  /** Run epoch label (analysis start epoch), e.g. a UTC ISOC string from et2utc. */
+  readonly epoch?: string;
+  /** Time system the epoch / epoch column is expressed in (a tag, not inferred). */
+  readonly timeSystem?: CsvTimeSystem;
+  /** Span of the run, pre-formatted (e.g. "1 d"). */
+  readonly span?: string;
+  /** Sample step, pre-formatted (e.g. "120 s"). */
+  readonly step?: string;
+  readonly target?: string;
+  readonly secondary?: string;
+  /** Reference frame (e.g. "J2000"). */
+  readonly frame?: string;
+}
+
+const META_ORDER: readonly (readonly [keyof CsvMeta, string])[] = [
+  ['mission', 'mission'],
+  ['epoch', 'epoch'],
+  ['timeSystem', 'time_system'],
+  ['span', 'span'],
+  ['step', 'step'],
+  ['target', 'target'],
+  ['secondary', 'secondary'],
+  ['frame', 'frame'],
+];
+
+/**
+ * Build the comment preamble for a CSV from run-parameter metadata. Returns '' when
+ * no fields are present (so callers can prepend unconditionally). Each line is
+ * "# key: value"; newlines in a value are collapsed so a value cannot break its line.
+ */
+export function csvMetaPreamble(meta: CsvMeta | undefined): string {
+  if (!meta) return '';
+  const lines: string[] = [];
+  for (const [field, label] of META_ORDER) {
+    const value = meta[field];
+    if (value === undefined || value === '') continue;
+    lines.push(`# ${label}: ${String(value).replace(/[\r\n]+/g, ' ')}`);
+  }
+  if (lines.length === 0) return '';
+  return lines.join('\n') + '\n#\n';
+}
+
 export interface SeriesCsvOptions {
   /** Header for the epoch column (default "et"). */
   readonly epochHeader?: string;
@@ -30,6 +83,8 @@ export interface SeriesCsvOptions {
   readonly epochLabels?: readonly string[];
   /** Significant digits for numeric cells (default 6). */
   readonly digits?: number;
+  /** Optional run-parameter metadata, stamped as a comment preamble. */
+  readonly meta?: CsvMeta;
 }
 
 /**
@@ -50,7 +105,7 @@ export function seriesToCsv(
     const epoch = opts.epochLabels ? opts.epochLabels[i] ?? '' : round(et[i]!);
     rows.push(csvRow([epoch, ...columns.map((c) => round(c[i]!))]));
   }
-  return rows.join('\n') + '\n';
+  return csvMetaPreamble(opts.meta) + rows.join('\n') + '\n';
 }
 
 export interface IntervalsCsvOptions {
@@ -58,6 +113,8 @@ export interface IntervalsCsvOptions {
   readonly stopHeader?: string;
   /** Optional formatter from ET seconds to a label (e.g. UTC). Default is the number. */
   readonly format?: (et: number) => string;
+  /** Optional run-parameter metadata, stamped as a comment preamble. */
+  readonly meta?: CsvMeta;
 }
 
 /**
@@ -72,5 +129,5 @@ export function intervalsToCsv(
   for (const [start, stop] of intervals) {
     rows.push(csvRow([fmt(start), fmt(stop), Number((stop - start).toPrecision(6))]));
   }
-  return rows.join('\n') + '\n';
+  return csvMetaPreamble(opts.meta) + rows.join('\n') + '\n';
 }

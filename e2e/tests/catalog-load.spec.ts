@@ -22,6 +22,20 @@ test('loading a native catalog populates the object browser', async ({ page }) =
   await expect(page.getByTestId('load-error')).toHaveText('');
 });
 
+test('the one-click sample chip loads the bundled mission', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await expect(page.getByTestId('select-Cassini')).toHaveCount(0);
+
+  // The sample chip resolves its catalog URL under the deploy base path and loads it
+  // through engine.loadCatalogUrl, so the spacecraft appears with no file picked.
+  await page.getByTestId('mission-menu').click();
+  await page.getByTestId('load-sample-cassini-saturn.json').click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('select-Cassini')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 30_000 });
+});
+
 test('an invalid catalog shows a loud, located error', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });

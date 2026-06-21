@@ -5,7 +5,7 @@
 // (STK_PARITY_SPEC §4.1, Phase A.)
 
 import { useState } from 'react';
-import { Button } from '@bessel/selene-design';
+import { Button, Tag } from '@bessel/selene-design';
 import { GroundTrackMap, IntervalTimeline, TimeSeriesChart, downloadBlob } from '@bessel/ui';
 import { intervalsToCsv } from '@bessel/interop';
 import { type BesselEngine, type HpopForceModel } from '../engine/index.ts';
@@ -33,6 +33,8 @@ export function PropagatePanel(props: PropagatePanelProps): JSX.Element {
   const tleOrbit = useStore(store, (s) => s.tleOrbit);
   const stationAccess = useStore(store, (s) => s.stationAccess);
   const hpopAltitude = useStore(store, (s) => s.hpopAltitude);
+  const objects = useStore(store, (s) => s.objects);
+  const isSample = !objects.some((e) => e.kind === 'spacecraft');
   const [hpopModel, setHpopModel] = useState<HpopForceModel>('j2');
 
   return (
@@ -42,6 +44,11 @@ export function PropagatePanel(props: PropagatePanelProps): JSX.Element {
       </Button>
       {tleOrbit ? (
         <div data-testid="tle-result">
+          {isSample ? (
+            <span data-testid="sample-data-tag" style={{ display: 'inline-flex', marginBottom: 4 }}>
+              <Tag tone="amber">Sample data</Tag>
+            </span>
+          ) : null}
           <p className="bessel-analysis-stat" data-testid="tle-period">
             {tleOrbit.label}: period {tleOrbit.periodMin.toFixed(1)} min
           </p>
@@ -86,7 +93,14 @@ export function PropagatePanel(props: PropagatePanelProps): JSX.Element {
                 testId="station-access-csv"
                 onClick={() =>
                   downloadBlob(
-                    new Blob([intervalsToCsv(stationAccess.window)], { type: 'text/csv' }),
+                    new Blob(
+                      [
+                        intervalsToCsv(stationAccess.window, {
+                          meta: { frame: 'J2000', timeSystem: 'UTC', target: 'Goldstone' },
+                        }),
+                      ],
+                      { type: 'text/csv' },
+                    ),
                     'station-access.csv',
                   )
                 }

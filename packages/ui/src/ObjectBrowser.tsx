@@ -76,8 +76,8 @@ export function ObjectBrowser(props: ObjectBrowserProps): JSX.Element {
                   type="button"
                   className="bessel-body-center"
                   aria-pressed={focused}
-                  aria-label={`Center on ${entry.name}`}
-                  title={`Center on ${entry.name}`}
+                  aria-label={`Fly to ${entry.name}`}
+                  title={`Fly to ${entry.name}`}
                   onClick={() => props.onCenter?.(entry.id)}
                   data-testid={`center-${entry.id}`}
                 >
@@ -100,6 +100,22 @@ export function ObjectBrowser(props: ObjectBrowserProps): JSX.Element {
           );
         })}
       </ul>
+      {props.onCenter ? (
+        <div className="bessel-body-legend" data-testid="object-browser-legend">
+          <span className="bessel-body-legend-item">
+            <span className="bessel-body-legend-swatch" aria-hidden="true">
+              Aa
+            </span>
+            Bold name: selected (drives the inspector and measure)
+          </span>
+          <span className="bessel-body-legend-item">
+            <span className="bessel-body-legend-glyph" aria-hidden="true">
+              <CenterIcon />
+            </span>
+            Crosshair: fly the camera to that object
+          </span>
+        </div>
+      ) : null}
     </section>
   );
 }

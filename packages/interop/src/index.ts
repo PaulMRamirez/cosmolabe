@@ -12,8 +12,11 @@ export { writeOem } from './oem-write.ts';
 export {
   seriesToCsv,
   intervalsToCsv,
+  csvMetaPreamble,
   type SeriesCsvOptions,
   type IntervalsCsvOptions,
+  type CsvMeta,
+  type CsvTimeSystem,
 } from './csv.ts';
 export {
   intervalsToCzml,

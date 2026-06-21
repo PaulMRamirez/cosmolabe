@@ -62,6 +62,16 @@ describe('@bessel/spice CSPICE-WASM engine', () => {
     expect(Math.abs(et - REF.et)).toBeLessThan(1e-2);
   });
 
+  it('formats ET as a TDB calendar string distinct from UTC', async () => {
+    const tdb = await engine.et2tdb(REF.et, 3);
+    // Well-formed ISO calendar date at the reference epoch, with a time component.
+    expect(/^\d{4}-\d{2}-\d{2}T/.test(tdb)).toBe(true);
+    expect(tdb.startsWith('2004-07-01')).toBe(true);
+    // TDB leads UTC by the leap-second offset plus 32.184 s, so the strings differ.
+    const utc = await engine.et2utc(REF.et, 'ISOC', 3);
+    expect(tdb).not.toBe(utc);
+  });
+
   it('fails loudly with a typed error for an unresolved body', async () => {
     await expect(engine.spkpos('NOT_A_BODY', REF.et, 'J2000', 'NONE', '10')).rejects.toBeInstanceOf(
       SpiceError,

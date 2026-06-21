@@ -4,10 +4,15 @@
 
 import { markerFraction, type TimelineAnnotation } from '@bessel/timeline';
 
+/** The time system the displayed epoch is expressed in. */
+export type TimeSystem = 'UTC' | 'TDB';
+
 export interface TimelineControlsProps {
   readonly playing: boolean;
   readonly rate: number;
   readonly epochLabel: string;
+  /** Time system the epoch label is in; shown as a suffix and toggled by the buttons. */
+  readonly timeSystem: TimeSystem;
   readonly min: number;
   readonly max: number;
   readonly value: number;
@@ -15,10 +20,12 @@ export interface TimelineControlsProps {
   readonly onPlayToggle: () => void;
   readonly onRateChange: (rate: number) => void;
   readonly onScrub: (et: number) => void;
+  readonly onTimeSystemChange: (system: TimeSystem) => void;
   readonly onAnnotationSelect?: (et: number) => void;
 }
 
 const RATES = [1, 60, 3600, 86400, 604800];
+const TIME_SYSTEMS: readonly TimeSystem[] = ['UTC', 'TDB'];
 
 export function TimelineControls(props: TimelineControlsProps): JSX.Element {
   const annotations = props.annotations ?? [];
@@ -71,7 +78,26 @@ export function TimelineControls(props: TimelineControlsProps): JSX.Element {
       </div>
       <span data-testid="epoch" className="bessel-epoch">
         {props.epochLabel}
+        {props.epochLabel ? ` ${props.timeSystem}` : ''}
       </span>
+      <div
+        className="bessel-time-system"
+        role="group"
+        aria-label="Epoch time system"
+        data-testid="time-system"
+      >
+        {TIME_SYSTEMS.map((sys) => (
+          <button
+            key={sys}
+            type="button"
+            onClick={() => props.onTimeSystemChange(sys)}
+            aria-pressed={props.timeSystem === sys}
+            data-testid={`time-system-${sys.toLowerCase()}`}
+          >
+            {sys}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
