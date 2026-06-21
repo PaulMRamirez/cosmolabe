@@ -1,36 +1,30 @@
 import { defineConfig } from 'vitest/config';
+import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const pkg = (p: string) => fileURLToPath(new URL(`./packages/${p}/src/index.ts`, import.meta.url));
+const srcEntry = (rel: string) => fileURLToPath(new URL(`./${rel}/src/index.ts`, import.meta.url));
 
-// Anchored aliases: only the bare package specifier is rewritten to its src entry.
-// Subpath imports (for example @bessel/spice/wasm/cspice.mjs) fall through to node
-// resolution via each package's exports map.
-const aliasFor = (name: string, p: string) => ({ find: new RegExp(`^@bessel/${name}$`), replacement: pkg(p) });
-
-// @bessel/selene-design lives under design-system/, not packages/, and ships no dist;
-// resolve the bare specifier to its source entry (subpath exports fall through).
-const selene = {
-  find: /^@bessel\/selene-design$/,
-  replacement: fileURLToPath(new URL('./design-system/selene-design/src/index.ts', import.meta.url)),
-};
+// Anchored aliases generated from the workspace: every @bessel/* package (and the
+// design-system leaf, which lives under design-system/ and ships no dist) is rewritten
+// to its src entry, so no package silently diverges onto exports/dist resolution once
+// its build output differs from its source. Only the bare specifier is rewritten;
+// subpath imports (for example @bessel/spice/wasm/cspice.mjs) fall through to node
+// resolution via each package's exports map. Kept in sync with the web vite and the
+// electron-vite renderer aliasing.
+const packagesDir = fileURLToPath(new URL('./packages', import.meta.url));
+const alias: { find: RegExp; replacement: string }[] = [
+  {
+    find: /^@bessel\/selene-design$/,
+    replacement: srcEntry('design-system/selene-design'),
+  },
+];
+for (const name of readdirSync(packagesDir)) {
+  alias.push({ find: new RegExp(`^@bessel/${name}$`), replacement: srcEntry(`packages/${name}`) });
+}
 
 export default defineConfig({
   resolve: {
-    alias: [
-      selene,
-      aliasFor('spice', 'spice'),
-      aliasFor('catalog', 'catalog'),
-      aliasFor('scene', 'scene'),
-      aliasFor('timeline', 'timeline'),
-      aliasFor('state', 'state'),
-      aliasFor('color', 'color'),
-      aliasFor('pal', 'pal'),
-      aliasFor('pal-web', 'pal-web'),
-      aliasFor('pal-capacitor', 'pal-capacitor'),
-      aliasFor('pal-electron', 'pal-electron'),
-      aliasFor('ui', 'ui'),
-    ],
+    alias,
   },
   test: {
     globals: true,

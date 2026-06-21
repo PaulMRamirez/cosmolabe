@@ -2,7 +2,7 @@
 // SPICE state, with camera-relative rendering (mandatory, CLAUDE.md). Phase 0
 // renders textured planet globes and a spacecraft trajectory polyline.
 
-export { SolarSystemScene, type Km3 } from './three-scene.ts';
+export { SolarSystemScene, SceneError, type Km3 } from './three-scene.ts';
 export { SOLAR_SYSTEM, type PlanetDef } from './planets.ts';
 export {
   SCALE,

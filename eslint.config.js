@@ -54,6 +54,42 @@ export default tseslint.config(
     rules: { 'no-console': 'off' },
   },
   {
+    // Layering invariant (CLAUDE.md dependency rule): core packages never import a
+    // concrete PAL implementation, and lower layers never import a higher one (the
+    // shells/apps). This applies to every package under packages/ EXCEPT the PAL
+    // implementations themselves (pal-web/electron/capacitor/node), which legitimately
+    // implement the @bessel/pal interface. Apps are the shells (top layer) and are
+    // not constrained here. A violation is a lint error, not a review nit.
+    files: ['packages/**/*.{ts,tsx}'],
+    ignores: [
+      'packages/pal-web/**',
+      'packages/pal-electron/**',
+      'packages/pal-capacitor/**',
+      'packages/pal-node/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@bessel/pal-web',
+                '@bessel/pal-electron',
+                '@bessel/pal-capacitor',
+                '@bessel/pal-node',
+                '**/apps/*',
+                '**/apps/*/**',
+              ],
+              message:
+                'Layering violation (CLAUDE.md): a core package must not import a concrete PAL implementation (@bessel/pal-web/electron/capacitor/node) or anything from apps/. Depend only on @bessel/pal and other core packages; the shell injects the PAL at startup.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Leaf invariant (ADR-0013): @bessel/selene-design is a standalone design system.
     // @bessel/ui may import it, but it must import nothing from Bessel, so the package
     // stays publishable and reusable on its own. This makes that one-directional rule
