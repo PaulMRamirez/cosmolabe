@@ -4,6 +4,13 @@
 // object to the matching engine method. Presentational: no engine or store access.
 
 import type { ReactNode } from 'react';
+import {
+  DEFAULT_LINK,
+  DEFAULT_CONJUNCTION,
+  DEFAULT_CONSTELLATION,
+  DEFAULT_SLEW,
+  type ConstellationParams,
+} from '../engine/analysis-defaults.ts';
 
 /** A labelled number input that reports its parsed value, clamped to an optional minimum. */
 function NumField(props: {
@@ -66,6 +73,54 @@ function Fields(props: { testId: string; children: ReactNode }): JSX.Element {
   );
 }
 
+/** A field descriptor: a number input or a select over fixed options, bound to a key of T. */
+type FieldDesc<T> =
+  | { kind: 'num'; key: keyof T; label: string; testId: string; min?: number; step?: number }
+  | {
+      kind: 'select';
+      key: keyof T;
+      label: string;
+      testId: string;
+      options: readonly { readonly value: string; readonly label: string }[];
+    };
+
+/** Render a controlled form from a field-descriptor list, merging each change into the
+ *  param object. One renderer drives every tool's form, so adding a field is a data edit. */
+function ParamForm<T extends object>(props: {
+  value: T;
+  onChange: (v: T) => void;
+  fields: readonly FieldDesc<T>[];
+  testId: string;
+}): JSX.Element {
+  const set = (key: keyof T, v: number | string): void => props.onChange({ ...props.value, [key]: v } as T);
+  return (
+    <Fields testId={props.testId}>
+      {props.fields.map((f) =>
+        f.kind === 'num' ? (
+          <NumField
+            key={f.testId}
+            label={f.label}
+            testId={f.testId}
+            min={f.min}
+            step={f.step}
+            value={props.value[f.key] as number}
+            onChange={(n) => set(f.key, n)}
+          />
+        ) : (
+          <SelectField
+            key={f.testId}
+            label={f.label}
+            testId={f.testId}
+            value={props.value[f.key] as string}
+            options={f.options}
+            onChange={(s) => set(f.key, s)}
+          />
+        ),
+      )}
+    </Fields>
+  );
+}
+
 /** Downlink radio parameters (UI units: GHz). Converted to Hz at the call site. */
 export interface LinkParams {
   eirpDbW: number;
@@ -74,18 +129,22 @@ export interface LinkParams {
   dataRateBps: number;
 }
 
-export const DEFAULT_LINK_PARAMS: LinkParams = { eirpDbW: 90, freqGHz: 8.4, gOverTDbK: 53, dataRateBps: 14_000 };
+export const DEFAULT_LINK_PARAMS: LinkParams = {
+  eirpDbW: DEFAULT_LINK.eirpDbW,
+  freqGHz: DEFAULT_LINK.freqHz / 1e9,
+  gOverTDbK: DEFAULT_LINK.gOverTDbK,
+  dataRateBps: DEFAULT_LINK.dataRateBps,
+};
+
+const LINK_FIELDS: readonly FieldDesc<LinkParams>[] = [
+  { kind: 'num', key: 'eirpDbW', label: 'EIRP (dBW)', testId: 'param-link-eirp' },
+  { kind: 'num', key: 'freqGHz', label: 'Freq (GHz)', testId: 'param-link-freq', min: 0.001 },
+  { kind: 'num', key: 'gOverTDbK', label: 'G/T (dB/K)', testId: 'param-link-gt' },
+  { kind: 'num', key: 'dataRateBps', label: 'Data rate (bps)', testId: 'param-link-rate', min: 1 },
+];
 
 export function LinkParamsForm(props: { value: LinkParams; onChange: (v: LinkParams) => void }): JSX.Element {
-  const { value: v, onChange } = props;
-  return (
-    <Fields testId="link-params">
-      <NumField label="EIRP (dBW)" value={v.eirpDbW} testId="param-link-eirp" onChange={(eirpDbW) => onChange({ ...v, eirpDbW })} />
-      <NumField label="Freq (GHz)" value={v.freqGHz} min={0.001} testId="param-link-freq" onChange={(freqGHz) => onChange({ ...v, freqGHz })} />
-      <NumField label="G/T (dB/K)" value={v.gOverTDbK} testId="param-link-gt" onChange={(gOverTDbK) => onChange({ ...v, gOverTDbK })} />
-      <NumField label="Data rate (bps)" value={v.dataRateBps} min={1} testId="param-link-rate" onChange={(dataRateBps) => onChange({ ...v, dataRateBps })} />
-    </Fields>
-  );
+  return <ParamForm value={props.value} onChange={props.onChange} fields={LINK_FIELDS} testId="link-params" />;
 }
 
 /** Conjunction encounter covariance (per-axis sigma, combined hard-body radius), in km. */
@@ -94,19 +153,18 @@ export interface ConjunctionParams {
   radiusKm: number;
 }
 
-export const DEFAULT_CONJUNCTION_PARAMS: ConjunctionParams = { sigmaKm: 1, radiusKm: 0.1 };
+export const DEFAULT_CONJUNCTION_PARAMS: ConjunctionParams = { ...DEFAULT_CONJUNCTION };
+
+const CONJUNCTION_FIELDS: readonly FieldDesc<ConjunctionParams>[] = [
+  { kind: 'num', key: 'sigmaKm', label: 'Sigma (km)', testId: 'param-conj-sigma', min: 0.0001 },
+  { kind: 'num', key: 'radiusKm', label: 'Hard-body R (km)', testId: 'param-conj-radius', min: 0.0001 },
+];
 
 export function ConjunctionParamsForm(props: {
   value: ConjunctionParams;
   onChange: (v: ConjunctionParams) => void;
 }): JSX.Element {
-  const { value: v, onChange } = props;
-  return (
-    <Fields testId="conjunction-params">
-      <NumField label="Sigma (km)" value={v.sigmaKm} min={0.0001} testId="param-conj-sigma" onChange={(sigmaKm) => onChange({ ...v, sigmaKm })} />
-      <NumField label="Hard-body R (km)" value={v.radiusKm} min={0.0001} testId="param-conj-radius" onChange={(radiusKm) => onChange({ ...v, radiusKm })} />
-    </Fields>
-  );
+  return <ParamForm value={props.value} onChange={props.onChange} fields={CONJUNCTION_FIELDS} testId="conjunction-params" />;
 }
 
 /**
@@ -123,49 +181,31 @@ export function isValidWalker(totalSats: number, planes: number): boolean {
   );
 }
 
-/** Walker constellation parameters (T/P/F, inclination deg, altitude km, pattern). */
-export interface ConstellationFormParams {
-  totalSats: number;
-  planes: number;
-  phasing: number;
-  inclinationDeg: number;
-  altitudeKm: number;
-  pattern: 'delta' | 'star';
-}
+/** Walker constellation parameters (T/P/F, inclination deg, altitude km, pattern); the
+ *  same shape the engine op consumes. */
+export type ConstellationFormParams = ConstellationParams;
 
-export const DEFAULT_CONSTELLATION_PARAMS: ConstellationFormParams = {
-  totalSats: 24,
-  planes: 3,
-  phasing: 1,
-  inclinationDeg: 53,
-  altitudeKm: 700,
-  pattern: 'delta',
-};
+export const DEFAULT_CONSTELLATION_PARAMS: ConstellationFormParams = DEFAULT_CONSTELLATION;
+
+const PATTERN_OPTIONS = [
+  { value: 'delta', label: 'Delta' },
+  { value: 'star', label: 'Star' },
+] as const;
+
+const CONSTELLATION_FIELDS: readonly FieldDesc<ConstellationFormParams>[] = [
+  { kind: 'num', key: 'totalSats', label: 'Total sats (T)', testId: 'param-const-total', min: 1, step: 1 },
+  { kind: 'num', key: 'planes', label: 'Planes (P)', testId: 'param-const-planes', min: 1, step: 1 },
+  { kind: 'num', key: 'phasing', label: 'Phasing (F)', testId: 'param-const-phasing', min: 0, step: 1 },
+  { kind: 'num', key: 'inclinationDeg', label: 'Inclination (deg)', testId: 'param-const-inc' },
+  { kind: 'num', key: 'altitudeKm', label: 'Altitude (km)', testId: 'param-const-alt', min: 1 },
+  { kind: 'select', key: 'pattern', label: 'Pattern', testId: 'param-const-pattern', options: PATTERN_OPTIONS },
+];
 
 export function ConstellationParamsForm(props: {
   value: ConstellationFormParams;
   onChange: (v: ConstellationFormParams) => void;
 }): JSX.Element {
-  const { value: v, onChange } = props;
-  return (
-    <Fields testId="constellation-params">
-      <NumField label="Total sats (T)" value={v.totalSats} min={1} step={1} testId="param-const-total" onChange={(totalSats) => onChange({ ...v, totalSats })} />
-      <NumField label="Planes (P)" value={v.planes} min={1} step={1} testId="param-const-planes" onChange={(planes) => onChange({ ...v, planes })} />
-      <NumField label="Phasing (F)" value={v.phasing} min={0} step={1} testId="param-const-phasing" onChange={(phasing) => onChange({ ...v, phasing })} />
-      <NumField label="Inclination (deg)" value={v.inclinationDeg} testId="param-const-inc" onChange={(inclinationDeg) => onChange({ ...v, inclinationDeg })} />
-      <NumField label="Altitude (km)" value={v.altitudeKm} min={1} testId="param-const-alt" onChange={(altitudeKm) => onChange({ ...v, altitudeKm })} />
-      <SelectField
-        label="Pattern"
-        value={v.pattern}
-        testId="param-const-pattern"
-        options={[
-          { value: 'delta', label: 'Delta' },
-          { value: 'star', label: 'Star' },
-        ]}
-        onChange={(pattern) => onChange({ ...v, pattern })}
-      />
-    </Fields>
-  );
+  return <ParamForm value={props.value} onChange={props.onChange} fields={CONSTELLATION_FIELDS} testId="constellation-params" />;
 }
 
 /** Eigen-axis slew parameters: from/to pointing references and the slew dynamics. */
@@ -176,21 +216,20 @@ export interface SlewFormParams {
   maxAccelDeg: number;
 }
 
-export const DEFAULT_SLEW_PARAMS: SlewFormParams = { fromMode: 'nadir', toMode: 'sun', maxRateDeg: 2, maxAccelDeg: 0.5 };
+export const DEFAULT_SLEW_PARAMS: SlewFormParams = { ...DEFAULT_SLEW };
 
 const POINTING_OPTIONS = [
   { value: 'nadir', label: 'Nadir' },
   { value: 'sun', label: 'Sun' },
 ] as const;
 
+const SLEW_FIELDS: readonly FieldDesc<SlewFormParams>[] = [
+  { kind: 'select', key: 'fromMode', label: 'From', testId: 'param-slew-from', options: POINTING_OPTIONS },
+  { kind: 'select', key: 'toMode', label: 'To', testId: 'param-slew-to', options: POINTING_OPTIONS },
+  { kind: 'num', key: 'maxRateDeg', label: 'Max rate (deg/s)', testId: 'param-slew-rate', min: 0.001 },
+  { kind: 'num', key: 'maxAccelDeg', label: 'Max accel (deg/s2)', testId: 'param-slew-accel', min: 0.001 },
+];
+
 export function SlewParamsForm(props: { value: SlewFormParams; onChange: (v: SlewFormParams) => void }): JSX.Element {
-  const { value: v, onChange } = props;
-  return (
-    <Fields testId="slew-params">
-      <SelectField label="From" value={v.fromMode} testId="param-slew-from" options={POINTING_OPTIONS} onChange={(fromMode) => onChange({ ...v, fromMode })} />
-      <SelectField label="To" value={v.toMode} testId="param-slew-to" options={POINTING_OPTIONS} onChange={(toMode) => onChange({ ...v, toMode })} />
-      <NumField label="Max rate (deg/s)" value={v.maxRateDeg} min={0.001} testId="param-slew-rate" onChange={(maxRateDeg) => onChange({ ...v, maxRateDeg })} />
-      <NumField label="Max accel (deg/s2)" value={v.maxAccelDeg} min={0.001} testId="param-slew-accel" onChange={(maxAccelDeg) => onChange({ ...v, maxAccelDeg })} />
-    </Fields>
-  );
+  return <ParamForm value={props.value} onChange={props.onChange} fields={SLEW_FIELDS} testId="slew-params" />;
 }

@@ -8,8 +8,7 @@
 import type { BodyState } from '@bessel/ui';
 import type { SpiceEngine } from '@bessel/spice';
 import { rv2coe } from '@bessel/propagator';
-
-const RAD2DEG = 180 / Math.PI;
+import { RAD2DEG } from './angles.ts';
 
 export async function computeBodyState(
   spice: SpiceEngine,

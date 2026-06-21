@@ -5,8 +5,7 @@
 import type { Readouts } from '@bessel/ui';
 import type { SpiceEngine } from '@bessel/spice';
 import type { BesselCatalog } from '@bessel/catalog';
-
-const RAD2DEG = 180 / Math.PI;
+import { RAD2DEG } from './angles.ts';
 
 /** Build a body-name/id -> declared body-fixed frame map from a catalog's bodies.
  *  Only bodies that declare a Spice orientation frame contribute; this is the same

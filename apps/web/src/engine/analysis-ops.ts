@@ -23,8 +23,19 @@ import {
   propagateCowell,
 } from '@bessel/propagator';
 import { downloadBlob } from '@bessel/ui';
-import { describeProvider, type ProviderKind, type ProviderSpec } from '@bessel/spice';
+import { describeProvider, type ProviderKind, type ProviderSpec, type SpiceEngine } from '@bessel/spice';
 import { SAMPLE_TLE } from '../sample-tle.ts';
+import { RAD2DEG, DEG2RAD } from '../angles.ts';
+import {
+  DEFAULT_LINK,
+  DEFAULT_CONJUNCTION,
+  DEFAULT_CONSTELLATION,
+  DEFAULT_SLEW,
+  type SlewPointing,
+  type ConstellationParams,
+} from './analysis-defaults.ts';
+export { DEFAULT_CONSTELLATION };
+export type { SlewPointing, ConstellationParams };
 import type { AppStore } from '../store/index.ts';
 import type { EngineCore } from './bootstrap.ts';
 import { buildHpopForceModel, HPOP_FORCE_MODEL_LABELS, type HpopForceModel } from './hpop-model.ts';
@@ -39,6 +50,19 @@ import { fovHalfAngleRad, nadirOffAngleRad, intervalsFromFlags } from '../in-fov
 const EARTH_GM = 398600.4418;
 const EARTH_RE = 6378.137;
 const EARTH_J2 = 1.08262668e-3;
+
+/** The pointing references a slew can target, each resolving to a J2000->body attitude
+ *  matrix at an epoch. A registry (not a ternary) so a new mode is one entry. */
+const SLEW_POINTING: Record<
+  SlewPointing,
+  {
+    readonly resolve: (spice: SpiceEngine, observer: string, body: string, et: number) => Promise<readonly number[]>;
+    readonly label: string;
+  }
+> = {
+  nadir: { resolve: nadirAttitude, label: 'nadir' },
+  sun: { resolve: sunPointingAttitude, label: 'Sun' },
+};
 
 /** Optional time-span override (seconds) for a span-based analysis tool. */
 export interface AnalysisSpan {
@@ -67,19 +91,6 @@ export interface ConjunctionOpts {
   /** Combined hard-body radius (km). */
   readonly radiusKm?: number;
 }
-
-/** Walker constellation design parameters. */
-export interface ConstellationParams {
-  readonly totalSats: number;
-  readonly planes: number;
-  readonly phasing: number;
-  readonly inclinationDeg: number;
-  readonly altitudeKm: number;
-  readonly pattern: 'delta' | 'star';
-}
-
-/** Which pointing reference an attitude slew starts from or ends at. */
-export type SlewPointing = 'nadir' | 'sun';
 
 /** Eigen-axis slew parameters: the from/to pointing references and the slew dynamics. */
 export interface SlewOpts {
@@ -222,10 +233,10 @@ export async function computeLinkBudget(
   const spanSec = opts.spanSec ?? 86400;
   // Downlink radio parameters: a representative Cassini X-band link to a DSN 34 m
   // station by default, overridable from the panel.
-  const eirpDbW = opts.eirpDbW ?? 90;
-  const freqHz = opts.freqHz ?? 8.4e9;
-  const gOverTDbK = opts.gOverTDbK ?? 53;
-  const dataRateBps = opts.dataRateBps ?? 14_000;
+  const eirpDbW = opts.eirpDbW ?? DEFAULT_LINK.eirpDbW;
+  const freqHz = opts.freqHz ?? DEFAULT_LINK.freqHz;
+  const gOverTDbK = opts.gOverTDbK ?? DEFAULT_LINK.gOverTDbK;
+  const dataRateBps = opts.dataRateBps ?? DEFAULT_LINK.dataRateBps;
   const samples = 240;
   const et = new Float64Array(samples);
   for (let i = 0; i < samples; i++) et[i] = t0 + (i / (samples - 1)) * spanSec;
@@ -395,8 +406,8 @@ export async function computeConjunction(
   const secondary = opts.secondary ?? body;
   // Encounter covariance: per-axis position sigma and combined hard-body radius,
   // overridable from the panel (defaults 1 km sigma, 100 m radius).
-  const sigmaKm = opts.sigmaKm ?? 1;
-  const radiusKm = opts.radiusKm ?? 0.1;
+  const sigmaKm = opts.sigmaKm ?? DEFAULT_CONJUNCTION.sigmaKm;
+  const radiusKm = opts.radiusKm ?? DEFAULT_CONJUNCTION.radiusKm;
   const et = e.clock.state.et;
   try {
     const rel = await e.spice.spkezr(secondary, et, 'J2000', 'NONE', sc);
@@ -440,7 +451,7 @@ export function computeConstellation(store: AppStore, params: ConstellationParam
   const sats = walkerConstellation({
     a,
     e: 0,
-    i: (inclinationDeg * Math.PI) / 180,
+    i: inclinationDeg * DEG2RAD,
     argp: 0,
     totalSats,
     planes,
@@ -460,16 +471,6 @@ export function computeConstellation(store: AppStore, params: ConstellationParam
   });
 }
 
-/** The default Walker pattern (the prior hardcoded LEO demo): 24/3/1, 53 deg, 700 km. */
-export const DEFAULT_CONSTELLATION: ConstellationParams = {
-  totalSats: 24,
-  planes: 3,
-  phasing: 1,
-  inclinationDeg: 53,
-  altitudeKm: 700,
-  pattern: 'delta',
-};
-
 /**
  * Attitude analysis: an eigen-axis slew from a nadir-pointing to a sun-pointing
  * attitude at the current epoch, honoring a max rate and acceleration, sampled as a
@@ -487,17 +488,18 @@ export async function computeSlew(
     store.setState({ slewSeries: null });
     return;
   }
-  const fromMode = opts.fromMode ?? 'nadir';
-  const toMode = opts.toMode ?? 'sun';
-  const maxRateRad = ((opts.maxRateDeg ?? 2) * Math.PI) / 180;
-  const maxAccelRad = ((opts.maxAccelDeg ?? 0.5) * Math.PI) / 180;
+  const fromMode = opts.fromMode ?? DEFAULT_SLEW.fromMode;
+  const toMode = opts.toMode ?? DEFAULT_SLEW.toMode;
+  const maxRateRad = (opts.maxRateDeg ?? DEFAULT_SLEW.maxRateDeg) * DEG2RAD;
+  const maxAccelRad = (opts.maxAccelDeg ?? DEFAULT_SLEW.maxAccelDeg) * DEG2RAD;
   const et = e.clock.state.et;
-  // Resolve a pointing reference to its attitude matrix at the current epoch.
-  const pointing = (mode: SlewPointing): Promise<readonly number[]> =>
-    mode === 'nadir' ? nadirAttitude(e.spice, sc, body, et) : sunPointingAttitude(e.spice, sc, body, et);
-  const label = (mode: SlewPointing): string => (mode === 'nadir' ? 'nadir' : 'Sun');
+  const from = SLEW_POINTING[fromMode];
+  const to = SLEW_POINTING[toMode];
   try {
-    const [fromM, toM] = await Promise.all([pointing(fromMode), pointing(toMode)]);
+    const [fromM, toM] = await Promise.all([
+      from.resolve(e.spice, sc, body, et),
+      to.resolve(e.spice, sc, body, et),
+    ]);
     const a0 = await e.spice.m2q(fromM);
     const a1 = await e.spice.m2q(toM);
     const q0: Quaternion = [a0[0]!, a0[1]!, a0[2]!, a0[3]!];
@@ -506,18 +508,17 @@ export async function computeSlew(
     const samples = 120;
     const t = new Float64Array(samples);
     const angleDeg = new Float64Array(samples);
-    const rad2deg = 180 / Math.PI;
     for (let i = 0; i < samples; i++) {
       // A zero-duration slew (from === to) collapses to a single point; guard the div.
       const ti = slew.duration > 0 ? (i / (samples - 1)) * slew.duration : 0;
       const q = slew.at(ti);
       const dotAbs = Math.abs(q[0] * q0[0] + q[1] * q0[1] + q[2] * q0[2] + q[3] * q0[3]);
       t[i] = ti;
-      angleDeg[i] = 2 * Math.acos(Math.min(1, dotAbs)) * rad2deg;
+      angleDeg[i] = 2 * Math.acos(Math.min(1, dotAbs)) * RAD2DEG;
     }
     if (!isDisposed()) {
       store.setState({
-        slewSeries: { et: t, value: angleDeg, label: `${sc} ${label(fromMode)}->${label(toMode)} slew (deg)` },
+        slewSeries: { et: t, value: angleDeg, label: `${sc} ${from.label}->${to.label} slew (deg)` },
       });
     }
   } catch (err) {
@@ -764,12 +765,11 @@ export async function computeStationAccess(
     return;
   }
   const target = String(last.bodyId);
-  const deg = Math.PI / 180;
   const facility: Facility = {
     body: 'EARTH',
     bodyFrame: 'IAU_EARTH',
-    lonRad: -116.89 * deg,
-    latRad: 35.426 * deg,
+    lonRad: -116.89 * DEG2RAD,
+    latRad: 35.426 * DEG2RAD,
     altKm: 1.0,
   };
   // A 12 hour span at a 2 minute step keeps the per-epoch elevation sweep responsive
@@ -779,7 +779,7 @@ export async function computeStationAccess(
   try {
     // Elevation-mask access intersected with a geocentric range gate: two composed
     // constraints (the elevation finder and the gfdist distance finder).
-    const elevation = await computeElevationAccess(e.spice, facility, target, span, 120, 10 * deg);
+    const elevation = await computeElevationAccess(e.spice, facility, target, span, 120, 10 * DEG2RAD);
     const inRange = await e.spice.gfdist(target, 'NONE', '399', '<', maxRangeKm, 120, span[0], span[1]);
     const visible = windowIntersect(elevation, inRange);
     const fom = figureOfMerit(visible, span);

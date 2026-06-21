@@ -35,8 +35,7 @@ import {
   type SlewFormParams,
 } from './analysis-tool-forms.tsx';
 import { RunStatusNote } from './RunStatus.tsx';
-
-const RAD2DEG = 180 / Math.PI;
+import { RAD2DEG } from '../angles.ts';
 
 /** Comment-preamble lines recording the radio parameters a link run used, so the
  *  exported Eb/N0 series is reproducible. Empty when no run has stored params. */
