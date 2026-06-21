@@ -31,7 +31,7 @@ import nativeCassiniUrl from '../../../e2e/fixtures/native-cassini-ck.json?url';
 export async function fetchCatalog(url: string): Promise<BesselCatalog> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Mission catalog not found at ${url} (${res.status})`);
-  return parseBesselCatalog(await res.json());
+  return await parseBesselCatalog(await res.json());
 }
 
 // Cassini at Saturn orbit insertion, furnished in SPICE-data-before-objects order:

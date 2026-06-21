@@ -2,16 +2,20 @@
 // 2020-12) plus cross-reference checks. Invalid catalogs fail loudly with a
 // located CatalogError naming the offending field, never silently.
 
-import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js';
-import addFormats from 'ajv-formats';
+import type { ErrorObject, ValidateFunction } from 'ajv/dist/2020.js';
 import schema from '../schema/bessel-catalog.schema.json';
 import { CatalogError } from './index.ts';
 import type { BesselCatalog } from './native-types.ts';
 
+// ajv is loaded on demand (validation only runs when a catalog is parsed), so it
+// stays in its own lazy chunk rather than the first-paint shell. This makes the
+// validation API async; callers already run in async contexts (catalog load/fetch).
+
 let validateFn: ValidateFunction | null = null;
 
-function validator(): ValidateFunction {
+async function validator(): Promise<ValidateFunction> {
   if (validateFn) return validateFn;
+  const { Ajv2020, addFormats } = await import('./ajv-lazy.ts');
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   addFormats(ajv);
   validateFn = ajv.compile(schema);
@@ -19,7 +23,8 @@ function validator(): ValidateFunction {
 }
 
 /** True when the schema itself passes Draft 2020-12 meta-validation. */
-export function schemaIsValid(): boolean {
+export async function schemaIsValid(): Promise<boolean> {
+  const { Ajv2020, addFormats } = await import('./ajv-lazy.ts');
   const ajv = new Ajv2020({ strict: false });
   addFormats(ajv);
   return ajv.validateSchema(schema) === true;
@@ -30,8 +35,8 @@ export interface ValidationResult {
   readonly errors: readonly ErrorObject[];
 }
 
-export function validateCatalog(raw: unknown): ValidationResult {
-  const validate = validator();
+export async function validateCatalog(raw: unknown): Promise<ValidationResult> {
+  const validate = await validator();
   const valid = validate(raw) === true;
   return { valid, errors: valid ? [] : (validate.errors ?? []) };
 }
@@ -42,8 +47,8 @@ export function validateCatalog(raw: unknown): ValidationResult {
  * resolve, and spacecraft single-arc vs multi-arc exclusivity (enforced by the
  * schema oneOf) is surfaced with a clear message.
  */
-export function parseBesselCatalog(raw: unknown): BesselCatalog {
-  const { valid, errors } = validateCatalog(raw);
+export async function parseBesselCatalog(raw: unknown): Promise<BesselCatalog> {
+  const { valid, errors } = await validateCatalog(raw);
   if (!valid) {
     const first = errors[0];
     const location = first?.instancePath || '$';

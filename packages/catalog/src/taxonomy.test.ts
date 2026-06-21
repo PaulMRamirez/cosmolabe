@@ -28,12 +28,12 @@ describe('@bessel/catalog geometry taxonomy', () => {
   });
 
   for (const type of GEOMETRY_TYPES) {
-    it(`validates a body carrying ${type} geometry`, () => {
+    it(`validates a body carrying ${type} geometry`, async () => {
       const catalog = {
         version: '1.0',
         bodies: [{ id: 'B1', geometry: SAMPLES[type] }],
       };
-      const result = validateCatalog(catalog);
+      const result = await validateCatalog(catalog);
       expect(result.valid, JSON.stringify(result.errors)).toBe(true);
     });
   }

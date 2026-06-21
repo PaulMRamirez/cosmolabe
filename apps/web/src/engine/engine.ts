@@ -1441,7 +1441,7 @@ export class BesselEngine {
   async loadCatalog(file: { name: string; text: string }): Promise<void> {
     let loaded;
     try {
-      loaded = parseAnyCatalog(file.name, file.text);
+      loaded = await parseAnyCatalog(file.name, file.text);
     } catch (err) {
       this.store.setState({ loadError: formatLoadError(err) });
       return;

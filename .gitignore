@@ -26,3 +26,6 @@ apps/mobile/android/
 vendor/
 *.lcov
 .lighthouseci/
+
+# Claude Code runtime worktrees (created by background workflows)
+.claude/worktrees/

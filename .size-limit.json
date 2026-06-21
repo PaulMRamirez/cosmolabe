@@ -11,9 +11,16 @@
       "apps/web/dist/assets/*.js",
       "!apps/web/dist/assets/app-*.js",
       "!apps/web/dist/assets/vendor-*.js",
-      "!apps/web/dist/assets/spice.worker-*.js"
+      "!apps/web/dist/assets/spice.worker-*.js",
+      "!apps/web/dist/assets/ajv-lazy-*.js"
     ],
     "limit": "48 KB",
+    "gzip": true
+  },
+  {
+    "name": "catalog validation (ajv, lazy)",
+    "path": "apps/web/dist/assets/ajv-lazy-*.js",
+    "limit": "46 KB",
     "gzip": true
   },
   {
