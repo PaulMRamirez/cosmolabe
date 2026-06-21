@@ -66,8 +66,11 @@ export async function bootScene(
     await spice.furnsh(name, bytes);
   }
 
-  const mission = await buildCatalogMissionScene(spice, NEUTRAL_CATALOG, (status) =>
-    store.setState({ status }),
+  const mission = await buildCatalogMissionScene(
+    spice,
+    NEUTRAL_CATALOG,
+    (status) => store.setState({ status }),
+    platform.fs,
   );
 
   const scene = new SolarSystemScene(canvas);

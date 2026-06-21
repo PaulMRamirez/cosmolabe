@@ -39,6 +39,7 @@ import type {
   Geometry,
 } from '@bessel/catalog';
 import type { SpiceEngine } from '@bessel/spice';
+import type { FileSystem } from '@bessel/pal';
 import type { Object3D } from 'three';
 import brightStars from './assets/bright-stars.json';
 import { buildBodyFrameMap, resolveBodyFrame } from './readouts.ts';
@@ -287,6 +288,29 @@ export function assembleSceneSpec(input: {
 const scName = (sc: CatalogSpacecraft): string => sc.name ?? sc.id;
 
 /**
+ * Add a heliocentric (Sun-relative) entry for a non-SPICE spacecraft to the table.
+ * The resolver produces positions relative to the center body, so the heliocentric
+ * track is the center body's Sun-relative position (already in the table) plus the
+ * center-relative sample at each step. With the Sun as the center the relative and
+ * heliocentric frames coincide, so the offset is zero. This lets playback, readouts,
+ * and the direction vector treat the propagated craft exactly like a SPICE body.
+ */
+function injectHeliocentricCraft(
+  table: EphemerisTable,
+  craftName: string,
+  centerName: string,
+  relativeFlat: Float64Array,
+): void {
+  const steps = table.steps;
+  const centerFlat = centerName.toLowerCase() === 'sun' ? undefined : table.byBody.get(centerName);
+  const flat = new Float64Array(steps * 3);
+  for (let k = 0; k < steps * 3; k++) {
+    flat[k] = relativeFlat[k]! + (centerFlat ? centerFlat[k]! : 0);
+  }
+  (table.byBody as Map<string, Float64Array>).set(craftName, flat);
+}
+
+/**
  * Orchestrate a generic mission: sample SPICE for every catalog body and the
  * first spacecraft, then assemble a rich SceneSpec (bodies, trajectory, rings,
  * atmospheres, axis triads, direction vectors, swarms, glTF mesh, and the first
@@ -298,6 +322,7 @@ export async function buildCatalogMissionScene(
   spice: SpiceEngine,
   catalog: BesselCatalog,
   onStatus: (status: string) => void = () => {},
+  fs?: FileSystem,
 ): Promise<MissionScene> {
   const spacecraft = catalog.spacecraft?.[0] ?? null;
   const window = await resolveWindow(spice, spacecraft);
@@ -308,9 +333,19 @@ export async function buildCatalogMissionScene(
   const catalogDefs = (catalog.bodies ?? []).map(catalogBodyToPlanetDef);
   const bodies = catalogDefs.length > 0 ? withSun(catalogDefs) : SOLAR_SYSTEM;
 
+  // The active trajectory: the spacecraft's own, else its first arc's. A non-SPICE
+  // source cannot be sampled by spkpos (its id is not in any kernel), so it is held
+  // out of the heliocentric table here and injected from the resolver output below.
+  const trajectory = spacecraft
+    ? spacecraft.trajectory ?? spacecraft.arcs?.[0]?.trajectory
+    : undefined;
+  const spacecraftIsSpice = !trajectory || trajectory.type === 'Spice';
+
   onStatus('Sampling ephemerides');
   const sampleRefs = bodies.map((b) => ({ name: b.name, spiceId: b.spiceId }));
-  if (spacecraft) sampleRefs.push({ name: scName(spacecraft), spiceId: spacecraft.id });
+  if (spacecraft && spacecraftIsSpice) {
+    sampleRefs.push({ name: scName(spacecraft), spiceId: spacecraft.id });
+  }
   const table = await sampleEphemeris(spice, sampleRefs, et0, et1, STEPS);
 
   // Spacecraft trajectory sampled in its center frame so the polyline shows the
@@ -319,18 +354,37 @@ export async function buildCatalogMissionScene(
   let trajectoryColors: (readonly [number, number, number])[] | undefined;
   let centerBody = bodies[0]?.name ?? 'Sun';
   if (spacecraft) {
-    const center =
-      spacecraft.trajectory?.center ?? spacecraft.arcs?.[0]?.trajectory?.center ?? centerBody;
+    const center = trajectory?.center ?? centerBody;
     centerBody = resolveCenterName(center, bodies);
-    const orbit = await sampleEphemeris(
-      spice,
-      [{ name: scName(spacecraft), spiceId: spacecraft.id }],
-      et0,
-      et1,
-      STEPS,
-      center,
-    );
-    trajectoryPoints = trajectoryOf(orbit, scName(spacecraft));
+    if (trajectory && trajectory.type !== 'Spice') {
+      // Dynamic import keeps @bessel/propagator (SGP4, mean elements) out of the
+      // first-paint shell; the resolver and its samplers land in the lazy bundle.
+      const { sampleTrajectory, trajectoryGrid, tablePoints } = await import('./trajectory/index.ts');
+      const grid = trajectoryGrid(et0, et1, STEPS);
+      const sampled = await sampleTrajectory(
+        spice,
+        fs,
+        trajectory,
+        grid,
+        scName(spacecraft),
+        spacecraft.id,
+      );
+      // Center-relative points render the orbit polyline; the heliocentric table
+      // entry (center body position + the relative sample) lets playback and the
+      // readouts track the craft like any SPICE body.
+      trajectoryPoints = tablePoints(sampled);
+      injectHeliocentricCraft(table, scName(spacecraft), centerBody, sampled.flat);
+    } else {
+      const orbit = await sampleEphemeris(
+        spice,
+        [{ name: scName(spacecraft), spiceId: spacecraft.id }],
+        et0,
+        et1,
+        STEPS,
+        center,
+      );
+      trajectoryPoints = trajectoryOf(orbit, scName(spacecraft));
+    }
     const ramp = linearRamp('trail', { r: 0.12, g: 0.17, b: 0.38 }, { r: 0.55, g: 0.78, b: 1 });
     trajectoryColors = trajectoryPoints.map((_, i) => {
       const c = ramp.color(i, [0, Math.max(1, trajectoryPoints.length - 1)]);

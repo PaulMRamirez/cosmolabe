@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./samplers": "./src/samplers.ts"
+  },
   "types": "./src/index.ts",
   "dependencies": {
     "@bessel/spice": "workspace:*"

@@ -1523,8 +1523,11 @@ export class BesselEngine {
     if (!e) return;
     try {
       this.store.setState({ status: 'Building mission' });
-      const mission = await buildCatalogMissionScene(e.spice, catalog, (status) =>
-        this.store.setState({ status }),
+      const mission = await buildCatalogMissionScene(
+        e.spice,
+        catalog,
+        (status) => this.store.setState({ status }),
+        e.fs,
       );
       if (this.disposed) return;
       e.scene.reset();
