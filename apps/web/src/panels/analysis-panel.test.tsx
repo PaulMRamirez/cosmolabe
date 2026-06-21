@@ -73,6 +73,79 @@ describe('AnalysisPanel tool grouping (B10)', () => {
   });
 });
 
+describe('AnalysisPanel tool parameters', () => {
+  it('renders an input form for each of the four configurable tools', () => {
+    const out = html();
+    for (const id of [
+      // link budget
+      'param-link-eirp',
+      'param-link-freq',
+      'param-link-gt',
+      'param-link-rate',
+      // conjunction covariance
+      'param-conj-sigma',
+      'param-conj-radius',
+      // walker constellation
+      'param-const-total',
+      'param-const-planes',
+      'param-const-phasing',
+      'param-const-inc',
+      'param-const-alt',
+      'param-const-pattern',
+      // attitude slew
+      'param-slew-from',
+      'param-slew-to',
+      'param-slew-rate',
+      'param-slew-accel',
+    ]) {
+      expect(out).toContain(`data-testid="${id}"`);
+    }
+  });
+});
+
+describe('AnalysisPanel CSV export', () => {
+  it('offers a CSV export under every seeded result', () => {
+    const store = createAppStore();
+    const series = { et: new Float64Array([0, 60]), value: new Float64Array([1, 2]), label: 's' };
+    store.setState({
+      rangeSeries: series,
+      linkSeries: series,
+      slewSeries: series,
+      groundTrack: {
+        et: new Float64Array([0, 60]),
+        lon: new Float64Array([0, 0.1]),
+        lat: new Float64Array([0, 0.2]),
+        label: 'gt',
+      },
+      conjunction: { tcaSec: 10, missKm: 5, relSpeedKmS: 1, pc: 1e-4, label: 'a vs b' },
+      constellation: {
+        totalSats: 24,
+        planes: 3,
+        perPlane: 8,
+        pattern: 'delta',
+        phasing: 1,
+        inclinationDeg: 53,
+        altitudeKm: 700,
+      },
+      transfer: { deltaVKmS: 0.1, tofHours: 2, label: 'arc' },
+    });
+    const out = renderToStaticMarkup(
+      createElement(AnalysisPanel, { engine: null, store, hasSpacecraft: true }),
+    );
+    for (const id of [
+      'range-csv',
+      'link-csv',
+      'slew-csv',
+      'groundtrack-csv',
+      'conjunction-csv',
+      'constellation-csv',
+      'transfer-csv',
+    ]) {
+      expect(out).toContain(`data-testid="${id}"`);
+    }
+  });
+});
+
 describe('AnalysisPanel result tables (B18)', () => {
   it('renders the chart/table toolbar and table over a seeded series and interval', () => {
     const store = createAppStore();

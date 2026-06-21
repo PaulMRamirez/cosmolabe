@@ -117,6 +117,31 @@ export interface IntervalsCsvOptions {
   readonly meta?: CsvMeta;
 }
 
+export interface TableCsvOptions {
+  /** Optional run-parameter metadata, stamped as a comment preamble. */
+  readonly meta?: CsvMeta;
+  /** Significant digits for numeric cells (default 6). */
+  readonly digits?: number;
+}
+
+/**
+ * Serialize an arbitrary header + rows table to CSV: one header row then one row per
+ * entry. Numeric cells are rounded to `digits`; text cells are formula-injection
+ * neutralized. Used by the scalar analysis readouts (conjunction, constellation,
+ * transfer) whose result is a handful of key/value rows, not a time series.
+ */
+export function tableToCsv(
+  headers: readonly string[],
+  rows: readonly (readonly (string | number)[])[],
+  opts: TableCsvOptions = {},
+): string {
+  const digits = opts.digits ?? 6;
+  const cell = (v: string | number): string | number =>
+    typeof v === 'number' && Number.isFinite(v) ? Number(v.toPrecision(digits)) : v;
+  const lines = [csvRow(headers), ...rows.map((r) => csvRow(r.map(cell)))];
+  return csvMetaPreamble(opts.meta) + lines.join('\n') + '\n';
+}
+
 /**
  * Serialize interval windows to CSV: start, stop, and duration (s) per interval.
  */

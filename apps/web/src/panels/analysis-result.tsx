@@ -182,18 +182,29 @@ export function IntervalResult(props: {
   );
 }
 
-/** A scalar-readout result: a stat paragraph when present, else a hint. */
+/** A scalar-readout result: a stat paragraph (with optional CSV) when present, else a hint.
+ *  The CSV `build` is a thunk because a scalar result has no array to pass. */
 export function StatResult(props: {
   show: boolean;
   resultTestId: string;
   hint: string;
   children: ReactNode;
+  csv?: { testId: string; filename: string; build: () => string };
 }): JSX.Element {
-  return props.show ? (
-    <p className="bessel-analysis-stat" data-testid={props.resultTestId}>
-      {props.children}
-    </p>
-  ) : (
-    <p className="bessel-loader-hint">{props.hint}</p>
+  const { csv } = props;
+  if (!props.show) return <p className="bessel-loader-hint">{props.hint}</p>;
+  return (
+    <>
+      <p className="bessel-analysis-stat" data-testid={props.resultTestId}>
+        {props.children}
+      </p>
+      {csv ? <CsvButton testId={csv.testId} onClick={() => exportCsv(csv.filename, csv.build())} /> : null}
+    </>
   );
+}
+
+/** A standalone "Export CSV" button for a result that renders its own body (e.g. the
+ *  ground-track map), where SeriesResult/IntervalResult/StatResult are not used. */
+export function ResultCsv(props: { testId: string; filename: string; build: () => string }): JSX.Element {
+  return <CsvButton testId={props.testId} onClick={() => exportCsv(props.filename, props.build())} />;
 }

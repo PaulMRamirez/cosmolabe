@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { seriesToCsv, intervalsToCsv, csvMetaPreamble } from './csv.ts';
+import { seriesToCsv, intervalsToCsv, tableToCsv, csvMetaPreamble } from './csv.ts';
 
 describe('seriesToCsv', () => {
   it('writes a header and one row per sample', () => {
@@ -47,6 +47,27 @@ describe('intervalsToCsv', () => {
   it('formats epochs when a formatter is given', () => {
     const csv = intervalsToCsv([[0, 60]], { format: (v) => `e${v}` });
     expect(csv).toBe('start,stop,duration_s\ne0,e60,60\n');
+  });
+});
+
+describe('tableToCsv', () => {
+  it('writes a header row then one row per entry, rounding numbers', () => {
+    const csv = tableToCsv(
+      ['quantity', 'value'],
+      [
+        ['miss_km', 1.234567891],
+        ['pc', 3.2e-5],
+      ],
+    );
+    expect(csv).toBe('quantity,value\nmiss_km,1.23457\npc,0.000032\n');
+  });
+
+  it('neutralizes formula injection in text cells and stamps metadata', () => {
+    const csv = tableToCsv([
+      'k',
+      'v',
+    ], [['=cmd', 'x']], { meta: { mission: 'Cassini' } });
+    expect(csv).toBe('# mission: Cassini\n#\nk,v\n\'=cmd,x\n');
   });
 });
 

@@ -195,6 +195,8 @@ export interface ConstellationResult {
   readonly planes: number;
   readonly perPlane: number;
   readonly pattern: 'delta' | 'star';
+  /** Inter-plane phasing factor F of the Walker T/P/F pattern. */
+  readonly phasing: number;
   /** Inclination (deg) and altitude (km) of the generated Walker pattern. */
   readonly inclinationDeg: number;
   readonly altitudeKm: number;
@@ -209,6 +211,8 @@ export interface TransferResult {
 }
 
 export interface GroundTrack {
+  /** Sample epochs (ET seconds), aligned to lon/lat, for time-stamped export. */
+  readonly et: Float64Array;
   /** Sub-spacecraft longitude and latitude samples (radians). */
   readonly lon: Float64Array;
   readonly lat: Float64Array;

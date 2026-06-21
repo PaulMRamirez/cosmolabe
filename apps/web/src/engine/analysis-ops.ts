@@ -51,6 +51,44 @@ export interface AnalysisTargetSpan extends AnalysisSpan {
   readonly target?: string;
 }
 
+/** A span override plus the downlink-radio parameters of the link budget. */
+export interface LinkBudgetOpts extends AnalysisSpan {
+  readonly eirpDbW?: number;
+  readonly freqHz?: number;
+  readonly gOverTDbK?: number;
+  readonly dataRateBps?: number;
+}
+
+/** Conjunction encounter parameters: the secondary object and the assumed 2D covariance. */
+export interface ConjunctionOpts {
+  readonly secondary?: string;
+  /** Per-axis position sigma (km) of the assumed encounter covariance. */
+  readonly sigmaKm?: number;
+  /** Combined hard-body radius (km). */
+  readonly radiusKm?: number;
+}
+
+/** Walker constellation design parameters. */
+export interface ConstellationParams {
+  readonly totalSats: number;
+  readonly planes: number;
+  readonly phasing: number;
+  readonly inclinationDeg: number;
+  readonly altitudeKm: number;
+  readonly pattern: 'delta' | 'star';
+}
+
+/** Which pointing reference an attitude slew starts from or ends at. */
+export type SlewPointing = 'nadir' | 'sun';
+
+/** Eigen-axis slew parameters: the from/to pointing references and the slew dynamics. */
+export interface SlewOpts {
+  readonly fromMode?: SlewPointing;
+  readonly toMode?: SlewPointing;
+  readonly maxRateDeg?: number;
+  readonly maxAccelDeg?: number;
+}
+
 /** A data-provider workbench request: a provider over an observer/target pair + grid. */
 export interface ReportConfig {
   readonly kind: ProviderKind;
@@ -173,7 +211,7 @@ export async function computeLinkBudget(
   e: EngineCore,
   store: AppStore,
   isDisposed: () => boolean,
-  opts: AnalysisSpan = {},
+  opts: LinkBudgetOpts = {},
 ): Promise<void> {
   const sc = e.identity.spacecraftName;
   if (!sc) {
@@ -182,6 +220,12 @@ export async function computeLinkBudget(
   }
   const t0 = e.clock.state.et;
   const spanSec = opts.spanSec ?? 86400;
+  // Downlink radio parameters: a representative Cassini X-band link to a DSN 34 m
+  // station by default, overridable from the panel.
+  const eirpDbW = opts.eirpDbW ?? 90;
+  const freqHz = opts.freqHz ?? 8.4e9;
+  const gOverTDbK = opts.gOverTDbK ?? 53;
+  const dataRateBps = opts.dataRateBps ?? 14_000;
   const samples = 240;
   const et = new Float64Array(samples);
   for (let i = 0; i < samples; i++) et[i] = t0 + (i / (samples - 1)) * spanSec;
@@ -191,14 +235,7 @@ export async function computeLinkBudget(
     const ebN0 = new Float64Array(samples);
     for (let i = 0; i < samples; i++) {
       const distanceKm = Math.hypot(xyz[i * 3]!, xyz[i * 3 + 1]!, xyz[i * 3 + 2]!);
-      // Representative Cassini X-band downlink to a DSN 34 m station.
-      ebN0[i] = linkBudget({
-        eirpDbW: 90,
-        distanceKm,
-        freqHz: 8.4e9,
-        gOverTDbK: 53,
-        dataRateBps: 14_000,
-      }).ebN0Db;
+      ebN0[i] = linkBudget({ eirpDbW, distanceKm, freqHz, gOverTDbK, dataRateBps }).ebN0Db;
     }
     if (!isDisposed()) {
       store.setState({ linkSeries: { et, value: ebN0, label: `${sc} to Earth Eb/N0 (dB)` } });
@@ -344,7 +381,7 @@ export async function computeConjunction(
   e: EngineCore,
   store: AppStore,
   isDisposed: () => boolean,
-  opts: { secondary?: string } = {},
+  opts: ConjunctionOpts = {},
 ): Promise<void> {
   const sc = e.identity.spacecraftName;
   const body = e.identity.centerBody;
@@ -353,16 +390,19 @@ export async function computeConjunction(
     return;
   }
   const secondary = opts.secondary ?? body;
+  // Encounter covariance: per-axis position sigma and combined hard-body radius,
+  // overridable from the panel (defaults 1 km sigma, 100 m radius).
+  const sigmaKm = opts.sigmaKm ?? 1;
+  const radiusKm = opts.radiusKm ?? 0.1;
   const et = e.clock.state.et;
   try {
     const rel = await e.spice.spkezr(secondary, et, 'J2000', 'NONE', sc);
     const ca = closestApproachLinear(rel.position, rel.velocity);
-    // An illustrative encounter: 1 km position sigma per axis, a 100 m combined
-    // hard-body radius, the miss projected onto two encounter-plane axes.
+    // The miss projected onto two encounter-plane axes under the assumed covariance.
     const pc = collisionProbability2D({
-      radiusKm: 0.1,
-      sigmaXKm: 1,
-      sigmaYKm: 1,
+      radiusKm,
+      sigmaXKm: sigmaKm,
+      sigmaYKm: sigmaKm,
       missXKm: ca.missKm,
       missYKm: 0,
     });
@@ -389,12 +429,8 @@ export async function computeConjunction(
  * coverage) and report its structure. Pure (element-set generation); independent of
  * the loaded mission, surfacing the constellation designer.
  */
-export function computeConstellation(store: AppStore): void {
-  const totalSats = 24;
-  const planes = 3;
-  const phasing = 1;
-  const inclinationDeg = 53;
-  const altitudeKm = 700;
+export function computeConstellation(store: AppStore, params: ConstellationParams = DEFAULT_CONSTELLATION): void {
+  const { totalSats, planes, phasing, inclinationDeg, altitudeKm, pattern } = params;
   const a = 6378.137 + altitudeKm;
   const sats = walkerConstellation({
     a,
@@ -404,19 +440,30 @@ export function computeConstellation(store: AppStore): void {
     totalSats,
     planes,
     phasing,
-    pattern: 'delta',
+    pattern,
   });
   store.setState({
     constellation: {
       totalSats: sats.length,
       planes,
       perPlane: sats.length / planes,
-      pattern: 'delta',
+      pattern,
+      phasing,
       inclinationDeg,
       altitudeKm,
     },
   });
 }
+
+/** The default Walker pattern (the prior hardcoded LEO demo): 24/3/1, 53 deg, 700 km. */
+export const DEFAULT_CONSTELLATION: ConstellationParams = {
+  totalSats: 24,
+  planes: 3,
+  phasing: 1,
+  inclinationDeg: 53,
+  altitudeKm: 700,
+  pattern: 'delta',
+};
 
 /**
  * Attitude analysis: an eigen-axis slew from a nadir-pointing to a sun-pointing
@@ -427,6 +474,7 @@ export async function computeSlew(
   e: EngineCore,
   store: AppStore,
   isDisposed: () => boolean,
+  opts: SlewOpts = {},
 ): Promise<void> {
   const sc = e.identity.spacecraftName;
   const body = e.identity.centerBody;
@@ -434,24 +482,29 @@ export async function computeSlew(
     store.setState({ slewSeries: null });
     return;
   }
+  const fromMode = opts.fromMode ?? 'nadir';
+  const toMode = opts.toMode ?? 'sun';
+  const maxRateRad = ((opts.maxRateDeg ?? 2) * Math.PI) / 180;
+  const maxAccelRad = ((opts.maxAccelDeg ?? 0.5) * Math.PI) / 180;
   const et = e.clock.state.et;
+  // Resolve a pointing reference to its attitude matrix at the current epoch.
+  const pointing = (mode: SlewPointing): Promise<readonly number[]> =>
+    mode === 'nadir' ? nadirAttitude(e.spice, sc, body, et) : sunPointingAttitude(e.spice, sc, body, et);
+  const label = (mode: SlewPointing): string => (mode === 'nadir' ? 'nadir' : 'Sun');
   try {
-    const [nadirM, sunM] = await Promise.all([
-      nadirAttitude(e.spice, sc, body, et),
-      sunPointingAttitude(e.spice, sc, body, et),
-    ]);
-    const a0 = await e.spice.m2q(nadirM);
-    const a1 = await e.spice.m2q(sunM);
+    const [fromM, toM] = await Promise.all([pointing(fromMode), pointing(toMode)]);
+    const a0 = await e.spice.m2q(fromM);
+    const a1 = await e.spice.m2q(toM);
     const q0: Quaternion = [a0[0]!, a0[1]!, a0[2]!, a0[3]!];
     const q1: Quaternion = [a1[0]!, a1[1]!, a1[2]!, a1[3]!];
-    // 2 deg/s max rate, 0.5 deg/s^2 max acceleration.
-    const slew = eigenAxisSlew(q0, q1, (2 * Math.PI) / 180, (0.5 * Math.PI) / 180);
+    const slew = eigenAxisSlew(q0, q1, maxRateRad, maxAccelRad);
     const samples = 120;
     const t = new Float64Array(samples);
     const angleDeg = new Float64Array(samples);
     const rad2deg = 180 / Math.PI;
     for (let i = 0; i < samples; i++) {
-      const ti = (i / (samples - 1)) * slew.duration;
+      // A zero-duration slew (from === to) collapses to a single point; guard the div.
+      const ti = slew.duration > 0 ? (i / (samples - 1)) * slew.duration : 0;
       const q = slew.at(ti);
       const dotAbs = Math.abs(q[0] * q0[0] + q[1] * q0[1] + q[2] * q0[2] + q[3] * q0[3]);
       t[i] = ti;
@@ -459,7 +512,7 @@ export async function computeSlew(
     }
     if (!isDisposed()) {
       store.setState({
-        slewSeries: { et: t, value: angleDeg, label: `${sc} nadir->Sun slew (deg)` },
+        slewSeries: { et: t, value: angleDeg, label: `${sc} ${label(fromMode)}->${label(toMode)} slew (deg)` },
       });
     }
   } catch (err) {
@@ -556,7 +609,12 @@ export async function computeGroundTrack(
     });
     if (!isDisposed()) {
       store.setState({
-        groundTrack: { lon: series.columns[0]!, lat: series.columns[1]!, label: `${sc} ground track` },
+        groundTrack: {
+          et: series.et,
+          lon: series.columns[0]!,
+          lat: series.columns[1]!,
+          label: `${sc} ground track`,
+        },
       });
     }
   } catch (err) {
@@ -668,7 +726,7 @@ export async function propagateTle(
       store.setState({
         tleOrbit: {
           altitude: { et, value: altitude, label: `${SAMPLE_TLE.name} altitude (km)` },
-          track: { lon: series.columns[1]!, lat: series.columns[2]!, label: `${SAMPLE_TLE.name} ground track` },
+          track: { et, lon: series.columns[1]!, lat: series.columns[2]!, label: `${SAMPLE_TLE.name} ground track` },
           periodMin: 1440 / parsed.meanMotion,
           label: SAMPLE_TLE.name,
         },

@@ -66,6 +66,10 @@ import { type McsDesign } from './mcs.ts';
 import type {
   AnalysisSpan,
   AnalysisTargetSpan,
+  LinkBudgetOpts,
+  ConjunctionOpts,
+  ConstellationParams,
+  SlewOpts,
   ReportConfig,
   TleState,
 } from './analysis-ops.ts';
@@ -113,7 +117,15 @@ const preventDefault = (ev: Event): void => ev.preventDefault();
 // live in ./analysis-ops.ts alongside the operations that consume them, so importing
 // the analysis packages stays behind the dynamic-import split boundary. The provider
 // kind is needed eagerly only as a type on the ReportConfig surface.
-export type { AnalysisSpan, AnalysisTargetSpan, ReportConfig } from './analysis-ops.ts';
+export type {
+  AnalysisSpan,
+  AnalysisTargetSpan,
+  LinkBudgetOpts,
+  ConjunctionOpts,
+  ConstellationParams,
+  SlewOpts,
+  ReportConfig,
+} from './analysis-ops.ts';
 
 /** The outcome of a share/copy action: the link, and whether it reached the clipboard. */
 export interface ShareResult {
@@ -757,7 +769,7 @@ export class BesselEngine {
   }
 
   /** Communications analysis: downlink Eb/N0 from the spacecraft to Earth over a day. */
-  async computeLinkBudget(opts: AnalysisSpan = {}): Promise<void> {
+  async computeLinkBudget(opts: LinkBudgetOpts = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
     await this.runTool('compute-link', async () => {
@@ -788,7 +800,7 @@ export class BesselEngine {
   }
 
   /** Conjunction analysis: closest approach plus a 2D Pc on the loaded pair. */
-  async computeConjunction(opts: { secondary?: string } = {}): Promise<void> {
+  async computeConjunction(opts: ConjunctionOpts = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
     await this.runTool('compute-conjunction', async () => {
@@ -797,21 +809,21 @@ export class BesselEngine {
     });
   }
 
-  /** Constellation design: a Walker Delta 24/3/1 LEO pattern (mission-independent). */
-  async computeConstellation(): Promise<void> {
+  /** Constellation design: a Walker pattern (mission-independent); defaults to 24/3/1 LEO. */
+  async computeConstellation(params?: ConstellationParams): Promise<void> {
     await this.runTool('compute-constellation', async () => {
       const ops = await import('./analysis-ops.ts');
-      ops.computeConstellation(this.store);
+      ops.computeConstellation(this.store, params ?? ops.DEFAULT_CONSTELLATION);
     });
   }
 
-  /** Attitude analysis: a nadir-to-Sun eigen-axis slew as a slew-angle series. */
-  async computeSlew(): Promise<void> {
+  /** Attitude analysis: an eigen-axis slew between two pointing modes as a slew-angle series. */
+  async computeSlew(opts: SlewOpts = {}): Promise<void> {
     const e = this.core;
     if (!e) return;
     await this.runTool('compute-slew', async () => {
       const ops = await import('./analysis-ops.ts');
-      await ops.computeSlew(e, this.store, this.isDisposed);
+      await ops.computeSlew(e, this.store, this.isDisposed, opts);
     });
   }
 
