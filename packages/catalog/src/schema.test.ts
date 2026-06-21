@@ -13,34 +13,34 @@ const example = JSON.parse(
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 describe('@bessel/catalog native schema', () => {
-  it('passes Draft 2020-12 meta-validation', () => {
-    expect(schemaIsValid()).toBe(true);
+  it('passes Draft 2020-12 meta-validation', async () => {
+    expect(await schemaIsValid()).toBe(true);
   });
 
-  it('validates the Cassini-style reference example cleanly', () => {
-    const result = validateCatalog(example);
+  it('validates the Cassini-style reference example cleanly', async () => {
+    const result = await validateCatalog(example);
     expect(result.valid, JSON.stringify(result.errors)).toBe(true);
   });
 
-  it('rejects a spacecraft that declares both arcs and a trajectory', () => {
+  it('rejects a spacecraft that declares both arcs and a trajectory', async () => {
     const bad = clone(example);
     const sc = (bad['spacecraft'] as Record<string, unknown>[])[0]!;
     sc['trajectory'] = { type: 'Spice', center: 'SSB', frame: 'ECLIPJ2000' };
     // it still has "arcs" from the example, so the oneOf must fail.
-    expect(validateCatalog(bad).valid).toBe(false);
+    expect((await validateCatalog(bad)).valid).toBe(false);
   });
 
-  it('rejects sideDivisions below the floor of 2 (the Cosmographia crash case)', () => {
+  it('rejects sideDivisions below the floor of 2 (the Cosmographia crash case)', async () => {
     const bad = clone(example);
     const inst = (bad['instruments'] as Record<string, unknown>[])[0]!;
     const styles = (inst['fov'] as { styles: Record<string, Record<string, unknown>> }).styles;
     styles['default']!['sideDivisions'] = 1;
-    expect(validateCatalog(bad).valid).toBe(false);
+    expect((await validateCatalog(bad)).valid).toBe(false);
   });
 
-  it('parseBesselCatalog throws a located CatalogError for an invalid catalog', () => {
+  it('parseBesselCatalog throws a located CatalogError for an invalid catalog', async () => {
     try {
-      parseBesselCatalog({ version: '1.0', spacecraft: [{ id: 'X', trajectory: {}, arcs: [] }] });
+      await parseBesselCatalog({ version: '1.0', spacecraft: [{ id: 'X', trajectory: {}, arcs: [] }] });
       expect.unreachable('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(CatalogError);
@@ -48,11 +48,11 @@ describe('@bessel/catalog native schema', () => {
     }
   });
 
-  it('throws a located error for a broken instrument parent reference', () => {
+  it('throws a located error for a broken instrument parent reference', async () => {
     const bad = clone(example);
     (bad['instruments'] as Record<string, unknown>[])[0]!['parent'] = 'NO_SUCH_CRAFT';
     try {
-      parseBesselCatalog(bad);
+      await parseBesselCatalog(bad);
       expect.unreachable('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(CatalogError);

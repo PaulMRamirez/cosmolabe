@@ -27,7 +27,7 @@ export const DEFAULT_OBJECT_ENTRIES: readonly CatalogEntry[] = [
   ...SOLAR_SYSTEM.map((p) => ({ id: p.name, name: p.name, kind: 'body' as const })),
 ];
 
-export function parseAnyCatalog(filename: string, text: string): LoadedCatalog {
+export async function parseAnyCatalog(filename: string, text: string): Promise<LoadedCatalog> {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -45,7 +45,7 @@ export function parseAnyCatalog(filename: string, text: string): LoadedCatalog {
   }
 
   if (isRecord(raw) && typeof raw['version'] === 'string') {
-    const catalog = parseBesselCatalog(raw);
+    const catalog = await parseBesselCatalog(raw);
     return {
       name: catalog.name || filename,
       kind: 'native',
