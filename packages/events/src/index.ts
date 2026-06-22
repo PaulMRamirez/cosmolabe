@@ -67,3 +67,20 @@ export async function eclipseIntervals(
   const sunlit = windowComplement(t0, t1, windowUnionAll([umbra, penumbra, annular]));
   return { umbra, penumbra, annular, sunlit };
 }
+
+export {
+  betaAngle,
+  betaAngleSeries,
+  DegenerateOrbitError,
+  type BetaAngleSeries,
+} from './beta.ts';
+
+export {
+  solarIntensity,
+  solarIntensitySeries,
+  overlapArea,
+  visibleFraction,
+  IntensityGeometryError,
+  type SolarIntensityOptions,
+  type SolarIntensitySeries,
+} from './intensity.ts';
