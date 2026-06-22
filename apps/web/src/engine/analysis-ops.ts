@@ -53,7 +53,16 @@ export type { SlewPointing, ConstellationParams };
 // Re-export the per-domain Access-tab ops so the engine reaches them through this same lazy
 // chunk: a single dynamic-import boundary keeps one copy of the @bessel/access geometry-finder
 // reduction in the lazy analysis bundle instead of duplicating it across two chunks.
-export { computeAccessStack, computeFovWindows } from './ops-access.ts';
+// [ux-p2-access] The Phase-2 access/comms ops (station passes, link worksheet, slew feasibility)
+// join the same re-export so they reach the engine through this one lazy-import seam and share the
+// @bessel/access + @bessel/rf + @bessel/attitude deps already in this chunk (no new ops chunk).
+export {
+  computeAccessStack,
+  computeFovWindows,
+  computeStationPasses,
+  computeLinkWorksheet,
+  computeSlewFeasibility,
+} from './ops-access.ts';
 import type { AppStore } from '../store/index.ts';
 import type { EngineCore } from './bootstrap.ts';
 import { buildHpopForceModel, HPOP_FORCE_MODEL_LABELS, type HpopForceModel } from './hpop-model.ts';

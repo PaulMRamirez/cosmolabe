@@ -59,8 +59,15 @@ import {
   type AnalyzeTab,
   type RunStatus,
   type SpacecraftSource,
+  type GroundStation,
 } from '../store/index.ts';
-import type { AccessConstraintSpec, FovPointingMode } from './analysis-defaults.ts';
+import { reduceStations, type StationAction } from '../panels/station-registry.ts';
+import type {
+  AccessConstraintSpec,
+  FovPointingMode,
+  LinkWorksheetSpec,
+  SlewFeasibilitySpec,
+} from './analysis-defaults.ts';
 import { bootScene, loadInstrument, type EngineCore } from './bootstrap.ts';
 import { applyViewModel } from './apply-view.ts';
 import { type HpopForceModel } from './hpop-model.ts';
@@ -855,6 +862,52 @@ export class BesselEngine {
     });
   }
 
+  /** [ux-p2-access] Az/el-masked station passes of the tracked spacecraft over the ACTIVE
+   *  registered ground station, each reduced to its max-elevation epoch + the slant ranges the
+   *  link worksheet binds to. UNGATES the Phase-1 az/el-mask constraint against a real station. */
+  async computeStationPasses(opts: AnalysisSpan = {}): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    await this.runTool('compute-station-passes', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeStationPasses(e, this.store, this.isDisposed, opts);
+    });
+  }
+
+  /** [ux-p2-access] Select the active station pass the link worksheet binds to (active-selection:
+   *  the producing passes card writes selectedPassId, the consuming worksheet card reads it). */
+  setSelectedPass(passId: string | null): void {
+    this.store.setState({ selectedPassId: passId });
+  }
+
+  /** [ux-p2-access] Select the consecutive pass pair the slew-feasibility card binds to (active-
+   *  selection: two pass ids), or null to clear. */
+  setSelectedWindowPair(pair: readonly [string, string] | null): void {
+    this.store.setState({ selectedWindowPair: pair });
+  }
+
+  /** [ux-p2-access] Assemble the itemized link-budget worksheet at the worst-case AND nominal
+   *  elevation of the SELECTED pass (or a representative geometry), with a margin-vs-time series. */
+  async computeLinkWorksheet(spec: LinkWorksheetSpec): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    await this.runTool('compute-link-worksheet', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeLinkWorksheet(e, this.store, this.isDisposed, spec);
+    });
+  }
+
+  /** [ux-p2-access] Decide whether the eigen-axis slew between the SELECTED consecutive pass pair's
+   *  pointings fits in the inter-pass gap (target-track or inertial mode). */
+  async computeSlewFeasibility(spec: SlewFeasibilitySpec): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    await this.runTool('compute-slew-feasibility', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.computeSlewFeasibility(e, this.store, this.isDisposed, spec);
+    });
+  }
+
   /** Conjunction analysis: closest approach plus a 2D Pc on the loaded pair. */
   async computeConjunction(opts: ConjunctionOpts = {}): Promise<void> {
     const e = this.core;
@@ -1522,6 +1575,31 @@ export class BesselEngine {
   /** Patch the shared analysis context (span, step, target, observer, frame). */
   setAnalysisContext(patch: Partial<AnalysisContext>): void {
     this.store.setState((s) => ({ analysisContext: { ...s.analysisContext, ...patch } }));
+  }
+
+  /** [ux-p2-access] Dispatch a ground-station registry action (add / update / remove / select)
+   *  against the scenario slice through the pure reducer. Stations are first-class shared context
+   *  the access/comms/observation cards read by role; a malformed station fails loud (the reducer
+   *  throws a located StationRegistryError, which surfaces through runStatus). */
+  dispatchStation(action: StationAction): void {
+    void this.runTool('station-registry', () => {
+      this.store.setState((s) => ({ scenario: reduceStations(s.scenario, action) }));
+    });
+  }
+
+  /** [ux-p2-access] Convenience: add a ground station to the registry (and make it active). */
+  addStation(station: GroundStation): void {
+    this.dispatchStation({ kind: 'add', station });
+  }
+
+  /** [ux-p2-access] Convenience: select (or clear, with null) the active ground station. */
+  selectStation(id: string | null): void {
+    this.dispatchStation({ kind: 'select', id });
+  }
+
+  /** [ux-p2-access] Convenience: remove a ground station from the registry by id. */
+  removeStation(id: string): void {
+    this.dispatchStation({ kind: 'remove', id });
   }
 
   stepRate(dir: -1 | 1): void {

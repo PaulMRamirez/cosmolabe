@@ -7,6 +7,7 @@
 import { COMMON_SPICE_FRAMES, type TimeSystem } from '@bessel/ui';
 import type { BesselEngine } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
+import { StationRegistryControl } from './StationRegistryControl.tsx';
 
 const TIME_SYSTEMS: readonly TimeSystem[] = ['UTC', 'TDB'];
 
@@ -129,6 +130,9 @@ export function AnalysisContextBar({ engine, store }: AnalysisContextBarProps): 
           ev.target.value = '';
         }}
       />
+      {/* [ux-p2-access] Ground stations are first-class shared context: the access/comms cards read
+          the ACTIVE station by role, so the registry control lives in the shared context bar. */}
+      <StationRegistryControl engine={engine} store={store} />
     </div>
   );
 }

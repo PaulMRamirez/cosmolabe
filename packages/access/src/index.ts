@@ -80,7 +80,15 @@ export async function computeAccess(spice: SpiceEngine, req: AccessRequest): Pro
   return windowIntersectAll(windows);
 }
 
-export { computeElevationAccess, type Facility, type ElevationUp } from './facility.ts';
+export {
+  computeElevationAccess,
+  bodyRadiiKm,
+  facilityTopoFrame,
+  topocentricElAz,
+  type Facility,
+  type ElevationUp,
+  type TopoFrame,
+} from './facility.ts';
 export {
   computeRangeRateWindow,
   rangeRateFromState,

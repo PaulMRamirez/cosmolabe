@@ -70,6 +70,19 @@ describe('TimeSeriesChart', () => {
     const out = html(createElement(TimeSeriesChart, { et: [0], value: [1] }));
     expect(out).not.toContain('<polyline');
   });
+
+  it('draws a dashed reference line at the threshold when one is given', () => {
+    const out = html(
+      createElement(TimeSeriesChart, {
+        et: [0, 1, 2, 3],
+        value: [2, 7, 5, 12],
+        threshold: 0,
+        testId: 'margin-chart',
+      }),
+    );
+    expect(out).toContain('data-testid="margin-chart-threshold"');
+    expect(out).toContain('stroke-dasharray="4 3"');
+  });
 });
 
 describe('GroundTrackMap', () => {

@@ -4,12 +4,17 @@
 // object to the matching engine method. Presentational: no engine or store access.
 
 import type { ReactNode } from 'react';
+import { MODCOD_TABLE } from '@bessel/rf';
 import {
   DEFAULT_LINK,
   DEFAULT_CONJUNCTION,
   DEFAULT_CONSTELLATION,
   DEFAULT_SLEW,
+  DEFAULT_LINK_WORKSHEET,
+  DEFAULT_SLEW_FEASIBILITY,
   type ConstellationParams,
+  type LinkWorksheetSpec,
+  type SlewFeasibilitySpec,
 } from '../engine/analysis-defaults.ts';
 
 /** A labelled number input that reports its parsed value, clamped to an optional minimum. */
@@ -291,4 +296,77 @@ const SLEW_FIELDS: readonly FieldDesc<SlewFormParams>[] = [
 
 export function SlewParamsForm(props: { value: SlewFormParams; onChange: (v: SlewFormParams) => void }): JSX.Element {
   return <ParamForm value={props.value} onChange={props.onChange} fields={SLEW_FIELDS} testId="slew-params" />;
+}
+
+// [ux-p2-access] The link-budget worksheet form (radio + antenna + atmosphere + MODCOD) and the
+// slew-feasibility form (mode + dynamics), driving the Phase-2 comms-engineer + observation-planner
+// cards. The MODCOD select (param-modcod) reads required Eb/N0 from @bessel/rf MODCOD_TABLE.
+
+export const DEFAULT_LINK_WORKSHEET_PARAMS: LinkWorksheetSpec = DEFAULT_LINK_WORKSHEET;
+
+const ANTENNA_PATTERN_OPTIONS = [
+  { value: 'parabolic', label: 'Parabolic' },
+  { value: 'gaussian', label: 'Gaussian' },
+] as const;
+
+const POLARIZATION_OPTIONS = [
+  { value: 'linear', label: 'Linear' },
+  { value: 'rhcp', label: 'RHCP' },
+  { value: 'lhcp', label: 'LHCP' },
+] as const;
+
+const RAIN_BAND_OPTIONS = [
+  { value: 'ku12', label: 'Ku ~12 GHz' },
+  { value: 'k20', label: 'K ~20 GHz' },
+  { value: 'ka30', label: 'Ka ~30 GHz' },
+] as const;
+
+/** The MODCOD select options, derived from the @bessel/rf table so the names cannot drift. */
+const MODCOD_SELECT_OPTIONS = MODCOD_TABLE.map((m) => ({
+  value: m.name,
+  label: `${m.name} (req ${m.requiredEbN0Db} dB)`,
+}));
+
+const LINK_WORKSHEET_FIELDS: readonly FieldDesc<LinkWorksheetSpec>[] = [
+  { kind: 'num', key: 'eirpDbW', label: 'EIRP (dBW)', testId: 'param-ws-eirp' },
+  { kind: 'num', key: 'freqGHz', label: 'Freq (GHz)', testId: 'param-ws-freq', min: 0.001 },
+  { kind: 'num', key: 'gOverTDbK', label: 'G/T (dB/K)', testId: 'param-ws-gt' },
+  { kind: 'num', key: 'dataRateBps', label: 'Data rate (bps)', testId: 'param-ws-rate', min: 1 },
+  { kind: 'select', key: 'antennaPattern', label: 'Antenna pattern', testId: 'param-ws-pattern', options: ANTENNA_PATTERN_OPTIONS },
+  { kind: 'num', key: 'hpbwDeg', label: 'HPBW (deg)', testId: 'param-ws-hpbw', min: 0.001 },
+  { kind: 'num', key: 'pointingErrorDeg', label: 'Pointing err (deg)', testId: 'param-ws-pointing', min: 0 },
+  { kind: 'select', key: 'txPolarization', label: 'Tx pol', testId: 'param-ws-txpol', options: POLARIZATION_OPTIONS },
+  { kind: 'select', key: 'rxPolarization', label: 'Rx pol', testId: 'param-ws-rxpol', options: POLARIZATION_OPTIONS },
+  { kind: 'num', key: 'polMisalignDeg', label: 'Pol misalign (deg)', testId: 'param-ws-polmis', min: 0 },
+  { kind: 'num', key: 'rainRateMmHr', label: 'Rain rate (mm/hr)', testId: 'param-ws-rain', min: 0 },
+  { kind: 'select', key: 'rainCoeffsKey', label: 'Rain band', testId: 'param-ws-rainband', options: RAIN_BAND_OPTIONS },
+  { kind: 'num', key: 'gaseousZenithDb', label: 'Gaseous zenith (dB)', testId: 'param-ws-gaseous', min: 0 },
+  { kind: 'select', key: 'modcodName', label: 'MODCOD', testId: 'param-modcod', options: MODCOD_SELECT_OPTIONS },
+];
+
+export function LinkWorksheetForm(props: {
+  value: LinkWorksheetSpec;
+  onChange: (v: LinkWorksheetSpec) => void;
+}): JSX.Element {
+  return <ParamForm value={props.value} onChange={props.onChange} fields={LINK_WORKSHEET_FIELDS} testId="link-worksheet-params" />;
+}
+
+export const DEFAULT_SLEW_FEASIBILITY_PARAMS: SlewFeasibilitySpec = DEFAULT_SLEW_FEASIBILITY;
+
+const SLEW_MODE_OPTIONS = [
+  { value: 'targetTrack', label: 'Target-track' },
+  { value: 'inertial', label: 'Inertial' },
+] as const;
+
+const SLEW_FEASIBILITY_FIELDS: readonly FieldDesc<SlewFeasibilitySpec>[] = [
+  { kind: 'select', key: 'mode', label: 'Mode', testId: 'param-slewfeas-mode', options: SLEW_MODE_OPTIONS },
+  { kind: 'num', key: 'maxRateDegPerSec', label: 'Max rate (deg/s)', testId: 'param-slewfeas-rate', min: 0.001 },
+  { kind: 'num', key: 'maxAccelDegPerSec2', label: 'Max accel (deg/s2)', testId: 'param-slewfeas-accel', min: 0.001 },
+];
+
+export function SlewFeasibilityForm(props: {
+  value: SlewFeasibilitySpec;
+  onChange: (v: SlewFeasibilitySpec) => void;
+}): JSX.Element {
+  return <ParamForm value={props.value} onChange={props.onChange} fields={SLEW_FEASIBILITY_FIELDS} testId="slew-feasibility-params" />;
 }

@@ -74,6 +74,9 @@ function BandFields(props: {
 export interface AccessConstraintFormProps {
   readonly value: AccessConstraintSpec;
   readonly onChange: (v: AccessConstraintSpec) => void;
+  /** [ux-p2-access] The active ground station's name when one is selected, else null. The az/el
+   *  mask toggle is UNGATED (live) when a station is active, and disabled with a hint otherwise. */
+  readonly activeStationName?: string | null;
 }
 
 /** The constraint-stack form: four live toggles (each revealing its band when on) plus two
@@ -81,6 +84,7 @@ export interface AccessConstraintFormProps {
 export function AccessConstraintForm(props: AccessConstraintFormProps): JSX.Element {
   const { value, onChange } = props;
   const set = (patch: Partial<AccessConstraintSpec>): void => onChange({ ...value, ...patch });
+  const stationActive = !!props.activeStationName;
   return (
     <div className="bessel-constraint-stack" data-testid="access-constraint-form">
       <ConstraintToggle
@@ -149,17 +153,24 @@ export function AccessConstraintForm(props: AccessConstraintFormProps): JSX.Elem
         </label>
       ) : null}
 
+      {/* [ux-p2-access] Az/el horizon mask: UNGATED in Phase 2. Live when a ground station is active
+          (it reads the station's facility + min-elevation floor); disabled with a hint otherwise. */}
+      <ConstraintToggle
+        label={
+          stationActive
+            ? `Az/el horizon mask at ${props.activeStationName}`
+            : 'Az/el horizon mask (select a ground station in the context bar)'
+        }
+        checked={stationActive && value.azElMaskEnabled}
+        disabled={!stationActive}
+        onChange={(v) => set({ azElMaskEnabled: v })}
+        testId="constraint-azelmask"
+      />
+
       <fieldset className="bessel-constraint-advanced" data-testid="access-constraint-advanced">
-        <legend>Advanced (Phase 2)</legend>
+        <legend>Advanced (Phase 3)</legend>
         <ConstraintToggle
-          label="Az/el horizon mask (needs a ground station, Phase 2)"
-          checked={false}
-          disabled
-          onChange={() => undefined}
-          testId="constraint-azelmask"
-        />
-        <ConstraintToggle
-          label="Terrain line of sight (needs a DEM, Phase 2)"
+          label="Terrain line of sight (needs a DEM, Phase 3)"
           checked={false}
           disabled
           onChange={() => undefined}

@@ -5,10 +5,20 @@
 // standalone, taking the engine core + store + a disposed guard, mirroring analysis-ops.ts.
 // Fails loud: a malformed constraint or an unresolved body raises a typed, located error.
 
-import { computeAccess, type AccessConstraint } from '@bessel/access';
+import {
+  computeAccess,
+  computeAzElMaskWindow,
+  bodyRadiiKm,
+  facilityTopoFrame,
+  topocentricElAz,
+  type AccessConstraint,
+  type Facility,
+  type AzElMaskConstraint,
+} from '@bessel/access';
 import { figureOfMerit } from '@bessel/coverage';
+import { nadirAttitude, type Quaternion } from '@bessel/attitude';
 import { windowIntersect, type Window } from '@bessel/timeline';
-import { DEG2RAD } from '../angles.ts';
+import { DEG2RAD, RAD2DEG } from '../angles.ts';
 import { positionAt } from '../sampler.ts';
 import {
   fovHalfAngleRad,
@@ -18,10 +28,32 @@ import {
 } from '../in-fov.ts';
 import {
   DEFAULT_ACCESS_CONSTRAINTS,
+  DEFAULT_LINK_WORKSHEET,
+  DEFAULT_SLEW_FEASIBILITY,
   type AccessConstraintSpec,
+  type LinkWorksheetSpec,
+  type SlewFeasibilitySpec,
 } from './analysis-defaults.ts';
-import type { AppStore, AccessFom } from '../store/index.ts';
+import { MODCOD_TABLE } from '@bessel/rf';
+import { assembleLinkWorksheet, type LinkWorksheetConfig, type PassGeometry } from '../panels/link-worksheet.ts';
+import { decideSlewFeasibility } from '../panels/slew-feasibility.ts';
+import type {
+  AppStore,
+  AccessFom,
+  GroundStation,
+  ScenarioState,
+  StationPass,
+  LinkWorksheetCase,
+} from '../store/index.ts';
 import type { EngineCore } from './bootstrap.ts';
+
+/** The active registered ground station from the scenario slice, or null when none is selected.
+ *  Inlined here (rather than imported from station-registry, which the eager engine shell already
+ *  owns) so this lazy chunk does not also pull the registry module. */
+function activeStation(scenario: ScenarioState): GroundStation | null {
+  const id = scenario.activeStationId;
+  return id === null ? null : scenario.stations.find((s) => s.id === id) ?? null;
+}
 
 /** A typed, located error for an Access-tab op the engine cannot satisfy (fail loudly). */
 export class OpsAccessError extends Error {
@@ -42,11 +74,13 @@ export interface LabelledConstraint {
 /** Assemble the enabled members of a constraint spec into labelled access constraints, in a
  *  stable order. Pure (no SPICE), so the assembly is unit-tested directly. The line-of-sight
  *  occulting body is the mission center body; range/range-rate/sun-keepout read their bands
- *  from the spec. A spec with nothing enabled yields an empty stack (computeAccess then returns
- *  the whole span). Fails loud on an inverted band rather than silently swapping the bounds. */
+ *  from the spec; the az/el mask (UNGATED in Phase 2) reads the ACTIVE ground station passed in,
+ *  failing loud when the toggle is on but no station is active. A spec with nothing enabled yields
+ *  an empty stack (computeAccess then returns the whole span). Fails loud on an inverted band. */
 export function assembleConstraints(
   spec: AccessConstraintSpec,
   centerBody: string,
+  station?: GroundStation | null,
 ): readonly LabelledConstraint[] {
   const out: LabelledConstraint[] = [];
   if (spec.losEnabled) {
@@ -86,6 +120,18 @@ export function assembleConstraints(
       constraint: { kind: 'sunExclusion', keepoutRad: spec.sunKeepoutDeg * DEG2RAD },
     });
   }
+  if (spec.azElMaskEnabled) {
+    // UNGATED in Phase 2: the az/el horizon mask reads the active registered ground station; fail
+    // loud (rather than fabricate a facility) when the toggle is on but no station is selected.
+    if (!station) {
+      throw new OpsAccessError('az/el mask is enabled but no ground station is active: select one in the context bar');
+    }
+    const { facility, constraint } = stationConstraint(station);
+    out.push({
+      label: `Az/el mask at ${station.name} (>= ${((station.minElevationRad ?? 5 * DEG2RAD) * RAD2DEG).toFixed(1)} deg)`,
+      constraint: { ...constraint, facility },
+    });
+  }
   return out;
 }
 
@@ -119,7 +165,7 @@ export async function computeAccessStack(
   const t0 = e.clock.state.et;
   const step = opts.stepSec ?? 120;
   const span: [number, number] = [t0, t0 + (opts.spanSec ?? 86400)];
-  const labelled = assembleConstraints(spec, body);
+  const labelled = assembleConstraints(spec, body, activeStation(store.getState().scenario));
   try {
     const window = await computeAccess(e.spice, {
       observer: sc,
@@ -217,7 +263,7 @@ export async function computeFovWindows(
     const pointingLabel = pointing === 'sun' ? 'Sun-pointed' : 'nadir-pointed';
     // Surviving window: the FOV-only window intersected with the assembled access stack, run
     // over the same span/step so the two read against the same geometry.
-    const labelled = assembleConstraints(spec, center);
+    const labelled = assembleConstraints(spec, center, activeStation(store.getState().scenario));
     const accessWindow = await computeAccess(e.spice, {
       observer: sc,
       target: obsTarget,
@@ -245,6 +291,367 @@ export async function computeFovWindows(
   } catch (err) {
     if (!isDisposed()) store.setState({ fovResult: null, fovSurviving: null });
     console.error('in-FOV pointing analysis failed', err);
+    throw err;
+  }
+}
+
+// -- [ux-p2-access] Ground-station passes, link worksheet, and slew feasibility ----------------
+// The three Phase-2 access/comms surfaces. computeStationPasses UNGATES the az/el-mask access
+// constraint against the ACTIVE registered ground station: it runs computeAzElMaskWindow over the
+// station (the constant min-elevation floor or, when the station carries one, an az-indexed mask),
+// then samples each rise/set interval for its max-elevation epoch + the slant ranges the link
+// worksheet binds to. computeLinkWorksheet binds to the SELECTED pass (or a representative geometry)
+// and assembles the itemized budget at the worst-case and nominal elevation plus a margin-vs-time
+// series. computeSlewFeasibility binds to the SELECTED consecutive pass pair and decides whether the
+// eigen-axis slew between the two pointings fits in the inter-pass gap. All fail loud.
+
+/** Resolve the spacecraft the station passes track: the scenario primary, else the mission
+ *  spacecraft. Fails loud when neither is set (the passes need a target to track). */
+function requireSpacecraft(e: EngineCore, store: AppStore): string {
+  const primary = store.getState().scenario.primarySpacecraft;
+  const sc = primary ?? e.identity.spacecraftName;
+  if (!sc) {
+    throw new OpsAccessError('no spacecraft to track: set a primary spacecraft or load a mission');
+  }
+  return sc;
+}
+
+/** Resolve the active registered ground station, failing loud when none is selected. */
+function requireActiveStation(store: AppStore): GroundStation {
+  const station = activeStation(store.getState().scenario);
+  if (!station) {
+    throw new OpsAccessError('no active ground station: add and select one in the context bar');
+  }
+  return station;
+}
+
+/** Build a Facility + az/el-mask constraint for a station over an Earth-class body. A station with
+ *  no mask uses its constant min-elevation floor (default 5 deg); the body is EARTH for a registered
+ *  ground site (the registry is geodetic Earth sites in this phase). */
+function stationConstraint(station: GroundStation): { facility: Facility; constraint: AzElMaskConstraint } {
+  const facility: Facility = {
+    body: 'EARTH',
+    bodyFrame: 'IAU_EARTH',
+    lonRad: station.lonRad,
+    latRad: station.latRad,
+    altKm: station.altKm,
+  };
+  const minElevationRad = station.minElevationRad ?? 5 * DEG2RAD;
+  const constraint: AzElMaskConstraint = { kind: 'azElMask', facility, minElevationRad };
+  return { facility, constraint };
+}
+
+/** Sample one rise/set interval to find its max-elevation epoch and the slant ranges + elevations at
+ *  the max-elevation and worst-case (lowest at the pass edges) geometry. Reuses the facility topo
+ *  frame; range is |target - site| in the body-fixed frame. */
+async function samplePass(
+  e: EngineCore,
+  facility: Facility,
+  spacecraft: string,
+  rise: number,
+  set: number,
+  id: string,
+): Promise<StationPass> {
+  const { equatorialKm: re, polarKm: rp } = await bodyRadiiKm(e.spice, facility.body);
+  const frame = facilityTopoFrame(facility, re, rp);
+  const samples = 30;
+  let maxEl = -Infinity;
+  let maxEpoch = rise;
+  let maxRange = 0;
+  let worstEl = Infinity;
+  let worstRange = 0;
+  for (let i = 0; i <= samples; i++) {
+    const et = rise + (i / samples) * (set - rise);
+    const { position } = await e.spice.spkpos(spacecraft, et, facility.bodyFrame, 'NONE', facility.body);
+    const { elevationRad } = topocentricElAz(frame, position);
+    const rangeKm = Math.hypot(position.x - frame.pos.x, position.y - frame.pos.y, position.z - frame.pos.z);
+    if (elevationRad > maxEl) {
+      maxEl = elevationRad;
+      maxEpoch = et;
+      maxRange = rangeKm;
+    }
+    if (elevationRad < worstEl) {
+      worstEl = elevationRad;
+      worstRange = rangeKm;
+    }
+  }
+  return {
+    id,
+    rise,
+    set,
+    maxElevationEpoch: maxEpoch,
+    maxElevationRad: maxEl,
+    maxElevationRangeKm: maxRange,
+    worstElevationRad: Number.isFinite(worstEl) ? worstEl : maxEl,
+    worstElevationRangeKm: worstRange || maxRange,
+  };
+}
+
+/**
+ * Az/el-masked station passes: rise/set windows of the tracked spacecraft over the ACTIVE registered
+ * ground station, each reduced to its max-elevation epoch + the slant ranges/elevations the link
+ * worksheet binds to. Runs computeAzElMaskWindow (the Phase-1 constraint, now UNGATED against a real
+ * station) over the span, then samples each interval. Requires an active station + a spacecraft;
+ * fails loud otherwise. Clears the selection so a stale selectedPassId never points past the run.
+ */
+export async function computeStationPasses(
+  e: EngineCore,
+  store: AppStore,
+  isDisposed: () => boolean,
+  opts: { spanSec?: number; stepSec?: number } = {},
+): Promise<void> {
+  const station = requireActiveStation(store);
+  const spacecraft = requireSpacecraft(e, store);
+  const t0 = e.clock.state.et;
+  const span: [number, number] = [t0, t0 + (opts.spanSec ?? 86400)];
+  const step = opts.stepSec ?? 60;
+  const { facility, constraint } = stationConstraint(station);
+  try {
+    const window = await computeAzElMaskWindow(e.spice, spacecraft, span, step, 'NONE', constraint);
+    const passes: StationPass[] = [];
+    for (let i = 0; i < window.length; i++) {
+      if (isDisposed()) return;
+      const [rise, set] = window[i]!;
+      passes.push(await samplePass(e, facility, spacecraft, rise, set, `pass-${i}`));
+    }
+    if (!isDisposed()) {
+      store.setState({
+        stationPasses: {
+          stationName: station.name,
+          spacecraft,
+          span,
+          passes,
+          fom: fomOf(window, span),
+          label: `${spacecraft} over ${station.name}`,
+        },
+        // A fresh passes run supersedes any prior pass selection / pair / worksheet / slew result.
+        selectedPassId: null,
+        selectedWindowPair: null,
+        linkWorksheet: null,
+        slewFeasibility: null,
+      });
+    }
+  } catch (err) {
+    if (!isDisposed()) store.setState({ stationPasses: null });
+    console.error('station passes analysis failed', err);
+    throw err;
+  }
+}
+
+/** Resolve a MODCOD by name from the @bessel/rf table, failing loud on an unknown name. */
+function resolveModcod(name: string): { name: string; requiredEbN0Db: number } {
+  const modcod = MODCOD_TABLE.find((m) => m.name === name);
+  if (!modcod) {
+    throw new OpsAccessError(`unknown MODCOD "${name}" (not in MODCOD_TABLE)`);
+  }
+  return { name: modcod.name, requiredEbN0Db: modcod.requiredEbN0Db };
+}
+
+/** Translate the panel link spec + a resolved required Eb/N0 into the pure worksheet config. */
+function worksheetConfig(spec: LinkWorksheetSpec, requiredEbN0Db: number): LinkWorksheetConfig {
+  return {
+    eirpDbW: spec.eirpDbW,
+    freqHz: spec.freqGHz * 1e9,
+    gOverTDbK: spec.gOverTDbK,
+    dataRateBps: spec.dataRateBps,
+    antennaPattern: spec.antennaPattern,
+    hpbwDeg: spec.hpbwDeg,
+    pointingErrorDeg: spec.pointingErrorDeg,
+    txPolarization: spec.txPolarization,
+    rxPolarization: spec.rxPolarization,
+    polMisalignDeg: spec.polMisalignDeg,
+    rainRateMmHr: spec.rainRateMmHr,
+    rainCoeffsKey: spec.rainCoeffsKey,
+    gaseousZenithDb: spec.gaseousZenithDb,
+    requiredEbN0Db,
+  };
+}
+
+/** Assemble one labelled worksheet case (worst-case / nominal) from a geometry point. */
+function worksheetCase(
+  caseLabel: string,
+  config: LinkWorksheetConfig,
+  geometry: PassGeometry,
+): LinkWorksheetCase {
+  const sheet = assembleLinkWorksheet(config, geometry);
+  return {
+    caseLabel,
+    elevationDeg: geometry.elevationRad * RAD2DEG,
+    rangeKm: geometry.rangeKm,
+    lines: sheet.lines.map((l) => ({ id: l.id, label: l.label, value: l.value, unit: l.unit })),
+    ebN0Db: sheet.ebN0Db,
+    requiredEbN0Db: sheet.requiredEbN0Db,
+    marginDb: sheet.marginDb,
+  };
+}
+
+/**
+ * The itemized link-budget WORKSHEET bound to the SELECTED station pass (active-selection). At the
+ * worst-case (lowest-elevation pass edge) AND nominal (max-elevation) geometry it rolls up the line-
+ * by-line budget through the pure assembleLinkWorksheet (the @bessel/rf builders), and samples a
+ * margin-vs-time series across the pass for the chart (the required-Eb/N0 threshold is drawn from the
+ * MODCOD). With no pass selected it falls back to a representative geometry (a 700 km LEO downlink at
+ * 30 deg) with a clear note. Fails loud on an unknown MODCOD or a missing passes run.
+ */
+export async function computeLinkWorksheet(
+  e: EngineCore,
+  store: AppStore,
+  isDisposed: () => boolean,
+  spec: LinkWorksheetSpec = DEFAULT_LINK_WORKSHEET,
+): Promise<void> {
+  const modcod = resolveModcod(spec.modcodName);
+  const config = worksheetConfig(spec, modcod.requiredEbN0Db);
+  const state = store.getState();
+  const result = state.stationPasses;
+  const selectedId = state.selectedPassId;
+  const selectedPass = result && selectedId ? result.passes.find((p) => p.id === selectedId) ?? null : null;
+  try {
+    // The geometry the worksheet is computed at: the selected pass edges, or a representative point.
+    const worstGeom: PassGeometry = selectedPass
+      ? { rangeKm: selectedPass.worstElevationRangeKm, elevationRad: selectedPass.worstElevationRad }
+      : { rangeKm: 2400, elevationRad: 10 * DEG2RAD };
+    const nominalGeom: PassGeometry = selectedPass
+      ? { rangeKm: selectedPass.maxElevationRangeKm, elevationRad: selectedPass.maxElevationRad }
+      : { rangeKm: 800, elevationRad: 60 * DEG2RAD };
+    const worstCase = worksheetCase('Worst-case elevation', config, worstGeom);
+    const nominal = worksheetCase('Nominal (max) elevation', config, nominalGeom);
+
+    // Margin-vs-time over the pass: sample the topocentric range + elevation across the rise/set
+    // window and roll up the margin at each, so the chart can draw the required-Eb/N0 threshold.
+    const marginSeries = await buildMarginSeries(e, store, config, selectedPass);
+
+    if (!isDisposed()) {
+      store.setState({
+        linkWorksheet: {
+          passId: selectedPass?.id ?? null,
+          modcodName: modcod.name,
+          requiredEbN0Db: modcod.requiredEbN0Db,
+          worstCase,
+          nominal,
+          marginSeries,
+          note: selectedPass
+            ? ''
+            : 'representative geometry: no pass selected (select a pass row to bind to real geometry)',
+          label: selectedPass
+            ? `Link worksheet over ${result?.stationName ?? 'station'} pass`
+            : 'Link worksheet (representative geometry)',
+        },
+      });
+    }
+  } catch (err) {
+    if (!isDisposed()) store.setState({ linkWorksheet: null });
+    console.error('link worksheet failed', err);
+    throw err;
+  }
+}
+
+/** Build the margin-vs-time series over the selected pass (or a short synthetic ramp when no pass is
+ *  selected), rolling up the worksheet margin at each sampled topocentric geometry. */
+async function buildMarginSeries(
+  e: EngineCore,
+  store: AppStore,
+  config: LinkWorksheetConfig,
+  selectedPass: StationPass | null,
+): Promise<{ et: Float64Array; value: Float64Array; label: string }> {
+  if (!selectedPass) {
+    // No pass: a representative elevation ramp from 10 to 60 deg at a fixed mid-pass range, so the
+    // chart still shows the margin trend vs the threshold (the note marks it representative).
+    const n = 24;
+    const et = new Float64Array(n);
+    const value = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const frac = i / (n - 1);
+      const elevationRad = (10 + frac * 50) * DEG2RAD;
+      et[i] = i;
+      value[i] = assembleLinkWorksheet(config, { rangeKm: 1200, elevationRad }).marginDb;
+    }
+    return { et, value, label: 'Margin over representative pass (dB)' };
+  }
+  const station = requireActiveStation(store);
+  const spacecraft = requireSpacecraft(e, store);
+  const { facility } = stationConstraint(station);
+  const { equatorialKm: re, polarKm: rp } = await bodyRadiiKm(e.spice, facility.body);
+  const frame = facilityTopoFrame(facility, re, rp);
+  const n = 30;
+  const et = new Float64Array(n);
+  const value = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = selectedPass.rise + (i / (n - 1)) * (selectedPass.set - selectedPass.rise);
+    const { position } = await e.spice.spkpos(spacecraft, t, facility.bodyFrame, 'NONE', facility.body);
+    const { elevationRad } = topocentricElAz(frame, position);
+    const rangeKm = Math.hypot(position.x - frame.pos.x, position.y - frame.pos.y, position.z - frame.pos.z);
+    et[i] = t;
+    value[i] = assembleLinkWorksheet(config, { rangeKm, elevationRad: Math.max(elevationRad, 1e-3) }).marginDb;
+  }
+  return { et, value, label: `Margin over ${station.name} pass (dB)` };
+}
+
+/** Resolve the attitude the sensor holds during a pass under the slew mode: target-track points at
+ *  the body center (nadir) at the pass's max-elevation epoch; inertial holds the J2000 identity. */
+async function passAttitude(
+  e: EngineCore,
+  spacecraft: string,
+  pass: StationPass,
+  mode: SlewFeasibilitySpec['mode'],
+): Promise<Quaternion> {
+  if (mode === 'inertial') return [1, 0, 0, 0];
+  const matrix = await nadirAttitude(e.spice, spacecraft, 'EARTH', pass.maxElevationEpoch);
+  const q = await e.spice.m2q(matrix);
+  return [q[0]!, q[1]!, q[2]!, q[3]!];
+}
+
+/**
+ * Slew feasibility between the two SELECTED consecutive passes (active-selection: selectedWindowPair).
+ * Resolves each pass's pointing under the chosen mode (target-track = nadir at the pass apex, or a
+ * fixed inertial attitude), then runs the pure decideSlewFeasibility: does the eigen-axis slew fit in
+ * the gap between the first pass's set and the second pass's rise? Fails loud when no pair is selected
+ * or the pair ids are not in the current passes run.
+ */
+export async function computeSlewFeasibility(
+  e: EngineCore,
+  store: AppStore,
+  isDisposed: () => boolean,
+  spec: SlewFeasibilitySpec = DEFAULT_SLEW_FEASIBILITY,
+): Promise<void> {
+  const state = store.getState();
+  const pair = state.selectedWindowPair;
+  const result = state.stationPasses;
+  if (!pair || !result) {
+    throw new OpsAccessError('select two consecutive passes before checking slew feasibility');
+  }
+  const first = result.passes.find((p) => p.id === pair[0]);
+  const second = result.passes.find((p) => p.id === pair[1]);
+  if (!first || !second) {
+    throw new OpsAccessError('the selected pass pair is not in the current passes run; re-run passes');
+  }
+  const spacecraft = requireSpacecraft(e, store);
+  try {
+    const [fromQuat, toQuat] = await Promise.all([
+      passAttitude(e, spacecraft, first, spec.mode),
+      passAttitude(e, spacecraft, second, spec.mode),
+    ]);
+    const verdict = decideSlewFeasibility(
+      { firstWindow: [first.rise, first.set], secondWindow: [second.rise, second.set], fromQuat, toQuat },
+      { maxRateDegPerSec: spec.maxRateDegPerSec, maxAccelDegPerSec2: spec.maxAccelDegPerSec2 },
+    );
+    if (!isDisposed()) {
+      store.setState({
+        slewFeasibility: {
+          fromPassId: first.id,
+          toPassId: second.id,
+          mode: spec.mode,
+          slewAngleDeg: verdict.slewAngleDeg,
+          slewDurationSec: verdict.slewDurationSec,
+          gapSec: verdict.gapSec,
+          slackSec: verdict.slackSec,
+          fits: verdict.fits,
+          label: `${spacecraft} slew between ${result.stationName} passes`,
+        },
+      });
+    }
+  } catch (err) {
+    if (!isDisposed()) store.setState({ slewFeasibility: null });
+    console.error('slew feasibility failed', err);
     throw err;
   }
 }

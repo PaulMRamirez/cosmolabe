@@ -78,6 +78,39 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   await expect(page.getByTestId('link-chart')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('link-chart').locator('polyline')).toHaveCount(1);
 
+  // [ux-p2-access] Ground-station registry + az/el-mask passes + the link-budget worksheet
+  // (comms-engineer journey). Register a station in the SHARED context bar (it is first-class
+  // shared context the access cards read by role), compute the rise/set passes over it, then
+  // assemble the itemized worksheet and read its margin + MODCOD threshold.
+  await expect(page.getByTestId('station-registry')).toBeVisible();
+  await page.getByTestId('station-add-toggle').click();
+  await page.getByTestId('station-name').fill('Test Station');
+  await page.getByTestId('station-lon').fill('-116.9');
+  await page.getByTestId('station-lat').fill('35.4');
+  await page.getByTestId('station-alt').fill('1');
+  await page.getByTestId('station-minel').fill('5');
+  await page.getByTestId('station-save').click();
+  // The saved station becomes active (the active note names it).
+  await expect(page.getByTestId('station-active-note')).toContainText('Test Station');
+
+  await expandCard(page, 'station-passes');
+  await page.getByTestId('compute-station-passes').click();
+  await expect(page.getByTestId('compute-station-passes-status')).toContainText('Done', { timeout: 20_000 });
+
+  // If the spacecraft rises over the station in the span, bind the first pass row; otherwise the
+  // worksheet falls back to a representative geometry. Either way the worksheet + margin must render.
+  const firstPass = page.getByTestId('select-pass-pass-0');
+  if (await firstPass.isVisible().catch(() => false)) {
+    await firstPass.click();
+  }
+  await expandCard(page, 'link-worksheet');
+  await expect(page.getByTestId('param-modcod')).toBeVisible();
+  await page.getByTestId('compute-link-worksheet').click();
+  await expect(page.getByTestId('link-worksheet')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('link-margin')).toContainText('Margin');
+  // The margin-vs-time chart draws the link-closes threshold (margin = 0).
+  await expect(page.getByTestId('link-margin-chart-threshold')).toBeVisible();
+
   // Conjunction (Conjunction tab): REAL CDM ingestion -> worker screen -> per-event
   // full-covariance Pc + B-plane (analysis-UX Phase 1). Load the sample CDM, ingest it, screen
   // the ingested catalog, click the flagged event, and read the full-covariance Pc + the B-plane.

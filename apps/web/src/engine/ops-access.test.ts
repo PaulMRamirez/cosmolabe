@@ -27,6 +27,7 @@ describe('assembleConstraints (pure constraint-array assembly)', () => {
       rangeRateMaxKmS: 5,
       sunKeepoutEnabled: true,
       sunKeepoutDeg: 30,
+      azElMaskEnabled: false,
     };
     const out = assembleConstraints(spec, 'EARTH');
     expect(out.map((l) => l.constraint.kind)).toEqual([

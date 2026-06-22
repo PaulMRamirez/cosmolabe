@@ -1,17 +1,23 @@
 // The Access & Comms domain tab (analysis-UX, design section 3, tab 3): the access tools (the
 // composable constraint-stack access run, the selectable-pointing in-FOV observation windows)
-// plus the comms link-budget worksheet, surfaced as collapsible TaskCards. Phase 1 upgrades the
-// access card to assemble a constraint stack (line-of-sight, range, range-rate, sun keep-out) and
-// the in-FOV card to a selectable boresight pointing mode showing FOV-only AND post-constraint
-// surviving windows. The link card is unchanged (the link WORKSHEET is Phase 2). Presentational.
+// plus the comms link tools, surfaced as collapsible TaskCards. Phase 2 deepens ACCESS & COMMS:
+// the az/el-mask access constraint is UNGATED against the registered ground station; a Station
+// Passes card computes rise/set passes over the ACTIVE station (selectable rows + a consecutive
+// pair); a Link-Budget WORKSHEET assembles the itemized budget over the SELECTED pass with a
+// margin-vs-time chart and CSV; and a Slew Feasibility card checks whether the eigen-axis slew
+// between two selected passes fits the gap. Presentational + the engine compute calls.
 
 import { useState, type ReactNode } from 'react';
 import { seriesToCsv, intervalsToCsv } from '@bessel/interop';
 import type { BesselEngine } from '../engine/index.ts';
 import {
   DEFAULT_ACCESS_CONSTRAINTS,
+  DEFAULT_LINK_WORKSHEET,
+  DEFAULT_SLEW_FEASIBILITY,
   type AccessConstraintSpec,
   type FovPointingMode,
+  type LinkWorksheetSpec,
+  type SlewFeasibilitySpec,
 } from '../engine/analysis-defaults.ts';
 import { useStore, type AppStore } from '../store/index.ts';
 import { IntervalResult, SeriesResult } from './analysis-result.tsx';
@@ -19,6 +25,7 @@ import { RunStatusNote } from './RunStatus.tsx';
 import { TaskCardAccordion, type ExpandRequest, type TaskCardEntry } from './TaskCard.tsx';
 import { LinkParamsForm, DEFAULT_LINK_PARAMS, type LinkParams } from './analysis-tool-forms.tsx';
 import { AccessConstraintForm } from './AccessConstraintForm.tsx';
+import { stationPassesCard, linkWorksheetCard, slewFeasibilityCard } from './access-comms-cards.tsx';
 import {
   Action,
   EmptyNotice,
@@ -51,6 +58,8 @@ export function AccessCommsPanel(props: AccessCommsPanelProps): JSX.Element {
   const [link, setLink] = useState<LinkParams>(DEFAULT_LINK_PARAMS);
   const [constraints, setConstraints] = useState<AccessConstraintSpec>(DEFAULT_ACCESS_CONSTRAINTS);
   const [pointing, setPointing] = useState<FovPointingMode>('nadir');
+  const [worksheetParams, setWorksheetParams] = useState<LinkWorksheetSpec>(DEFAULT_LINK_WORKSHEET);
+  const [slewParams, setSlewParams] = useState<SlewFeasibilitySpec>(DEFAULT_SLEW_FEASIBILITY);
 
   const runStatus = useStore(store, (s) => s.runStatus);
   const accessResult = useStore(store, (s) => s.accessResult);
@@ -60,10 +69,15 @@ export function AccessCommsPanel(props: AccessCommsPanelProps): JSX.Element {
   const fovOk = useStore(store, (s) => s.fovOk);
   const linkSeries = useStore(store, (s) => s.linkSeries);
   const linkParams = useStore(store, (s) => s.linkParams);
+  // [ux-p2-access] The active ground station's name (role slot) drives the az/el-mask ungate.
+  const activeStationName = useStore(store, (s) => {
+    const id = s.scenario.activeStationId;
+    return id ? (s.scenario.stations.find((st) => st.id === id)?.name ?? null) : null;
+  });
 
   const accessCard = (): ReactNode => (
     <>
-      <AccessConstraintForm value={constraints} onChange={setConstraints} />
+      <AccessConstraintForm value={constraints} onChange={setConstraints} activeStationName={activeStationName} />
       <Action
         variant="primary"
         status={runStatus['compute-access']}
@@ -224,6 +238,42 @@ export function AccessCommsPanel(props: AccessCommsPanelProps): JSX.Element {
       purpose: 'Eb/N0 over the pass for a configured radio link.',
       status: runStatus['compute-link'],
       render: linkCard,
+    },
+    {
+      id: 'station-passes',
+      title: 'Station passes',
+      purpose: 'Rise/set passes over the active station (az/el mask), selectable for the worksheet.',
+      status: runStatus['compute-station-passes'],
+      render: () =>
+        stationPassesCard({ engine, store, runStatus: runStatus['compute-station-passes'], span }),
+    },
+    {
+      id: 'link-worksheet',
+      title: 'Link-budget worksheet',
+      purpose: 'Itemized line-by-line budget + margin-vs-time over the selected pass.',
+      status: runStatus['compute-link-worksheet'],
+      render: () =>
+        linkWorksheetCard({
+          engine,
+          store,
+          runStatus: runStatus['compute-link-worksheet'],
+          worksheetParams,
+          setWorksheetParams,
+        }),
+    },
+    {
+      id: 'slew-feasibility',
+      title: 'Slew feasibility',
+      purpose: 'Does the eigen-axis slew between two selected passes fit in the gap?',
+      status: runStatus['compute-slew-feasibility'],
+      render: () =>
+        slewFeasibilityCard({
+          engine,
+          store,
+          runStatus: runStatus['compute-slew-feasibility'],
+          slewParams,
+          setSlewParams,
+        }),
     },
   ];
 

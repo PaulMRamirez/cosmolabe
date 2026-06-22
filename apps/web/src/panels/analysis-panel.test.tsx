@@ -4,6 +4,8 @@ import { describe, it, expect } from 'vitest';
 import { LightingGeometryPanel } from './LightingGeometryPanel.tsx';
 import { betaCard, eclipseCard, solarIntensityCard } from './lighting-cards.tsx';
 import { AccessCommsPanel } from './AccessCommsPanel.tsx';
+import { stationPassesCard, linkWorksheetCard, slewFeasibilityCard } from './access-comms-cards.tsx';
+import { DEFAULT_LINK_WORKSHEET, DEFAULT_SLEW_FEASIBILITY } from '../engine/analysis-defaults.ts';
 import { ConjunctionPanel } from './ConjunctionPanel.tsx';
 import { CoveragePanel } from './CoveragePanel.tsx';
 import { createAppStore, type AppStore } from '../store/index.ts';
@@ -27,7 +29,10 @@ describe('domain panels group the tools into TaskCards (B10 re-slot)', () => {
     // Every tool is reachable via its TaskCard toggle, even when collapsed.
     const cardsByPanel: readonly [string, readonly string[]][] = [
       [lighting(createAppStore()), ['range', 'ground-track', 'beta', 'eclipse', 'solar-intensity']],
-      [access(createAppStore()), ['access', 'in-fov', 'link']],
+      [
+        access(createAppStore()),
+        ['access', 'in-fov', 'link', 'station-passes', 'link-worksheet', 'slew-feasibility'],
+      ],
       [conjunction(createAppStore()), ['closest-approach', 'catalog-screen', 'per-event-pc']],
       [coverage(createAppStore()), ['constellation', 'coverage-grid']],
     ];
@@ -365,14 +370,30 @@ describe('Access constraint stack + in-FOV pointing (Phase 1)', () => {
     }
   });
 
-  it('gates the facility/DEM constraints as disabled advanced toggles (Phase 2)', () => {
+  it('disables the az/el mask + terrain toggles when no ground station is active (Phase 2 ungate)', () => {
     const out = access(createAppStore());
     expect(out).toContain('data-testid="constraint-azelmask"');
     expect(out).toContain('data-testid="constraint-terrainlos"');
-    expect(out).toContain('Phase 2');
-    // Both advanced toggles render disabled (not faked from the current scenario).
+    // Without an active station the az/el mask is disabled with a select-a-station hint, and the
+    // terrain LOS stays gated (Phase 3, still DEM-bound).
+    expect(out).toContain('select a ground station');
+    expect(out).toContain('Phase 3');
     const disabledCount = (out.match(/disabled=""/g) ?? []).length;
     expect(disabledCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('UNGATES the az/el mask toggle once a ground station is active', () => {
+    const store = createAppStore();
+    store.setState((s) => ({
+      scenario: {
+        ...s.scenario,
+        stations: [{ id: 'dss-14', name: 'Goldstone', lonRad: -2, latRad: 0.6, altKm: 1, minElevationRad: 0.17 }],
+        activeStationId: 'dss-14',
+      },
+    }));
+    const out = access(store, true);
+    // The az/el mask toggle now names the active station and is no longer disabled-gated.
+    expect(out).toContain('Az/el horizon mask at Goldstone');
   });
 
   it('shows the surviving window plus a per-constraint breakdown once seeded', () => {
@@ -474,5 +495,98 @@ describe('Lighting & Geometry Phase-1 cards surface beta / eclipse phases / sola
     expect(out).toContain('data-testid="solar-intensity-csv"');
     expect(out).toContain('data-testid="solar-intensity-hint"');
     expect(out).toContain('1 = full sun, 0 = total umbra');
+  });
+});
+
+// The Access & Comms Phase-2 cards (station passes, link worksheet, slew feasibility). The cards
+// call useStore, so they are rendered through a component (deferring the hook into a render pass)
+// rather than invoked eagerly; the accordion renders them the same way in the panel.
+const renderHookCard = (render: () => ReactNode): string =>
+  renderToStaticMarkup(createElement(() => createElement('div', null, render())));
+
+describe('Access & Comms Phase-2 cards surface passes / worksheet / slew feasibility', () => {
+  const passesSlice = {
+    stationName: 'Goldstone',
+    spacecraft: 'Probe',
+    span: [0, 86400] as const,
+    passes: [
+      { id: 'pass-0', rise: 100, set: 700, maxElevationEpoch: 400, maxElevationRad: 1, maxElevationRangeKm: 800, worstElevationRad: 0.18, worstElevationRangeKm: 2400 },
+      { id: 'pass-1', rise: 6000, set: 6600, maxElevationEpoch: 6300, maxElevationRad: 0.9, maxElevationRangeKm: 900, worstElevationRad: 0.18, worstElevationRangeKm: 2500 },
+    ],
+    fom: { percentCoverage: 0.1, accessCount: 2, maxGapSec: 5300 },
+    label: 'Probe over Goldstone',
+  };
+
+  it('gates the station-passes card on an active station, then renders selectable pass rows', () => {
+    const gated = renderHookCard(() =>
+      stationPassesCard({ engine: null, store: createAppStore(), runStatus: undefined, span: { spanSec: 86400, stepSec: 60 } }),
+    );
+    expect(gated).toContain('data-testid="compute-station-passes"');
+    expect(gated).toContain('data-testid="station-passes-gate"');
+
+    const store = createAppStore();
+    store.setState({
+      scenario: { ...store.getState().scenario, stations: [{ id: 's', name: 'Goldstone', lonRad: -2, latRad: 0.6, altKm: 1 }], activeStationId: 's' },
+      stationPasses: passesSlice,
+    });
+    const out = renderHookCard(() =>
+      stationPassesCard({ engine: null, store, runStatus: undefined, span: { spanSec: 86400, stepSec: 60 } }),
+    );
+    expect(out).toContain('data-testid="station-passes"');
+    expect(out).toContain('data-testid="station-passes-table"');
+    expect(out).toContain('data-testid="station-pass-pass-0"');
+    expect(out).toContain('data-testid="select-pass-pass-0"');
+    // Two passes enable the consecutive-pair select that drives the slew binding.
+    expect(out).toContain('data-testid="select-pass-pair"');
+  });
+
+  it('renders the link worksheet with the MODCOD select, margin readout, threshold chart, and CSV', () => {
+    const store = createAppStore();
+    store.setState({
+      selectedPassId: 'pass-0',
+      linkWorksheet: {
+        passId: 'pass-0',
+        modcodName: 'ccsds-conv-r1_2',
+        requiredEbN0Db: 4.4,
+        worstCase: { caseLabel: 'Worst-case elevation', elevationDeg: 10, rangeKm: 2400, lines: [{ id: 'margin', label: 'Margin', value: 2.1, unit: 'dB' }], ebN0Db: 6.5, requiredEbN0Db: 4.4, marginDb: 2.1 },
+        nominal: { caseLabel: 'Nominal (max) elevation', elevationDeg: 57, rangeKm: 800, lines: [{ id: 'margin', label: 'Margin', value: 12.3, unit: 'dB' }], ebN0Db: 16.7, requiredEbN0Db: 4.4, marginDb: 12.3 },
+        marginSeries: { et: new Float64Array([0, 1, 2]), value: new Float64Array([2.1, 7, 12.3]), label: 'margin' },
+        note: '',
+        label: 'Link worksheet over Goldstone pass',
+      },
+    });
+    const out = renderHookCard(() =>
+      linkWorksheetCard({ engine: null, store, runStatus: undefined, worksheetParams: DEFAULT_LINK_WORKSHEET, setWorksheetParams: () => undefined }),
+    );
+    expect(out).toContain('data-testid="param-modcod"');
+    expect(out).toContain('data-testid="compute-link-worksheet"');
+    expect(out).toContain('data-testid="link-worksheet"');
+    expect(out).toContain('data-testid="link-margin"');
+    expect(out).toContain('data-testid="link-worksheet-worst"');
+    expect(out).toContain('data-testid="link-worksheet-nominal"');
+    expect(out).toContain('data-testid="link-margin-chart"');
+    expect(out).toContain('data-testid="link-margin-chart-threshold"');
+    expect(out).toContain('data-testid="link-worksheet-csv"');
+  });
+
+  it('renders the slew-feasibility card with the fits verdict when a pair is selected', () => {
+    const gated = renderHookCard(() =>
+      slewFeasibilityCard({ engine: null, store: createAppStore(), runStatus: undefined, slewParams: DEFAULT_SLEW_FEASIBILITY, setSlewParams: () => undefined }),
+    );
+    // No pair selected: the run action is present but the binding hint asks for two passes.
+    expect(gated).toContain('data-testid="compute-slew-feasibility"');
+    expect(gated).toContain('data-testid="slew-feasibility-binding"');
+
+    const store = createAppStore();
+    store.setState({
+      selectedWindowPair: ['pass-0', 'pass-1'],
+      slewFeasibility: { fromPassId: 'pass-0', toPassId: 'pass-1', mode: 'targetTrack', slewAngleDeg: 12, slewDurationSec: 30, gapSec: 5300, slackSec: 5270, fits: true, label: 'Probe slew' },
+    });
+    const out = renderHookCard(() =>
+      slewFeasibilityCard({ engine: null, store, runStatus: undefined, slewParams: DEFAULT_SLEW_FEASIBILITY, setSlewParams: () => undefined }),
+    );
+    expect(out).toContain('data-testid="slew-feasibility"');
+    expect(out).toContain('data-testid="slew-fits"');
+    expect(out).toContain('Slew FITS');
   });
 });
