@@ -59,6 +59,18 @@ export {
   type ScreenOptions,
 } from './screen.ts';
 
+export {
+  collisionProbabilityCov,
+  encounterPlane,
+  projectCovarianceToEncounterPlane,
+  CovarianceError,
+  type Cov2x2,
+  type EncounterFrame,
+  type PcCovInput,
+} from './covariance.ts';
+
+export { maxCollisionProbability } from './max-pc.ts';
+
 export function collisionProbability2D(input: PcInput, samples = 240): number {
   const { radiusKm: R, sigmaXKm: sx, sigmaYKm: sy, missXKm: mx, missYKm: my } = input;
   if (R <= 0 || sx <= 0 || sy <= 0) return 0;
