@@ -4,8 +4,21 @@ import { loadCassiniSample, openAnalyze, expandCard } from './sample.ts';
 // The analysis tools surface real engine results in the UI. The re-slot groups them into
 // six intent-named domain tabs, each tool inside a collapsible TaskCard; the assertions
 // below navigate to the new tab and expand the card before driving the tool. (STK_PARITY F5.)
+//
+// Each domain flow is its OWN independent test that loads the page fresh and asserts its
+// own slice. Splitting the former single mega-test lets the flows parallelize (the CI
+// e2e job runs fullyParallel with default workers), so no one test accumulates dozens of
+// sequential real-SPICE-worker steps and blows the 60 s default under parallel contention.
+// The genuinely heavy real-geometry flows (a full-day eclipse sweep, the multi-screen
+// conjunction flow, the coverage grid sweep) raise THEIR OWN timeout: that compute is
+// legitimately slow on CI, so a per-test setTimeout is the correct lever, not a weaker
+// assertion.
 
 test('lighting analysis computes and renders eclipse intervals', async ({ page }) => {
+  // A full-phase eclipse sweep over a day is real geometry-finder work on the SPICE worker
+  // and is legitimately slow under parallel CI load; give it a safe margin over the default.
+  test.setTimeout(120_000);
+
   await page.goto('/');
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
 
@@ -54,6 +67,16 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   expect(clip).toContain('et (s)');
   expect(clip).toMatch(/\d/);
   await page.getByTestId('range-result-precision').selectOption('3');
+});
+
+test('access analysis assembles the constraint stack, link budget, and station worksheet', async ({ page }) => {
+  // The access geometry-finder plus the station-pass rise/set search are real SPICE-worker
+  // sweeps; give the assembled flow a margin over the default under parallel CI load.
+  test.setTimeout(120_000);
+
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await loadCassiniSample(page);
 
   // The access analysis (Access & Comms tab) assembles a constraint stack (line-of-sight on
   // by default) and finds the surviving spacecraft-to-target window through the geometry-finder.
@@ -120,6 +143,17 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   expect(y1).toBe(y2);
   expect(y1).toBeGreaterThanOrEqual(2);
   expect(y1).toBeLessThanOrEqual(78);
+});
+
+test('conjunction ingests a CDM, screens it, and runs the full-covariance Pc flows', async ({ page }) => {
+  // CDM ingest -> worker screen -> per-event full-covariance Pc, then the maneuver-then-rescreen
+  // loop and the explicit covariance-input flow. This is the heaviest single domain (multiple
+  // real screens plus an MCS corrector run), so it gets the widest margin.
+  test.setTimeout(150_000);
+
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await loadCassiniSample(page);
 
   // Conjunction (Conjunction tab): REAL CDM ingestion -> worker screen -> per-event
   // full-covariance Pc + B-plane (analysis-UX Phase 1). Load the sample CDM, ingest it, screen
@@ -192,6 +226,16 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   await expandCard(page, 'closest-approach');
   await page.getByTestId('compute-conjunction').click();
   await expect(page.getByTestId('conjunction-result')).toContainText('Pc');
+});
+
+test('coverage designs a constellation and runs the worker coverage-grid sweep', async ({ page }) => {
+  // The coverage grid sweep is the dedicated coverage worker replaying the kernel pool and
+  // computing per-cell access geometry over a grid; it is the slowest real sweep in the suite.
+  test.setTimeout(150_000);
+
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await loadCassiniSample(page);
 
   // Constellation design (Coverage & Constellation tab): a Walker pattern, synchronous.
   await openAnalyze(page, 'coverage');
@@ -208,6 +252,17 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   await page.getByTestId('compute-coverage-grid').click();
   await expect(page.getByTestId('coverage-progress')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('coverage-fom-summary')).toBeVisible({ timeout: 60_000 });
+});
+
+test('maneuver, map, and lighting plots render their charts and exports', async ({ page }) => {
+  // Slew profile + Lambert transfer + ground track (with re-projection) + beta-angle season +
+  // solar intensity + OEM export. Several moderate real-geometry plots back to back; give a
+  // margin over the default for parallel CI load.
+  test.setTimeout(120_000);
+
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await loadCassiniSample(page);
 
   // Attitude slew (Orbit & Maneuver tab): an eigen-axis profile plotted over time.
   await openAnalyze(page, 'orbit-maneuver');
