@@ -45,6 +45,9 @@ import { runOdDemo } from './od.ts';
 import { centerMu } from './center-mu.ts';
 import { positionAt } from '../sampler.ts';
 import { fovHalfAngleRad, nadirOffAngleRad, intervalsFromFlags } from '../in-fov.ts';
+import { ScreeningClient, ScreeningCancelled } from '../screening-client.ts';
+import { buildSyntheticCatalog, SYNTHETIC_SCREEN_DEFAULTS } from '../synthetic-catalog.ts';
+import { reduceScreening, INITIAL_SCREENING } from '../screening-protocol.ts';
 
 // Earth gravity constants for the numerical (HPOP) propagation. Published WGS-84/EGM
 // values, caller-injected because a PCK carries no GM or harmonics.
@@ -117,6 +120,13 @@ export interface ReportConfig {
 export interface TleState {
   seq: number;
   last: { bodyId: number; epoch: number } | null;
+}
+
+/** The live dedicated-screening worker client, held as a mutable ref on the engine so the
+ *  (lazily imported) screening ops can start and cancel a run across separate dynamic-import
+ *  calls. Null until the first screen constructs the client. */
+export interface ScreeningRef {
+  client: ScreeningClient | null;
 }
 
 /** Build a concrete ProviderSpec from a report config (only frame-needing kinds use it). */
@@ -439,6 +449,63 @@ export async function computeConjunction(
     console.error('conjunction analysis failed', err);
     throw err;
   }
+}
+
+/**
+ * All-vs-all catalog screen on a DEDICATED screening worker. Builds the deterministic
+ * synthetic catalog at the current epoch (real RSO ingestion is out of scope), hands it to
+ * the worker through the ScreeningClient, and folds the worker's incremental progress and
+ * terminal result into the screening slice through the pure reduceScreening reducer (so the
+ * panel shows a moving progress readout and then the flagged events). The main thread never
+ * runs screenAllVsAll itself, so a multi-object screen does not stall rendering. A user
+ * cancel terminates the worker; that surfaces as ScreeningCancelled, which resets the slice
+ * to idle rather than raising a loud error.
+ */
+export async function screenCatalog(
+  e: EngineCore,
+  store: AppStore,
+  isDisposed: () => boolean,
+  ref: ScreeningRef,
+): Promise<void> {
+  const objects = buildSyntheticCatalog({
+    epochEt: e.clock.state.et,
+    spanSec: SYNTHETIC_SCREEN_DEFAULTS.spanSec,
+    steps: SYNTHETIC_SCREEN_DEFAULTS.steps,
+  });
+  const client = ref.client ?? (ref.client = new ScreeningClient());
+  // Open the run: a zeroed bar over the partition count (one per primary object).
+  store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'start', total: objects.length - 1 }) }));
+  try {
+    const events = await client.start(
+      { objects, thresholdKm: SYNTHETIC_SCREEN_DEFAULTS.thresholdKm, padKm: SYNTHETIC_SCREEN_DEFAULTS.padKm },
+      (p) => {
+        if (!isDisposed()) {
+          store.setState((s) => ({ screening: reduceScreening(s.screening, p) }));
+        }
+      },
+    );
+    if (!isDisposed()) {
+      store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'result', events }) }));
+    }
+  } catch (err) {
+    // A user cancel (worker terminated) is not a failure: reset the slice to idle.
+    if (err instanceof ScreeningCancelled) {
+      if (!isDisposed()) store.setState({ screening: INITIAL_SCREENING });
+      return;
+    }
+    if (!isDisposed()) {
+      const message = err instanceof Error ? err.message : String(err);
+      store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'error', message }) }));
+    }
+    console.error('catalog screen failed', err);
+    throw err;
+  }
+}
+
+/** Cancel an in-flight catalog screen: terminate the worker and reset the screening slice. */
+export function cancelScreen(store: AppStore, ref: ScreeningRef): void {
+  ref.client?.cancel();
+  store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'cancel' }) }));
 }
 
 /**

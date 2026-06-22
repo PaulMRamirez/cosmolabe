@@ -9,6 +9,7 @@ import type { TimelineAnnotation } from '@bessel/timeline';
 import { DEFAULT_OBJECT_ENTRIES } from '../catalog-load.ts';
 import type { Bookmark } from '../bookmarks.ts';
 import type { SavedScript } from '../scripts.ts';
+import { INITIAL_SCREENING, type ScreeningState } from '../screening-protocol.ts';
 import { createStore, type Store } from './create-store.ts';
 
 /** The active tab in the consolidated Analyze dock. */
@@ -95,6 +96,8 @@ export interface AppState {
   linkParams: LinkBudgetParams | null;
   /** Closest-approach + collision-probability summary from the last conjunction run. */
   conjunction: ConjunctionResult | null;
+  /** Off-main-thread all-vs-all catalog screening: status, progress, and flagged events. */
+  screening: ScreeningState;
   /** Walker constellation summary from the last coverage/constellation run. */
   constellation: ConstellationResult | null;
   /** Summary of the last coverage-grid overlay run (cell count + area-weighted FOM). */
@@ -361,6 +364,7 @@ export const initialAppState: AppState = {
   linkSeries: null,
   linkParams: null,
   conjunction: null,
+  screening: INITIAL_SCREENING,
   constellation: null,
   coverageGrid: null,
   slewSeries: null,

@@ -171,6 +171,48 @@ describe('AnalysisPanel CSV export', () => {
   });
 });
 
+describe('AnalysisPanel catalog screening (worker)', () => {
+  it('renders the Screen catalog action inside the Conjunction section', () => {
+    const out = html();
+    const conjIdx = out.indexOf('data-testid="analysis-section-conjunction"');
+    const constIdx = out.indexOf('data-testid="analysis-section-constellation"');
+    expect(conjIdx).toBeGreaterThan(-1);
+    expect(constIdx).toBeGreaterThan(conjIdx);
+    const section = out.slice(conjIdx, constIdx);
+    expect(section).toContain('data-testid="catalog-screen"');
+    expect(section).toContain('data-testid="screen-catalog"');
+  });
+
+  it('shows the progress readout and cancel button while a screen runs', () => {
+    const store = createAppStore();
+    store.setState({ screening: { status: 'running', done: 2, total: 4, events: null } });
+    const out = renderToStaticMarkup(
+      createElement(AnalysisPanel, { engine: null, store, hasSpacecraft: true }),
+    );
+    expect(out).toContain('data-testid="screen-progress"');
+    expect(out).toContain('data-testid="screen-cancel"');
+    expect(out).toContain('Screening 2/4');
+  });
+
+  it('lists the flagged events once a screen completes', () => {
+    const store = createAppStore();
+    store.setState({
+      screening: {
+        status: 'done',
+        done: 4,
+        total: 4,
+        events: [{ primaryId: 'CHASER', secondaryId: 'TARGET', tca: 600, missKm: 1.2, relSpeedKmS: 0.5, pc: null }],
+      },
+    });
+    const out = renderToStaticMarkup(
+      createElement(AnalysisPanel, { engine: null, store, hasSpacecraft: true }),
+    );
+    expect(out).toContain('data-testid="screen-events"');
+    expect(out).toContain('data-testid="screen-event"');
+    expect(out).toContain('CHASER vs TARGET');
+  });
+});
+
 describe('AnalysisPanel result tables (B18)', () => {
   it('renders the chart/table toolbar and table over a seeded series and interval', () => {
     const store = createAppStore();

@@ -36,6 +36,7 @@ import {
 } from './analysis-tool-forms.tsx';
 import { RunStatusNote } from './RunStatus.tsx';
 import { RAD2DEG } from '../angles.ts';
+import type { ScreeningState } from '../screening-protocol.ts';
 
 /** Comment-preamble lines recording the radio parameters a link run used, so the
  *  exported Eb/N0 series is reproducible. Empty when no run has stored params. */
@@ -112,6 +113,63 @@ function Keep(props: { tool: string; disabled: boolean; onKeep: () => void }): J
   );
 }
 
+/** The off-main-thread all-vs-all catalog screen: a Screen action that runs a dedicated
+ *  worker over a deterministic synthetic catalog, a live progress readout, a Cancel button
+ *  while it runs, and the flagged conjunction events (pair, TCA, miss). */
+function CatalogScreen(props: {
+  readonly engine: BesselEngine | null;
+  readonly screening: ScreeningState;
+  readonly runStatus: RunStatus | undefined;
+}): JSX.Element {
+  const { screening } = props;
+  const running = screening.status === 'running';
+  const error = typeof screening.status === 'object' ? screening.status.error : null;
+  return (
+    <div className="bessel-screening" data-testid="catalog-screen">
+      <Action
+        status={running ? 'running' : props.runStatus}
+        onClick={() => void props.engine?.screenCatalog()}
+        testId="screen-catalog"
+      >
+        Screen catalog (worker)
+      </Action>
+      {running ? (
+        <>
+          <p className="bessel-analysis-stat" data-testid="screen-progress">
+            Screening {screening.done}/{screening.total} partitions...
+          </p>
+          <Button variant="ghost" testId="screen-cancel" onClick={() => void props.engine?.cancelScreen()}>
+            Cancel
+          </Button>
+        </>
+      ) : (
+        <p className="bessel-loader-hint">
+          Run an all-vs-all screen over a synthetic catalog in a dedicated worker.
+        </p>
+      )}
+      {error ? (
+        <p className="bessel-analysis-error" data-testid="screen-error">
+          Screen failed: {error}
+        </p>
+      ) : null}
+      {screening.events && screening.events.length > 0 ? (
+        <ul className="bessel-analysis-list" data-testid="screen-events">
+          {screening.events.map((ev) => (
+            <li key={`${ev.primaryId}-${ev.secondaryId}`} data-testid="screen-event">
+              {ev.primaryId} vs {ev.secondaryId}: miss {fmt(ev.missKm, 3)} km at TCA{' '}
+              {fmt(ev.tca / 60, 1)} min
+            </li>
+          ))}
+        </ul>
+      ) : screening.status === 'done' ? (
+        <p className="bessel-analysis-stat" data-testid="screen-events-empty">
+          No conjunctions flagged below threshold.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   const { engine, store } = props;
   const objects = useStore(store, (s) => s.objects);
@@ -175,6 +233,7 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
   const linkSeries = useStore(store, (s) => s.linkSeries);
   const linkParams = useStore(store, (s) => s.linkParams);
   const conjunction = useStore(store, (s) => s.conjunction);
+  const screening = useStore(store, (s) => s.screening);
   const constellation = useStore(store, (s) => s.constellation);
   const coverageGrid = useStore(store, (s) => s.coverageGrid);
   const slewSeries = useStore(store, (s) => s.slewSeries);
@@ -495,6 +554,8 @@ export function AnalysisPanel(props: AnalysisPanelProps): JSX.Element {
         </StatResult>
         <RunStatusNote status={runStatus['compute-conjunction']} id="compute-conjunction" />
         <Keep tool="conjunction" disabled={!conjunction || trayFull} onKeep={() => engine?.keepSnapshot('conjunction')} />
+        <CatalogScreen engine={engine} screening={screening} runStatus={runStatus['screen-catalog']} />
+        <RunStatusNote status={runStatus['screen-catalog']} id="screen-catalog" />
       </PanelContainer>
 
       <PanelContainer title="Constellation" testId="analysis-section-constellation">

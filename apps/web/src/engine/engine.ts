@@ -72,6 +72,7 @@ import type {
   SlewOpts,
   ReportConfig,
   TleState,
+  ScreeningRef,
 } from './analysis-ops.ts';
 
 // True when two optional angles are equal or both absent (within tolerance).
@@ -202,6 +203,10 @@ export class BesselEngine {
   // by the (lazily imported) TLE/HPOP/station-access ops. A mutable ref so those ops can
   // update it across separate dynamic-import calls without depending on this class.
   private readonly tleState: TleState = { seq: 0, last: null };
+  // The dedicated conjunction-screening worker client, lazily constructed on first screen
+  // (inside the dynamic-import op so the worker chunk stays off the first-paint shell) and
+  // reused/cancelled across runs. A mutable ref so the lazily-imported screening ops own it.
+  private readonly screeningRef: ScreeningRef = { client: null };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -239,6 +244,8 @@ export class BesselEngine {
   dispose(): void {
     this.disposed = true;
     this.stopTelemetry();
+    // Terminate any in-flight screening worker so it does not outlive the engine.
+    this.screeningRef.client?.cancel();
     if (this.core) {
       cancelAnimationFrame(this.raf);
       this.core.scene.dispose();
@@ -807,6 +814,25 @@ export class BesselEngine {
       const ops = await import('./analysis-ops.ts');
       await ops.computeConjunction(e, this.store, this.isDisposed, opts);
     });
+  }
+
+  /** All-vs-all catalog screen on a dedicated worker: build the deterministic synthetic
+   *  catalog, run the screen off the main thread with incremental progress, and surface the
+   *  flagged events. The synthetic-catalog builder + worker client load with the lazy ops. */
+  async screenCatalog(): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    await this.runTool('screen-catalog', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.screenCatalog(e, this.store, this.isDisposed, this.screeningRef);
+    });
+  }
+
+  /** Cancel an in-flight catalog screen (terminates the worker) and reset the run status. */
+  async cancelScreen(): Promise<void> {
+    const ops = await import('./analysis-ops.ts');
+    ops.cancelScreen(this.store, this.screeningRef);
+    this.setRunStatus('screen-catalog', 'idle');
   }
 
   /** Constellation design: a Walker pattern (mission-independent); defaults to 24/3/1 LEO. */
