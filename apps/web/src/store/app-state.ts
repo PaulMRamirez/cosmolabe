@@ -166,6 +166,12 @@ export interface AppState {
   conjunction: ConjunctionResult | null;
   /** Off-main-thread all-vs-all catalog screening: status, progress, and flagged events. */
   screening: ScreeningState;
+  /** Summary of the last REAL CDM/OEM/TLE ingestion into the screening catalog (Phase 1), or
+   *  null until a catalog is ingested. */
+  conjunctionIngest: ConjunctionIngestSummary | null;
+  /** The per-event full-covariance Pc + B-plane result for the selected screened event, or
+   *  null until an event is selected (or while it is being computed). */
+  conjunctionEvent: ConjunctionEventResult | null;
   /** Walker constellation summary from the last coverage/constellation run. */
   constellation: ConstellationResult | null;
   /** The designed constellation as the swept ASSET SET (published SPK ids), or null until
@@ -277,6 +283,58 @@ export interface ConjunctionResult {
   /** Combined hard-body radius (km) the Pc was computed against. */
   readonly radiusKm: number;
   readonly label: string;
+}
+
+/** Summary of a REAL CDM/OEM/TLE ingestion into the conjunction screening catalog. The
+ *  catalog (and its per-object covariances) live on the engine; this is the panel readout. */
+export interface ConjunctionIngestSummary {
+  /** The ingested format. */
+  readonly format: 'cdm' | 'oem' | 'tle';
+  /** Number of objects ingested into the screening catalog. */
+  readonly objectCount: number;
+  /** Number of objects that carry a full covariance (CDM); 0 for OEM/TLE. */
+  readonly covarianceCount: number;
+  /** The object ids in the catalog, for the panel. */
+  readonly ids: readonly string[];
+  /** A short human note for the panel readout. */
+  readonly note: string;
+}
+
+/** One screen-space ellipse (semi-axes in km, orientation in radians) for the B-plane plot. */
+export interface BPlaneEllipseView {
+  readonly sigma: number;
+  readonly semiMajorKm: number;
+  readonly semiMinorKm: number;
+  readonly angleRad: number;
+}
+
+/** The per-event full-covariance Pc + B-plane result for one selected screened event. */
+export interface ConjunctionEventResult {
+  /** The selected event's index in the screened-events list (for the active-row highlight). */
+  readonly index: number;
+  readonly primaryId: string;
+  readonly secondaryId: string;
+  /** Time of closest approach (UTC seconds, the catalog time base). */
+  readonly tca: number;
+  /** Full-covariance Pc (Foster, combined STM-propagated covariance), or null when neither
+   *  object carries a covariance (OEM/TLE catalog: only the max-Pc bound is available). */
+  readonly pcFull: number | null;
+  /** Maximum Pc (Alfano upper bound) for the projected miss + combined hard-body radius. */
+  readonly pcMax: number;
+  /** Projected encounter-plane miss (km), miss magnitude, combined radius, and the relative
+   *  speed at TCA, for the readout. */
+  readonly missXKm: number;
+  readonly missYKm: number;
+  readonly missKm: number;
+  readonly radiusKm: number;
+  readonly relSpeedKmS: number;
+  /** Whether the full-covariance path used real per-object covariances. */
+  readonly hasCovariance: boolean;
+  /** The 1- and 3-sigma covariance ellipses (km, radians) for the B-plane plot; empty when
+   *  no covariance is available. */
+  readonly ellipses: readonly BPlaneEllipseView[];
+  /** A symmetric half-extent (km) framing the plot. */
+  readonly extentKm: number;
 }
 
 /** The downlink-radio parameters a link-budget run used, kept so the CSV records them. */
@@ -523,6 +581,8 @@ export const initialAppState: AppState = {
   linkParams: null,
   conjunction: null,
   screening: INITIAL_SCREENING,
+  conjunctionIngest: null,
+  conjunctionEvent: null,
   constellation: null,
   designedConstellation: null,
   coverageGrid: null,

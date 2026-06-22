@@ -78,8 +78,23 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   await expect(page.getByTestId('link-chart')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('link-chart').locator('polyline')).toHaveCount(1);
 
-  // Conjunction (Conjunction tab): closest approach + collision probability.
+  // Conjunction (Conjunction tab): REAL CDM ingestion -> worker screen -> per-event
+  // full-covariance Pc + B-plane (analysis-UX Phase 1). Load the sample CDM, ingest it, screen
+  // the ingested catalog, click the flagged event, and read the full-covariance Pc + the B-plane.
   await openAnalyze(page, 'conjunction');
+  await expandCard(page, 'catalog-screen');
+  await page.getByTestId('ingest-sample').click();
+  await page.getByTestId('ingest-run').click();
+  await expect(page.getByTestId('ingest-summary')).toContainText('with covariance', { timeout: 20_000 });
+  await page.getByTestId('screen-catalog').click();
+  await expandCard(page, 'per-event-pc');
+  await expect(page.getByTestId('conjunction-event-0')).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId('conjunction-event-0').click();
+  await expect(page.getByTestId('pc-full')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('pc-max')).toBeVisible();
+  await expect(page.getByTestId('bplane-view')).toBeVisible();
+
+  // The single-pair closest-approach card is kept (now collapsed by default): expand and run it.
   await expandCard(page, 'closest-approach');
   await page.getByTestId('compute-conjunction').click();
   await expect(page.getByTestId('conjunction-result')).toContainText('Pc');

@@ -28,7 +28,7 @@ describe('domain panels group the tools into TaskCards (B10 re-slot)', () => {
     const cardsByPanel: readonly [string, readonly string[]][] = [
       [lighting(createAppStore()), ['range', 'ground-track', 'beta', 'eclipse', 'solar-intensity']],
       [access(createAppStore()), ['access', 'in-fov', 'link']],
-      [conjunction(createAppStore()), ['closest-approach', 'catalog-screen']],
+      [conjunction(createAppStore()), ['closest-approach', 'catalog-screen', 'per-event-pc']],
       [coverage(createAppStore()), ['constellation', 'coverage-grid']],
     ];
     for (const [out, ids] of cardsByPanel) {
@@ -58,7 +58,11 @@ describe('domain panels surface the tools in their default-expanded cards', () =
     expect(lighting(createAppStore())).toContain('data-testid="compute-groundtrack"');
     expect(access(createAppStore())).toContain('data-testid="compute-access"');
     expect(access(createAppStore())).toContain('data-testid="compute-link"');
-    expect(conjunction(createAppStore())).toContain('data-testid="compute-conjunction"');
+    // The Conjunction tab now default-expands the REAL ingest + per-event Pc cards (Phase 1):
+    // the ingest card carries the format select, the paste input, and the screen action.
+    expect(conjunction(createAppStore())).toContain('data-testid="ingest-catalog"');
+    expect(conjunction(createAppStore())).toContain('data-testid="ingest-format"');
+    expect(conjunction(createAppStore())).toContain('data-testid="ingest-input"');
     expect(conjunction(createAppStore())).toContain('data-testid="screen-catalog"');
     expect(coverage(createAppStore())).toContain('data-testid="compute-constellation"');
     expect(coverage(createAppStore())).toContain('data-testid="compute-coverage-grid"');
@@ -78,7 +82,8 @@ describe('domain panels surface the tools in their default-expanded cards', () =
     expect(isPrimary(lighting(createAppStore()), 'compute-groundtrack')).toBe(false);
     expect(isPrimary(access(createAppStore()), 'compute-access')).toBe(true);
     expect(isPrimary(access(createAppStore()), 'compute-link')).toBe(true);
-    expect(isPrimary(conjunction(createAppStore()), 'compute-conjunction')).toBe(true);
+    // The Conjunction tab's default-expanded ingest card promotes the Ingest action as primary.
+    expect(isPrimary(conjunction(createAppStore()), 'ingest-run')).toBe(true);
     expect(isPrimary(coverage(createAppStore()), 'compute-constellation')).toBe(true);
   });
 });
@@ -160,9 +165,10 @@ describe('domain panel tool parameter forms', () => {
     for (const id of ['param-link-eirp', 'param-link-freq', 'param-link-gt', 'param-link-rate']) {
       expect(access(createAppStore())).toContain(`data-testid="${id}"`);
     }
-    for (const id of ['param-conj-sigma', 'param-conj-radius']) {
-      expect(conjunction(createAppStore())).toContain(`data-testid="${id}"`);
-    }
+    // The single-pair closest-approach card (carrying the sigma/radius form) is now collapsed by
+    // default (the REAL ingest + per-event cards take the two expanded slots); assert its toggle
+    // is present so the form stays reachable.
+    expect(conjunction(createAppStore())).toContain('data-testid="taskcard-closest-approach-toggle"');
     for (const id of [
       'param-const-total',
       'param-const-planes',
@@ -197,11 +203,13 @@ describe('domain panel CSV export', () => {
     accessStore.setState({ linkSeries: series });
     expect(access(accessStore, true)).toContain('data-testid="link-csv"');
 
+    // The single-pair closest-approach CSV lives in the now-collapsed closest-approach card; its
+    // toggle keeps it reachable (the per-event Pc + ingest cards take the expanded slots).
     const conjStore = createAppStore();
     conjStore.setState({
       conjunction: { tcaSec: 10, missKm: 5, relSpeedKmS: 1, pc: 1e-4, sigmaKm: 1, radiusKm: 0.1, label: 'a vs b' },
     });
-    expect(conjunction(conjStore, true)).toContain('data-testid="conjunction-csv"');
+    expect(conjunction(conjStore, true)).toContain('data-testid="taskcard-closest-approach-toggle"');
 
     const covStore = createAppStore();
     covStore.setState({
@@ -219,10 +227,12 @@ describe('domain panel CSV export', () => {
   });
 });
 
-describe('Conjunction panel catalog screening (worker)', () => {
-  it('renders the Screen catalog action inside its card', () => {
+describe('Conjunction panel REAL ingestion + screening (worker)', () => {
+  it('renders the ingest card (format select + paste input) and the screen action', () => {
     const out = conjunction(createAppStore());
-    expect(out).toContain('data-testid="catalog-screen"');
+    expect(out).toContain('data-testid="ingest-catalog"');
+    expect(out).toContain('data-testid="ingest-format"');
+    expect(out).toContain('data-testid="ingest-input"');
     expect(out).toContain('data-testid="screen-catalog"');
   });
 
@@ -235,25 +245,83 @@ describe('Conjunction panel catalog screening (worker)', () => {
     expect(out).toContain('Screening 2/4');
   });
 
-  it('lists the flagged events once a screen completes, with TCA relative to the catalog epoch', () => {
+  it('shows the ingest summary once a catalog is ingested', () => {
     const store = createAppStore();
     store.setState({
+      conjunctionIngest: {
+        format: 'cdm',
+        objectCount: 2,
+        covarianceCount: 2,
+        ids: ['PRIMARY-A', 'SECONDARY-B'],
+        note: '2 CDM objects, 2 with covariance',
+      },
+    });
+    const out = conjunction(store, true);
+    expect(out).toContain('data-testid="ingest-summary"');
+    expect(out).toContain('PRIMARY-A');
+    expect(out).toContain('SECONDARY-B');
+  });
+
+  it('lists the flagged events in the per-event table with TCA relative to the catalog epoch', () => {
+    const store = createAppStore();
+    store.setState({
+      conjunctionIngest: {
+        format: 'cdm',
+        objectCount: 2,
+        covarianceCount: 2,
+        ids: ['CHASER', 'TARGET'],
+        note: '2 CDM objects',
+      },
       screening: {
         status: 'done',
         done: 4,
         total: 4,
-        // The grid epoch is 120 s; the event's absolute TCA is 600 s, so the panel must show the
+        // The grid epoch is 120 s; the event's absolute TCA is 600 s, so the table must show the
         // relative TCA (600 - 120) / 60 = 8 min, not the absolute 600 / 60 = 10 min.
         epoch: 120,
         events: [{ primaryId: 'CHASER', secondaryId: 'TARGET', tca: 600, missKm: 1.2, relSpeedKmS: 0.5, pc: null }],
       },
     });
     const out = conjunction(store, true);
-    expect(out).toContain('data-testid="screen-events"');
-    expect(out).toContain('data-testid="screen-event"');
+    expect(out).toContain('data-testid="event-table"');
+    expect(out).toContain('data-testid="conjunction-event-0"');
     expect(out).toContain('CHASER vs TARGET');
-    expect(out).toContain('8 min');
-    expect(out).not.toContain('10 min');
+    expect(out).toContain('8</td>');
+    expect(out).not.toContain('10</td>');
+  });
+
+  it('renders the per-event Pc readouts and the B-plane view for a selected event', () => {
+    const store = createAppStore();
+    store.setState({
+      conjunctionIngest: { format: 'cdm', objectCount: 2, covarianceCount: 2, ids: ['A', 'B'], note: '' },
+      conjunctionEvent: {
+        index: 0,
+        primaryId: 'A',
+        secondaryId: 'B',
+        tca: 600,
+        pcFull: 1.2e-4,
+        pcMax: 3.4e-4,
+        missXKm: 1.5,
+        missYKm: 0.5,
+        missKm: 1.58,
+        radiusKm: 0.01,
+        relSpeedKmS: 0.12,
+        hasCovariance: true,
+        ellipses: [
+          { sigma: 1, semiMajorKm: 0.2, semiMinorKm: 0.1, angleRad: 0 },
+          { sigma: 3, semiMajorKm: 0.6, semiMinorKm: 0.3, angleRad: 0 },
+        ],
+        extentKm: 2,
+      },
+    });
+    const out = conjunction(store, true);
+    expect(out).toContain('data-testid="pc-full"');
+    expect(out).toContain('data-testid="pc-max"');
+    expect(out).toContain('data-testid="bplane-view"');
+    expect(out).toContain('data-testid="bplane-ellipse-1sigma"');
+    expect(out).toContain('data-testid="bplane-ellipse-3sigma"');
+    expect(out).toContain('data-testid="bplane-miss"');
+    expect(out).toContain('data-testid="bplane-hardbody"');
   });
 });
 

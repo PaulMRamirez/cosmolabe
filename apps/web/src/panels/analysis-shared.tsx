@@ -8,7 +8,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@bessel/selene-design';
 import { tableToCsv } from '@bessel/interop';
-import type { BesselEngine } from '../engine/index.ts';
 import {
   useStore,
   KEPT_SNAPSHOT_LIMIT,
@@ -17,7 +16,6 @@ import {
   type AccessFom,
   type LinkBudgetParams,
 } from '../store/index.ts';
-import type { ScreeningState } from '../screening-protocol.ts';
 
 /** Localized number format shared by the analysis panels (finite -> grouped, else '-'). */
 export const fmt = (n: number, digits = 2): string =>
@@ -89,62 +87,9 @@ export function Keep(props: { tool: string; disabled: boolean; onKeep: () => voi
   );
 }
 
-/** The off-main-thread all-vs-all catalog screen: a Screen action that runs a dedicated
- *  worker over a deterministic synthetic catalog, a live progress readout, a Cancel button
- *  while it runs, and the flagged conjunction events (pair, TCA, miss). */
-export function CatalogScreen(props: {
-  readonly engine: BesselEngine | null;
-  readonly screening: ScreeningState;
-  readonly runStatus: RunStatus | undefined;
-}): JSX.Element {
-  const { screening } = props;
-  const running = screening.status === 'running';
-  const error = typeof screening.status === 'object' ? screening.status.error : null;
-  return (
-    <div className="bessel-screening" data-testid="catalog-screen">
-      <Action
-        status={running ? 'running' : props.runStatus}
-        onClick={() => void props.engine?.screenCatalog()}
-        testId="screen-catalog"
-      >
-        Screen catalog (worker)
-      </Action>
-      {running ? (
-        <>
-          <p className="bessel-analysis-stat" data-testid="screen-progress">
-            Screening {screening.done}/{screening.total} primaries...
-          </p>
-          <Button variant="ghost" testId="screen-cancel" onClick={() => void props.engine?.cancelScreen()}>
-            Cancel
-          </Button>
-        </>
-      ) : (
-        <p className="bessel-loader-hint">
-          Run an all-vs-all screen over a synthetic catalog in a dedicated worker.
-        </p>
-      )}
-      {error ? (
-        <p className="bessel-analysis-error" data-testid="screen-error">
-          Screen failed: {error}
-        </p>
-      ) : null}
-      {screening.events && screening.events.length > 0 ? (
-        <ul className="bessel-analysis-list" data-testid="screen-events">
-          {screening.events.map((ev) => (
-            <li key={`${ev.primaryId}-${ev.secondaryId}`} data-testid="screen-event">
-              {ev.primaryId} vs {ev.secondaryId}: miss {fmt(ev.missKm, 3)} km at TCA{' '}
-              {fmt((ev.tca - screening.epoch) / 60, 1)} min
-            </li>
-          ))}
-        </ul>
-      ) : screening.status === 'done' ? (
-        <p className="bessel-analysis-stat" data-testid="screen-events-empty">
-          No conjunctions flagged below threshold.
-        </p>
-      ) : null}
-    </div>
-  );
-}
+// [ux-p1-conjunction] The synthetic CatalogScreen component was removed: the Conjunction tab's
+// screen now runs over a REAL ingested catalog and lives in the conjunction/ subpanels
+// (CatalogIngestCard + PcCard), keeping the screen-catalog/progress/cancel testid family.
 
 /** The shared-context state + derived run parameters every span-based analysis card reads.
  *  Hoisted out of the domain panels so the span/step/target/secondary controls and the

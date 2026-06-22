@@ -78,6 +78,10 @@ import type {
   ScreeningRef,
   ConstellationRef,
   CoverageSweepOpts,
+  // [ux-p1-conjunction] the ingested-catalog ref + ingest-format/screen-opts types.
+  ConjunctionCatalogRef,
+  IngestFormat,
+  IngestScreenOpts,
 } from './analysis-ops.ts';
 
 // True when two optional angles are equal or both absent (within tolerance).
@@ -213,6 +217,10 @@ export class BesselEngine {
   // (inside the dynamic-import op so the worker chunk stays off the first-paint shell) and
   // reused/cancelled across runs. A mutable ref so the lazily-imported screening ops own it.
   private readonly screeningRef: ScreeningRef = { client: null };
+  // [ux-p1-conjunction] The most recently ingested REAL conjunction catalog (CDM/OEM/TLE) +
+  // per-object covariances, shared by the ingest/screen/per-event-Pc ops across separate
+  // dynamic-import calls. Null until the first ingestion.
+  private readonly conjunctionCatalogRef: ConjunctionCatalogRef = { result: null };
   // The designed-constellation sequence + published asset SPK ids, shared by the (lazily
   // imported) coverage ops so the Walker design FEEDS the sweep across separate dynamic-import
   // calls: designConstellation publishes the asset set into it; sweepCoverage reads it.
@@ -857,23 +865,44 @@ export class BesselEngine {
     });
   }
 
-  /** All-vs-all catalog screen on a dedicated worker: build the deterministic synthetic
-   *  catalog, run the screen off the main thread with incremental progress, and surface the
-   *  flagged events. The synthetic-catalog builder + worker client load with the lazy ops. */
-  async screenCatalog(): Promise<void> {
-    const e = this.core;
-    if (!e) return;
-    await this.runTool('screen-catalog', async () => {
-      const ops = await import('./analysis-ops.ts');
-      await ops.screenCatalog(e, this.store, this.isDisposed, this.screeningRef);
-    });
-  }
-
   /** Cancel an in-flight catalog screen (terminates the worker) and reset the run status. */
   async cancelScreen(): Promise<void> {
     const ops = await import('./analysis-ops.ts');
     ops.cancelScreen(this.store, this.screeningRef);
     this.setRunStatus('screen-catalog', 'idle');
+  }
+
+  /** [ux-p1-conjunction] Ingest REAL CDM/OEM/TLE text into the conjunction screening catalog.
+   *  The pure parse loads with the lazy ops; a malformed input fails loud as a located error. */
+  async ingestConjunctionCatalog(format: IngestFormat, text: string): Promise<void> {
+    await this.runTool('ingest-catalog', async () => {
+      const ops = await import('./analysis-ops.ts');
+      ops.ingestConjunctionCatalog(this.store, this.conjunctionCatalogRef, format, text);
+    });
+  }
+
+  /** [ux-p1-conjunction] Screen the INGESTED catalog on the dedicated worker (same progress/
+   *  cancel UX as the synthetic screen), with configurable thresholdKm/padKm. */
+  async screenIngestedCatalog(opts: IngestScreenOpts = {}): Promise<void> {
+    await this.runTool('screen-catalog', async () => {
+      const ops = await import('./analysis-ops.ts');
+      await ops.screenIngestedCatalog(
+        this.store,
+        this.isDisposed,
+        this.screeningRef,
+        this.conjunctionCatalogRef,
+        opts,
+      );
+    });
+  }
+
+  /** [ux-p1-conjunction] Per-event full-covariance Pc + Max-Pc + B-plane geometry for the
+   *  selected screened event (by index), from the ingested per-object covariances. */
+  async computeEventPc(index: number): Promise<void> {
+    await this.runTool('compute-event-pc', async () => {
+      const ops = await import('./analysis-ops.ts');
+      ops.computeEventPc(this.store, this.conjunctionCatalogRef, index);
+    });
   }
 
   /** Constellation design: generate a Walker pattern, publish each satellite as an SPK

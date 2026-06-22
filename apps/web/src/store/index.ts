@@ -28,5 +28,9 @@ export {
   type CoverageGridResult,
   type CoverageMetricSelection,
   type CoverageFomSummaryState,
+  type ConjunctionResult,
+  type ConjunctionIngestSummary,
+  type ConjunctionEventResult,
+  type BPlaneEllipseView,
 } from './app-state.ts';
 export { useStore } from './use-store.ts';

@@ -10,7 +10,11 @@ import { figureOfMerit, walkerConstellation, sweepCoverageGrid, type GridSpec } 
 import { CoverageOverlayError, type CoverageOverlayCell, type Km3 } from '@bessel/scene';
 import { windowIntersect } from '@bessel/timeline';
 import { linkBudget } from '@bessel/rf';
-import { closestApproachLinear, collisionProbability2D } from '@bessel/conjunction';
+// [ux-p1-conjunction] full-covariance Pc helpers added to the existing conjunction import. The
+// encounter-plane Foster integral + the max-Pc bound are LIGHT (pure covariance.ts / max-pc.ts,
+// no propagator integrator); the covariance combination is done locally (combineEncounter in
+// bplane-geometry.ts) to keep the STM-propagation path out of this lazy chunk.
+import { closestApproachLinear, collisionProbability2D, maxCollisionProbability } from '@bessel/conjunction';
 import { eigenAxisSlew, nadirAttitude, sunPointingAttitude, type Quaternion } from '@bessel/attitude';
 import { lambert } from '@bessel/mission';
 import { writeOem, type Oem } from '@bessel/interop';
@@ -60,8 +64,14 @@ import type { SpacecraftSource } from '../store/index.ts';
 import { runOdDemo } from './od.ts';
 import { centerMu } from './center-mu.ts';
 import { ScreeningClient, ScreeningCancelled } from '../screening-client.ts';
-import { buildSyntheticCatalog, SYNTHETIC_SCREEN_DEFAULTS } from '../synthetic-catalog.ts';
 import { reduceScreening, INITIAL_SCREENING } from '../screening-protocol.ts';
+// [ux-p1-conjunction] REAL CDM/OEM/TLE ingestion (the pure parse->catalog fn) + the B-plane
+// geometry, co-located in this lazy chunk so they share the conjunction/propagator deps and
+// stay off the first-paint shell.
+import { ingestCatalog, type IngestFormat, type IngestResult } from '../conjunction/ingest.ts';
+export type { IngestFormat };
+import { buildBPlaneGeometry, combineEncounter, encounterPlanePc } from '../conjunction/bplane-geometry.ts';
+import type { ConjunctionEvent, SampledEphemeris } from '@bessel/conjunction';
 
 // Earth gravity constants for the numerical (HPOP) propagation. Published WGS-84/EGM
 // values, caller-injected because a PCK carries no GM or harmonics.
@@ -141,6 +151,14 @@ export interface TleState {
  *  calls. Null until the first screen constructs the client. */
 export interface ScreeningRef {
   client: ScreeningClient | null;
+}
+
+/** [ux-p1-conjunction] The most recently ingested REAL conjunction catalog (CDM/OEM/TLE),
+ *  held as a mutable ref on the engine so the ingest op, the screen op, and the per-event Pc
+ *  op share the same catalog + per-object covariances across separate dynamic-import calls.
+ *  Null until the first ingestion. */
+export interface ConjunctionCatalogRef {
+  result: IngestResult | null;
 }
 
 /** Build a concrete ProviderSpec from a report config (only frame-needing kinds use it). */
@@ -311,49 +329,93 @@ export async function computeConjunction(
   }
 }
 
+// [ux-p1-conjunction] The synthetic-catalog screen op was removed: the Conjunction tab now
+// screens a REAL ingested catalog (screenIngestedCatalog below). The deterministic synthetic
+// catalog builder stays in synthetic-catalog.ts (still unit-tested) but is no longer wired
+// into the panel, so it no longer lands in this lazy chunk.
+
+/** Cancel an in-flight catalog screen: terminate the worker and reset the screening slice. */
+export function cancelScreen(store: AppStore, ref: ScreeningRef): void {
+  ref.client?.cancel();
+  store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'cancel' }) }));
+}
+
+// [ux-p1-conjunction] REAL CDM/OEM/TLE ingestion + screen + per-event full-covariance Pc.
+// ingestConjunctionCatalog parses pasted/uploaded text into a SampledEphemeris catalog (plus
+// per-object covariances) via the pure ingestCatalog fn and stores it on the engine ref;
+// screenIngestedCatalog screens THAT catalog on the existing dedicated worker (reusing the
+// progress/cancel UX); computeEventPc takes a screened event index and computes the full-
+// covariance Pc + Max-Pc + B-plane geometry from the ingested covariances. Fails loud.
+
+/** Parameters for the screen of an ingested catalog (configurable thresholds). */
+export interface IngestScreenOpts {
+  readonly thresholdKm?: number;
+  readonly padKm?: number;
+}
+
 /**
- * All-vs-all catalog screen on a DEDICATED screening worker. Builds the deterministic
- * synthetic catalog at the current epoch (real RSO ingestion is out of scope), hands it to
- * the worker through the ScreeningClient, and folds the worker's incremental progress and
- * terminal result into the screening slice through the pure reduceScreening reducer (so the
- * panel shows a moving progress readout and then the flagged events). The main thread never
- * runs screenAllVsAll itself, so a multi-object screen does not stall rendering. A user
- * cancel terminates the worker; that surfaces as ScreeningCancelled, which resets the slice
- * to idle rather than raising a loud error.
+ * Ingest REAL CDM/OEM/TLE text into the conjunction screening catalog (decision 3). The parse
+ * is the pure tested ingestCatalog; on success the catalog + per-object covariances are stored
+ * on the engine ref (for the screen and the per-event Pc), and a summary lands in the store.
+ * Fails loud (the typed IngestError) on malformed input; the wrapper surfaces it as a located
+ * run-status error and the panel shows it.
  */
-export async function screenCatalog(
-  e: EngineCore,
+export function ingestConjunctionCatalog(
+  store: AppStore,
+  ref: ConjunctionCatalogRef,
+  format: IngestFormat,
+  text: string,
+): void {
+  // ingestCatalog throws a located IngestError on bad input; let it propagate to the wrapper.
+  const result = ingestCatalog(format, text);
+  ref.result = result;
+  // A fresh ingestion supersedes any prior screen result and selected event.
+  store.setState({
+    conjunctionIngest: {
+      format: result.format,
+      objectCount: result.catalog.length,
+      covarianceCount: result.covariances.size,
+      ids: result.catalog.map((o) => o.id),
+      note: result.note,
+    },
+    screening: INITIAL_SCREENING,
+    conjunctionEvent: null,
+  });
+}
+
+/**
+ * Screen the INGESTED catalog on the dedicated worker, with configurable thresholdKm/padKm.
+ * Reuses the same ScreeningClient + reduceScreening progress/cancel pipeline as the synthetic
+ * screen, but over the real ingested objects. Fails loud when no catalog has been ingested.
+ */
+export async function screenIngestedCatalog(
   store: AppStore,
   isDisposed: () => boolean,
-  ref: ScreeningRef,
+  screeningRef: ScreeningRef,
+  catalogRef: ConjunctionCatalogRef,
+  opts: IngestScreenOpts = {},
 ): Promise<void> {
-  const epochEt = e.clock.state.et;
-  const objects = buildSyntheticCatalog({
-    epochEt,
-    spanSec: SYNTHETIC_SCREEN_DEFAULTS.spanSec,
-    steps: SYNTHETIC_SCREEN_DEFAULTS.steps,
-  });
-  const client = ref.client ?? (ref.client = new ScreeningClient());
-  // Open the run: a zeroed bar over the partition count (one per primary object), recording the
-  // catalog epoch so the panel can show each flagged TCA relative to it (ConjunctionEvent.tca is
-  // absolute ET, the synthetic grid starts at this epoch).
+  const result = catalogRef.result;
+  if (!result) {
+    throw new Error('no ingested catalog: ingest CDM, OEM, or TLE text before screening');
+  }
+  const objects = result.catalog;
+  // Default thresholds when the panel does not override them (the ingest card supplies both).
+  const thresholdKm = opts.thresholdKm ?? 5;
+  const padKm = opts.padKm ?? 50;
+  const client = screeningRef.client ?? (screeningRef.client = new ScreeningClient());
   store.setState((s) => ({
-    screening: reduceScreening(s.screening, { kind: 'start', total: objects.length - 1, epoch: epochEt }),
+    screening: reduceScreening(s.screening, { kind: 'start', total: objects.length - 1, epoch: result.epoch }),
+    conjunctionEvent: null,
   }));
   try {
-    const events = await client.start(
-      { objects, thresholdKm: SYNTHETIC_SCREEN_DEFAULTS.thresholdKm, padKm: SYNTHETIC_SCREEN_DEFAULTS.padKm },
-      (p) => {
-        if (!isDisposed()) {
-          store.setState((s) => ({ screening: reduceScreening(s.screening, p) }));
-        }
-      },
-    );
+    const events = await client.start({ objects, thresholdKm, padKm }, (p) => {
+      if (!isDisposed()) store.setState((s) => ({ screening: reduceScreening(s.screening, p) }));
+    });
     if (!isDisposed()) {
       store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'result', events }) }));
     }
   } catch (err) {
-    // A user cancel (worker terminated) is not a failure: reset the slice to idle.
     if (err instanceof ScreeningCancelled) {
       if (!isDisposed()) store.setState({ screening: INITIAL_SCREENING });
       return;
@@ -362,15 +424,100 @@ export async function screenCatalog(
       const message = err instanceof Error ? err.message : String(err);
       store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'error', message }) }));
     }
-    console.error('catalog screen failed', err);
+    console.error('ingested catalog screen failed', err);
     throw err;
   }
 }
 
-/** Cancel an in-flight catalog screen: terminate the worker and reset the screening slice. */
-export function cancelScreen(store: AppStore, ref: ScreeningRef): void {
-  ref.client?.cancel();
-  store.setState((s) => ({ screening: reduceScreening(s.screening, { kind: 'cancel' }) }));
+/** Look up a screened event by index from the screening slice, failing loud on a bad index. */
+function selectScreenedEvent(store: AppStore, index: number): ConjunctionEvent {
+  const events = store.getState().screening.events;
+  if (!events || events.length === 0) throw new Error('no screened events: run a screen first');
+  const ev = events[index];
+  if (!ev) throw new Error(`event index ${index} is out of range (0..${events.length - 1})`);
+  return ev;
+}
+
+/** The combined hard-body radius (km) for a screened pair, summed from the two objects' tagged
+ *  radii (each SampledEphemeris carries its own radiusKm; default to a small value if absent). */
+function combinedRadiusKm(catalog: readonly SampledEphemeris[], primaryId: string, secondaryId: string): number {
+  const find = (id: string): number => catalog.find((o) => o.id === id)?.radiusKm ?? 0.005;
+  return find(primaryId) + find(secondaryId);
+}
+
+/**
+ * Per-event full-covariance Pc + Max-Pc + B-plane geometry for a selected screened event.
+ * When BOTH objects carry an ingested covariance (CDM), the two position covariances combine
+ * and project into the encounter plane (combineEncounter, normal to the relative velocity) and
+ * Foster's encounter-plane integral (collisionProbabilityCov) gives the FULL-covariance Pc; the
+ * 1/3-sigma B-plane ellipses come from the combined 2x2 covariance. The covariances are written
+ * at the CDM TCA, so the combination is at the encounter epoch (no STM propagation needed, which
+ * keeps the propagator integrator out of this lazy chunk). Max-Pc (the Alfano bound) is always
+ * available from the screened miss + combined radius. Without covariances (OEM/TLE) only Max-Pc
+ * is reported and the B-plane has no ellipse. Fails loud on a bad index / covariance.
+ */
+export function computeEventPc(store: AppStore, catalogRef: ConjunctionCatalogRef, index: number): void {
+  const result = catalogRef.result;
+  if (!result) throw new Error('no ingested catalog: ingest before computing per-event Pc');
+  const ev = selectScreenedEvent(store, index);
+  const radiusKm = combinedRadiusKm(result.catalog, ev.primaryId, ev.secondaryId);
+  const pcMax = maxCollisionProbability(ev.missKm, radiusKm);
+
+  const primaryCov = result.covariances.get(ev.primaryId);
+  const secondaryCov = result.covariances.get(ev.secondaryId);
+  if (primaryCov && secondaryCov) {
+    // Both objects carry a real covariance: combine the two position covariances at the encounter
+    // epoch, project into the encounter plane, and integrate the full-covariance Foster Pc.
+    const enc = combineEncounter(primaryCov.state6, primaryCov.posCov3, secondaryCov.state6, secondaryCov.posCov3);
+    const pcFull = encounterPlanePc(enc.cov2, enc.missXKm, enc.missYKm, radiusKm);
+    const geom = buildBPlaneGeometry(enc.cov2, enc.missXKm, enc.missYKm, radiusKm);
+    store.setState({
+      conjunctionEvent: {
+        index,
+        primaryId: ev.primaryId,
+        secondaryId: ev.secondaryId,
+        tca: ev.tca,
+        pcFull,
+        pcMax,
+        missXKm: enc.missXKm,
+        missYKm: enc.missYKm,
+        missKm: enc.missKm,
+        radiusKm,
+        relSpeedKmS: enc.relSpeedKmS,
+        hasCovariance: true,
+        ellipses: geom.ellipses.map((e) => ({
+          sigma: e.sigma,
+          semiMajorKm: e.semiMajorKm,
+          semiMinorKm: e.semiMinorKm,
+          angleRad: e.angleRad,
+        })),
+        extentKm: geom.extentKm,
+      },
+    });
+    return;
+  }
+
+  // No covariance pair: report Max-Pc only, with the screened miss along +x for the B-plane
+  // miss vector and hard-body circle (no covariance ellipse). The extent frames the miss + R.
+  const extentKm = Math.max(ev.missKm + radiusKm, 1e-6) * 1.15;
+  store.setState({
+    conjunctionEvent: {
+      index,
+      primaryId: ev.primaryId,
+      secondaryId: ev.secondaryId,
+      tca: ev.tca,
+      pcFull: null,
+      pcMax,
+      missXKm: ev.missKm,
+      missYKm: 0,
+      missKm: ev.missKm,
+      radiusKm,
+      relSpeedKmS: ev.relSpeedKmS,
+      hasCovariance: false,
+      ellipses: [],
+      extentKm,
+    },
+  });
 }
 
 

@@ -1,7 +1,8 @@
-// The Conjunction domain tab (analysis-UX re-slot, design section 3, tab 4): the per-pair
-// closest-approach + collision-probability tool and the off-main-thread all-vs-all catalog
-// screening, surfaced as collapsible TaskCards. The tool JSX is moved verbatim from the
-// former AnalysisPanel; no engine capability changes here. Presentational.
+// The Conjunction domain tab (analysis-UX, design section 3, tab 4). Phase 1 wires the REAL
+// CDM/OEM/TLE ingestion path (decision 3): a catalog-ingest card parses pasted CCSDS CDM/OEM
+// or a TLE set into a screening catalog, a worker screen runs over THAT real catalog (keeping
+// the existing progress/cancel UX), and a per-event card computes the full-covariance Pc +
+// Max-Pc and renders a B-plane viewer. The single-pair closest-approach card is kept.
 
 import { useState, type ReactNode } from 'react';
 import type { BesselEngine } from '../engine/index.ts';
@@ -14,15 +15,9 @@ import {
   DEFAULT_CONJUNCTION_PARAMS,
   type ConjunctionParams,
 } from './analysis-tool-forms.tsx';
-import {
-  Action,
-  CatalogScreen,
-  EmptyNotice,
-  Keep,
-  fmt,
-  useAnalysisParams,
-  useTrayFull,
-} from './analysis-shared.tsx';
+import { Action, EmptyNotice, Keep, fmt, useAnalysisParams, useTrayFull } from './analysis-shared.tsx';
+import { CatalogIngestCard } from './conjunction/CatalogIngestCard.tsx';
+import { PcCard } from './conjunction/PcCard.tsx';
 
 export interface ConjunctionPanelProps {
   readonly engine: BesselEngine | null;
@@ -41,7 +36,6 @@ export function ConjunctionPanel(props: ConjunctionPanelProps): JSX.Element {
 
   const runStatus = useStore(store, (s) => s.runStatus);
   const conjunction = useStore(store, (s) => s.conjunction);
-  const screening = useStore(store, (s) => s.screening);
 
   const conjunctionCard = (): ReactNode => (
     <>
@@ -95,27 +89,42 @@ export function ConjunctionPanel(props: ConjunctionPanelProps): JSX.Element {
     </>
   );
 
-  const screenCard = (): ReactNode => (
+  const ingestCard = (): ReactNode => (
     <>
-      <CatalogScreen engine={engine} screening={screening} runStatus={runStatus['screen-catalog']} />
+      <CatalogIngestCard engine={engine} store={store} />
+      <RunStatusNote status={runStatus['ingest-catalog']} id="ingest-catalog" />
       <RunStatusNote status={runStatus['screen-catalog']} id="screen-catalog" />
+    </>
+  );
+
+  const pcCard = (): ReactNode => (
+    <>
+      <PcCard engine={engine} store={store} />
+      <RunStatusNote status={runStatus['compute-event-pc']} id="compute-event-pc" />
     </>
   );
 
   const cards: readonly TaskCardEntry[] = [
     {
-      id: 'closest-approach',
-      title: 'Closest approach (pair)',
-      purpose: 'Miss distance, TCA, and collision probability for a pair.',
-      status: runStatus['compute-conjunction'],
-      render: conjunctionCard,
+      id: 'catalog-screen',
+      title: 'Catalog ingestion & screening',
+      purpose: 'Ingest REAL CDM/OEM/TLE, then all-vs-all screen on a worker.',
+      status: runStatus['ingest-catalog'],
+      render: ingestCard,
     },
     {
-      id: 'catalog-screen',
-      title: 'Catalog screening',
-      purpose: 'All-vs-all worker screen over a synthetic catalog.',
-      status: runStatus['screen-catalog'],
-      render: screenCard,
+      id: 'per-event-pc',
+      title: 'Per-event Pc & B-plane',
+      purpose: 'Full-covariance Pc + Max-Pc and the encounter-plane plot for a flagged event.',
+      status: runStatus['compute-event-pc'],
+      render: pcCard,
+    },
+    {
+      id: 'closest-approach',
+      title: 'Closest approach (pair)',
+      purpose: 'Miss distance, TCA, and collision probability for a single loaded pair.',
+      status: runStatus['compute-conjunction'],
+      render: conjunctionCard,
     },
   ];
 
@@ -125,7 +134,7 @@ export function ConjunctionPanel(props: ConjunctionPanelProps): JSX.Element {
       {params.paramsBar}
       <TaskCardAccordion
         cards={cards}
-        defaultExpanded={['closest-approach', 'catalog-screen']}
+        defaultExpanded={['catalog-screen', 'per-event-pc']}
         {...(props.expandRequest ? { expandRequest: props.expandRequest } : {})}
       />
     </div>
