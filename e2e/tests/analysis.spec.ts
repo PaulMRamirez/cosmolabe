@@ -229,26 +229,38 @@ test('conjunction ingests a CDM, screens it, and runs the full-covariance Pc flo
 });
 
 test('coverage designs a constellation and runs the worker coverage-grid sweep', async ({ page }) => {
-  // The coverage grid sweep is the dedicated coverage worker replaying the kernel pool and
-  // computing per-cell access geometry over a grid; it is the slowest real sweep in the suite.
-  test.setTimeout(150_000);
+  // This test proves the WORKER PIPELINE (design -> dedicated coverage worker sweep -> live
+  // progress -> contour/FOM summary), not a realistic heavy coverage map. The default 24/3/1
+  // Walker x 9x18 grid is minutes-long under contended CI; deliberately drive the real param
+  // controls to a TINY constellation (4/2/1) and a COARSE grid (3x3) so the same worker path
+  // runs in a few seconds. A 90s budget is ample headroom for the small sweep under CI load.
+  test.setTimeout(90_000);
 
   await page.goto('/');
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
   await loadCassiniSample(page);
 
-  // Constellation design (Coverage & Constellation tab): a Walker pattern, synchronous.
+  // Constellation design (Coverage & Constellation tab): a tiny but valid Walker pattern
+  // (T=4, P=2, F=1; T is a multiple of P so walkerConstellation builds), so the swept asset
+  // set is 4 satellites, not 24. Driven through the real T/P/F controls, not the engine API.
   await openAnalyze(page, 'coverage');
   await expandCard(page, 'constellation');
+  await page.getByTestId('param-const-total').fill('4');
+  await page.getByTestId('param-const-planes').fill('2');
+  await page.getByTestId('param-const-phasing').fill('1');
   await page.getByTestId('compute-constellation').click();
-  // The design now publishes each Walker satellite as an SPK asset (the swept asset set),
-  // so allow for the lazy coverage-ops chunk + the per-satellite SPK writes.
+  // The design publishes each Walker satellite as an SPK asset (the swept asset set), so allow
+  // for the lazy coverage-ops chunk + the per-satellite SPK writes.
   await expect(page.getByTestId('constellation-result')).toContainText('Walker', { timeout: 20_000 });
 
-  // [ux-p3-coverage] The coverage sweep now runs on the dedicated coverage worker (its own
-  // chunk, with a nested SPICE worker replaying the kernel pool). Running it shows the live
-  // progress readout, and the run completes with the FOM summary (the worker did not stall).
+  // [ux-p3-coverage] The coverage sweep runs on the dedicated coverage worker (its own chunk,
+  // with a nested SPICE worker replaying the kernel pool). Coarsen the grid to 3x3 cells through
+  // the real resolution controls so the worker sweeps 9 cells, not 162: the same pipeline, fast.
+  // Running it shows the live progress readout, and the run completes with the FOM summary (the
+  // worker did not stall).
   await expandCard(page, 'coverage-grid');
+  await page.getByTestId('param-grid-resolution').fill('3');
+  await page.getByTestId('param-grid-lon-count').fill('3');
   await page.getByTestId('compute-coverage-grid').click();
   await expect(page.getByTestId('coverage-progress')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId('coverage-fom-summary')).toBeVisible({ timeout: 60_000 });
