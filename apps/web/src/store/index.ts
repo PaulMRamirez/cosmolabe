@@ -5,6 +5,8 @@ export {
   initialAppState,
   KEPT_SNAPSHOT_LIMIT,
   type AnalysisContext,
+  type ScenarioState,
+  type GroundStation,
   type AnalyzeTab,
   type KeptSnapshot,
   type AccessFom,

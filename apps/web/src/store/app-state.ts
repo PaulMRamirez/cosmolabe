@@ -44,6 +44,42 @@ export interface AnalysisContext {
   readonly frame: string;
 }
 
+/** A ground station in the scenario object model: a geodetic site the access, comms,
+ *  and observation tasks point at by role. Angles are radians; altitude is km. */
+export interface GroundStation {
+  readonly id: string;
+  readonly name: string;
+  /** Geodetic longitude (radians, east-positive). */
+  readonly lonRad: number;
+  /** Geodetic latitude (radians, north-positive). */
+  readonly latRad: number;
+  /** Height above the reference ellipsoid (km). */
+  readonly altKm: number;
+  /** Minimum elevation mask (radians) below which the station has no access. */
+  readonly minElevationRad?: number;
+}
+
+/** The typed Scenario Object Model: role SLOTS the analysis tasks read from instead of
+ *  flat per-tool single-selects (design section 5, committed fix 1). A primary
+ *  spacecraft, secondary object(s), a registry of ground stations with an active one,
+ *  an observation target, and an asset SET (e.g. a designed constellation). Additive in
+ *  Phase 0.1: the types and the empty default only; the context-bar controls and the
+ *  per-card reads land in Phase 0.2. */
+export interface ScenarioState {
+  /** The role-primary spacecraft (the focus of most tasks), or null when unset. */
+  readonly primarySpacecraft: string | null;
+  /** Secondary objects (e.g. a conjunction secondary, a comparison body). */
+  readonly secondaryObjects: readonly string[];
+  /** The ground-station registry the access/comms/observation tasks point at. */
+  readonly stations: readonly GroundStation[];
+  /** Which registered station is active for the station-bound tasks, or null. */
+  readonly activeStationId: string | null;
+  /** The body or target the observation tasks aim at, or null. */
+  readonly observationTarget: string | null;
+  /** The asset SET (e.g. constellation members) coverage tasks sweep over. */
+  readonly assetSet: readonly string[];
+}
+
 export interface AppState {
   // Lifecycle.
   status: string;
@@ -65,6 +101,8 @@ export interface AppState {
   analyzeTab: AnalyzeTab;
   /** Shared analysis parameters the dock's tabs read by default. */
   analysisContext: AnalysisContext;
+  /** The typed scenario object model: the role slots the tasks read by role. */
+  scenario: ScenarioState;
   /** True once the first-run welcome card has been dismissed or acted on (persisted). */
   welcomeSeen: boolean;
   /** A loud go-to-epoch parse error to surface next to the field, or null. */
@@ -345,6 +383,14 @@ export const initialAppState: AppState = {
   analyzeOpen: false,
   analyzeTab: 'access',
   analysisContext: { spanSec: 86400, stepSec: 120, target: '', observer: '', frame: 'J2000' },
+  scenario: {
+    primarySpacecraft: null,
+    secondaryObjects: [],
+    stations: [],
+    activeStationId: null,
+    observationTarget: null,
+    assetSet: [],
+  },
   welcomeSeen: false,
   timelineError: null,
   runStatus: {},
