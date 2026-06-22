@@ -93,9 +93,65 @@ describe('Coverage panel coverage-grid overlay toggle', () => {
   it('shows the area-weighted summary once a coverage grid is seeded', () => {
     const store = createAppStore();
     store.setState({
-      coverageGrid: { cellCount: 162, areaWeightedPercentCoverage: 0.42, label: 'Probe over EARTH' },
+      coverageGrid: {
+        cellCount: 162,
+        areaWeightedPercentCoverage: 0.42,
+        label: 'Probe over EARTH',
+        assetCount: 1,
+        metric: null,
+        summary: null,
+      },
     });
     expect(coverage(store, true)).toContain('data-testid="coverage-grid-stat"');
+  });
+});
+
+describe('Coverage panel: the Walker -> sweep -> metric-aware contour workflow', () => {
+  it('renders the coverage sweep form with the resolution, metric, and N-fold controls', () => {
+    const out = coverage(createAppStore());
+    for (const id of ['param-grid-resolution', 'param-fom-metric', 'param-nfold']) {
+      expect(out).toContain(`data-testid="${id}"`);
+    }
+    // The sweep action is relabelled (it now sweeps the asset set, not a fixed global grid).
+    expect(out).toContain('data-testid="coverage-asset-note"');
+  });
+
+  it('notes the designed asset set feeds the sweep once a constellation is designed', () => {
+    const store = createAppStore();
+    store.setState({
+      designedConstellation: { assetIds: ['-970001', '-970002', '-970003'], totalSats: 3, planes: 1, perPlane: 3 },
+    });
+    expect(coverage(store, true)).toContain('3-satellite Walker asset set');
+  });
+
+  it('renders the metric-aware contour legend and the FOM summary table after a sweep', () => {
+    const store = createAppStore();
+    store.setState({
+      coverageGrid: {
+        cellCount: 50,
+        areaWeightedPercentCoverage: 0.6,
+        label: '3 assets over EARTH',
+        assetCount: 3,
+        metric: { id: 'revisitMax', label: 'Max revisit gap', unit: 'min', nFoldK: 2 },
+        summary: {
+          cellCount: 50,
+          areaWeightedPercentCoverage: 0.6,
+          minPercentCoverage: 0.1,
+          meanPercentCoverage: 0.6,
+          maxPercentCoverage: 0.9,
+          worstRevisitMaxSec: 600,
+          worstResponseTimeSec: 120,
+          nFoldCellFraction: 0.4,
+          nFoldK: 2,
+        },
+      },
+    });
+    const out = coverage(store, true);
+    expect(out).toContain('data-testid="coverage-contour-legend"');
+    expect(out).toContain('data-testid="coverage-legend-metric"');
+    expect(out).toContain('Max revisit gap');
+    expect(out).toContain('data-testid="coverage-fom-summary"');
+    expect(out).toContain('data-testid="coverage-fom-csv"');
   });
 });
 

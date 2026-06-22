@@ -88,7 +88,9 @@ test('lighting analysis computes and renders eclipse intervals', async ({ page }
   await openAnalyze(page, 'coverage');
   await expandCard(page, 'constellation');
   await page.getByTestId('compute-constellation').click();
-  await expect(page.getByTestId('constellation-result')).toContainText('Walker');
+  // The design now publishes each Walker satellite as an SPK asset (the swept asset set),
+  // so allow for the lazy coverage-ops chunk + the per-satellite SPK writes.
+  await expect(page.getByTestId('constellation-result')).toContainText('Walker', { timeout: 20_000 });
 
   // Attitude slew (Orbit & Maneuver tab): an eigen-axis profile plotted over time.
   await openAnalyze(page, 'orbit-maneuver');

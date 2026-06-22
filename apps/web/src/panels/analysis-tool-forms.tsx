@@ -208,6 +208,65 @@ export function ConstellationParamsForm(props: {
   return <ParamForm value={props.value} onChange={props.onChange} fields={CONSTELLATION_FIELDS} testId="constellation-params" />;
 }
 
+/** Coverage sweep parameters: grid resolution, region bounds (deg), the FOM metric to
+ *  color by, and the N-fold order k. The metric id matches the coverage-metric registry. */
+export interface CoverageSweepFormParams {
+  latCount: number;
+  lonCount: number;
+  latMinDeg: number;
+  latMaxDeg: number;
+  lonMinDeg: number;
+  lonMaxDeg: number;
+  metric: string;
+  nFoldK: number;
+}
+
+export const DEFAULT_COVERAGE_SWEEP_PARAMS: CoverageSweepFormParams = {
+  latCount: 9,
+  lonCount: 18,
+  latMinDeg: -85,
+  latMaxDeg: 85,
+  lonMinDeg: -180,
+  lonMaxDeg: 180,
+  metric: 'percentCoverage',
+  nFoldK: 1,
+};
+
+/** The selectable contour metrics (ids match the engine coverage-metric registry). */
+const COVERAGE_METRIC_OPTIONS = [
+  { value: 'percentCoverage', label: '% coverage' },
+  { value: 'revisitMax', label: 'Max revisit' },
+  { value: 'revisitMean', label: 'Mean revisit' },
+  { value: 'responseTime', label: 'Response time' },
+  { value: 'meanAccessDuration', label: 'Mean access duration' },
+  { value: 'nFold', label: 'N-fold k' },
+] as const;
+
+const COVERAGE_SWEEP_FIELDS: readonly FieldDesc<CoverageSweepFormParams>[] = [
+  { kind: 'num', key: 'latCount', label: 'Lat rows', testId: 'param-grid-resolution', min: 1, step: 1 },
+  { kind: 'num', key: 'lonCount', label: 'Lon cols', testId: 'param-grid-lon-count', min: 1, step: 1 },
+  { kind: 'num', key: 'latMinDeg', label: 'Lat min (deg)', testId: 'param-region-lat-min' },
+  { kind: 'num', key: 'latMaxDeg', label: 'Lat max (deg)', testId: 'param-region-lat-max' },
+  { kind: 'num', key: 'lonMinDeg', label: 'Lon min (deg)', testId: 'param-region-lon-min' },
+  { kind: 'num', key: 'lonMaxDeg', label: 'Lon max (deg)', testId: 'param-region-lon-max' },
+  { kind: 'select', key: 'metric', label: 'Color by', testId: 'param-fom-metric', options: COVERAGE_METRIC_OPTIONS },
+  { kind: 'num', key: 'nFoldK', label: 'N-fold k', testId: 'param-nfold', min: 1, step: 1 },
+];
+
+export function CoverageSweepForm(props: {
+  value: CoverageSweepFormParams;
+  onChange: (v: CoverageSweepFormParams) => void;
+}): JSX.Element {
+  return (
+    <ParamForm
+      value={props.value}
+      onChange={props.onChange}
+      fields={COVERAGE_SWEEP_FIELDS}
+      testId="coverage-sweep-params"
+    />
+  );
+}
+
 /** Eigen-axis slew parameters: from/to pointing references and the slew dynamics. */
 export interface SlewFormParams {
   fromMode: 'nadir' | 'sun';

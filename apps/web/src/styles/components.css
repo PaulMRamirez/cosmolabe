@@ -1949,3 +1949,46 @@ button[aria-pressed='true'] {
   font-family: var(--font-mono);
   font-feature-settings: var(--feat-mono);
 }
+
+/* Coverage & Constellation: the metric-aware contour legend and the FOM summary table.
+   The legend color scale mirrors the @bessel/scene viridis overlay ramp (low -> high),
+   kept here as a static gradient so the panel does not build it in JS. */
+.bessel-contour-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+}
+.bessel-legend-scale {
+  display: block;
+  height: 0.6rem;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    rgb(68, 1, 84),
+    rgb(58, 82, 139),
+    rgb(32, 144, 140),
+    rgb(94, 201, 98),
+    rgb(253, 231, 37)
+  );
+}
+.bessel-legend-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.bessel-fom-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.bessel-fom-table th {
+  text-align: left;
+  font-weight: 400;
+  opacity: 0.8;
+}
+.bessel-fom-table td {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}

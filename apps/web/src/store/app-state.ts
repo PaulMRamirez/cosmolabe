@@ -157,6 +157,9 @@ export interface AppState {
   screening: ScreeningState;
   /** Walker constellation summary from the last coverage/constellation run. */
   constellation: ConstellationResult | null;
+  /** The designed constellation as the swept ASSET SET (published SPK ids), or null until
+   *  a Walker design publishes its members. The coverage sweep reads this for its assets. */
+  designedConstellation: DesignedConstellation | null;
   /** Summary of the last coverage-grid overlay run (cell count + area-weighted FOM). */
   coverageGrid: CoverageGridResult | null;
   /** Eigen-axis slew angle (deg) over time from the last attitude run. */
@@ -285,6 +288,42 @@ export interface ConstellationResult {
   readonly altitudeKm: number;
 }
 
+/** A designed Walker constellation surfaced as the swept ASSET SET: the published SPK
+ *  asset ids the coverage sweep runs over, plus the structure for the rings/readout. The
+ *  constellation designer FEEDS the sweep through this slice (design section 4, coverage
+ *  planner: "renders as rings AND becomes the asset set"). */
+export interface DesignedConstellation {
+  /** The published asset SPK ids (one per Walker satellite) the sweep covers over. */
+  readonly assetIds: readonly string[];
+  readonly totalSats: number;
+  readonly planes: number;
+  readonly perPlane: number;
+}
+
+/** The selected figure-of-merit metric a coverage contour colors by (id + display). */
+export interface CoverageMetricSelection {
+  /** Metric id (matches the coverage-metric registry; kept as a string for the store). */
+  readonly id: string;
+  readonly label: string;
+  /** Legend unit string (e.g. "%", "min"). */
+  readonly unit: string;
+  /** N-fold order k the metric/summary was computed for. */
+  readonly nFoldK: number;
+}
+
+/** The regional aggregate FOM summary surfaced as a table + CSV (mirrors CoverageFomSummary). */
+export interface CoverageFomSummaryState {
+  readonly cellCount: number;
+  readonly areaWeightedPercentCoverage: number;
+  readonly minPercentCoverage: number;
+  readonly meanPercentCoverage: number;
+  readonly maxPercentCoverage: number;
+  readonly worstRevisitMaxSec: number;
+  readonly worstResponseTimeSec: number | null;
+  readonly nFoldCellFraction: number;
+  readonly nFoldK: number;
+}
+
 /** Summary of a coverage-grid overlay run (the overlay itself lives in the scene). */
 export interface CoverageGridResult {
   /** Number of swept grid cells draped on the globe. */
@@ -292,6 +331,12 @@ export interface CoverageGridResult {
   /** Area-weighted mean percent coverage across the grid, in [0, 1]. */
   readonly areaWeightedPercentCoverage: number;
   readonly label: string;
+  /** The number of assets swept (the designed asset set size, or 1 for the single asset). */
+  readonly assetCount: number;
+  /** The metric the contour colored by (legend name + units), present on a sweep run. */
+  readonly metric: CoverageMetricSelection | null;
+  /** The regional aggregate FOM summary (the FOM table + CSV source), or null. */
+  readonly summary: CoverageFomSummaryState | null;
 }
 
 export interface TransferResult {
@@ -463,6 +508,7 @@ export const initialAppState: AppState = {
   conjunction: null,
   screening: INITIAL_SCREENING,
   constellation: null,
+  designedConstellation: null,
   coverageGrid: null,
   slewSeries: null,
   transfer: null,
