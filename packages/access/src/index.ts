@@ -11,6 +11,7 @@ import {
   type EphemerisTime,
   type Window,
 } from '@bessel/timeline';
+import { computeRangeRateWindow, type RangeRateConstraint } from './range-rate.ts';
 
 /**
  * A line-of-sight constraint: the target must NOT be occulted by `body`. The
@@ -31,7 +32,7 @@ export interface RangeConstraint {
   readonly maxKm?: number;
 }
 
-export type AccessConstraint = LineOfSightConstraint | RangeConstraint;
+export type AccessConstraint = LineOfSightConstraint | RangeConstraint | RangeRateConstraint;
 
 export interface AccessRequest {
   /** Observing body/spacecraft (SPICE id or name). */
@@ -63,6 +64,12 @@ export async function computeAccess(spice: SpiceEngine, req: AccessRequest): Pro
 }
 
 export { computeElevationAccess, type Facility, type ElevationUp } from './facility.ts';
+export {
+  computeRangeRateWindow,
+  rangeRateFromState,
+  RangeRateConstraintError,
+  type RangeRateConstraint,
+} from './range-rate.ts';
 
 /** One hop of an access chain: an observer seeing a target under constraints. */
 export interface AccessLink {
@@ -114,6 +121,11 @@ async function constraintWindow(
       t1,
     );
     return windowComplement(t0, t1, occulted);
+  }
+  if (constraint.kind === 'rangeRate') {
+    // Range rate (km/s) within the band, derived analytically from spkezr and refined
+    // by the shared root-finder. See range-rate.ts.
+    return computeRangeRateWindow(spice, req.observer, req.target, req.span, req.step, abcorr, constraint);
   }
   // range: intersect the (distance < max) and (distance > min) windows.
   const pieces: Window[] = [];
