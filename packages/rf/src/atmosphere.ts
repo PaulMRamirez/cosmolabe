@@ -64,3 +64,17 @@ export function gaseousAttenuationDb(zenithLossDb: number, elevationRad: number)
   const sinEl = clampedSinEl(elevationRad);
   return zenithLossDb / sinEl;
 }
+
+/**
+ * Sky-noise temperature increment (K) from a rain (or any absorptive) path,
+ * ITU-R P.618 style: an absorbing medium at physical temperature Tm raises the
+ * apparent antenna temperature by deltaT = Tm * (1 - 10^(-A/10)), where A is the
+ * excess path attenuation (dB) and Tm is the effective medium temperature
+ * (default 275 K). At A = 0 there is no increment; as A grows large the increment
+ * saturates at Tm (the rain fully fills the antenna with its own thermal noise).
+ */
+export function rainNoiseTempIncrementK(rainAttenuationDb: number, mediumTempK = 275): number {
+  if (rainAttenuationDb <= 0) return 0;
+  const transmissivity = 10 ** (-rainAttenuationDb / 10);
+  return mediumTempK * (1 - transmissivity);
+}

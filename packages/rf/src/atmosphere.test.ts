@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   rainAttenuationDb,
   gaseousAttenuationDb,
+  rainNoiseTempIncrementK,
   RAIN_COEFFS,
   dishAntenna,
   eirpDbW,
@@ -41,6 +42,27 @@ describe('gaseousAttenuationDb', () => {
   it('scales the zenith loss by the airmass (1/sin elevation)', () => {
     expect(gaseousAttenuationDb(0.3, deg(90))).toBeCloseTo(0.3, 6);
     expect(gaseousAttenuationDb(0.3, deg(30))).toBeCloseTo(0.6, 6); // sin30 = 0.5
+  });
+});
+
+describe('rainNoiseTempIncrementK', () => {
+  it('is 0 K with no attenuation', () => {
+    expect(rainNoiseTempIncrementK(0)).toBe(0);
+    expect(rainNoiseTempIncrementK(-1)).toBe(0);
+  });
+
+  it('saturates at the medium temperature for large attenuation', () => {
+    expect(rainNoiseTempIncrementK(40)).toBeCloseTo(275, 1); // ~Tm
+    expect(rainNoiseTempIncrementK(60, 290)).toBeCloseTo(290, 2);
+  });
+
+  it('matches the ITU-R P.618 worked value (3 dB at 275 K -> ~137 K)', () => {
+    // deltaT = 275 * (1 - 10^(-3/10)) = 275 * (1 - 0.50119) = 137.2 K.
+    expect(rainNoiseTempIncrementK(3, 275)).toBeCloseTo(137.2, 1);
+  });
+
+  it('grows monotonically with attenuation', () => {
+    expect(rainNoiseTempIncrementK(1)).toBeLessThan(rainNoiseTempIncrementK(5));
   });
 });
 

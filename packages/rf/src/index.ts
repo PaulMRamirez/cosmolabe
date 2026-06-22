@@ -97,6 +97,7 @@ export function dopplerShiftHz(freqHz: number, rangeRateKmS: number): number {
 export {
   rainAttenuationDb,
   gaseousAttenuationDb,
+  rainNoiseTempIncrementK,
   RAIN_COEFFS,
   type RainCoeffs,
   type RainAttenuationInput,
@@ -109,3 +110,20 @@ export {
   type Transmitter,
   type Receiver,
 } from './comm-entities.ts';
+export {
+  antennaPatternLossDb,
+  pointingLossDb,
+  polarizationLossDb,
+  PATTERN_NULL_FLOOR_DB,
+  POLARIZATION_NULL_FLOOR_DB,
+  type AntennaPattern,
+  type Polarization,
+} from './antenna-pattern.ts';
+export {
+  berMpsk,
+  berMqam,
+  linkMarginDb,
+  MODCOD_TABLE,
+  type ModCod,
+} from './modulation.ts';
+export { RfError, ModulationError } from './errors.ts';
