@@ -92,3 +92,28 @@ test('the AnalysisLauncher search jumps to the owning tab and expands the card',
   await expect(page.getByTestId('taskcard-eclipse-toggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByTestId('compute-eclipse')).toBeVisible();
 });
+
+test('a mission-profile preset switches to its persona home tab and pre-expands its cards', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await loadCassiniSample(page);
+
+  // The preset chips are an accelerator over the workflow IA. From the default tab, clicking
+  // SSA switches to the Conjunction tab and pre-expands its primary cards (catalog screen +
+  // closest approach). The presets hide nothing; the tabs stay reachable normally.
+  await openAnalyze(page, 'orbit-maneuver');
+  await expect(page.getByTestId('mission-presets')).toBeVisible();
+  await page.getByTestId('mission-preset-SSA').click();
+  await expect(page.getByTestId('tab-conjunction')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('mission-preset-SSA')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('taskcard-catalog-screen-toggle')).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await expect(page.getByTestId('taskcard-closest-approach-toggle')).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+});

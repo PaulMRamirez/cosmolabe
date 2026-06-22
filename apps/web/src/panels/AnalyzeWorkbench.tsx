@@ -7,11 +7,15 @@
 // panel reads its result from the store, so switching tabs re-renders from state with no
 // recompute). Each tab body stays lazy (panels/lazy.tsx), so the first-paint shell budget
 // is unaffected. A top-of-dock AnalysisLauncher searches a static card registry and, on a
-// hit, switches to the owning tab and expands the card.
+// hit, switches to the owning tab and expands the card. A PresetBar of mission-profile
+// chips is the per-persona accelerator: selecting a preset switches to that persona's home
+// tab and pre-expands its primary cards through the same expandRequest path the launcher
+// uses. The presets hide nothing; every tab and card stays reachable normally.
 
 import { useCallback, useState, type KeyboardEvent } from 'react';
 import { AnalysisContextBar } from './AnalysisContextBar.tsx';
 import { AnalysisLauncher, type LauncherEntry } from './AnalysisLauncher.tsx';
+import { PresetBar, type PresetEntry } from './PresetBar.tsx';
 import {
   AccessCommsPanel,
   ConjunctionPanel,
@@ -57,6 +61,18 @@ export function AnalyzeWorkbench(props: AnalyzeWorkbenchProps): JSX.Element {
     (entry: LauncherEntry): void => {
       onTab(entry.tab);
       setLaunch((prev) => ({ tab: entry.tab, req: { id: entry.id, token: (prev?.req.token ?? 0) + 1 } }));
+    },
+    [onTab],
+  );
+  // A mission-profile preset is an accelerator over the same path: switch to the persona's
+  // home tab and pre-expand its primary cards (an ExpandRequest carrying the ordered ids).
+  const onPreset = useCallback(
+    (entry: PresetEntry): void => {
+      onTab(entry.tab);
+      setLaunch((prev) => ({
+        tab: entry.tab,
+        req: { id: entry.cardIds, token: (prev?.req.token ?? 0) + 1 },
+      }));
     },
     [onTab],
   );
@@ -113,6 +129,7 @@ export function AnalyzeWorkbench(props: AnalyzeWorkbenchProps): JSX.Element {
         data-testid="analyze-tabpanel"
         tabIndex={0}
       >
+        <PresetBar activeTab={activeTab} onPreset={onPreset} />
         <AnalysisLauncher onLaunch={onLaunch} />
         <PanelSuspense>
           {activeTab === 'orbit-maneuver' && (

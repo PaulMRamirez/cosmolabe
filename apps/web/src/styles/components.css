@@ -1003,6 +1003,36 @@ button[aria-pressed='true'] {
   padding: var(--space-2) var(--space-3);
 }
 
+/* Mission-profile presets: a row of accelerator chips above the launcher. Real buttons;
+   the chip whose tab is active reads aria-pressed (an accelerator hint, not a mode). */
+.bessel-mission-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.bessel-mission-preset {
+  padding: 2px var(--space-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-1);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.bessel-mission-preset:hover {
+  color: var(--text-0);
+  background: var(--surface-2, var(--surface-1));
+}
+
+.bessel-mission-preset[aria-pressed='true'] {
+  color: var(--text-0);
+  border-color: var(--accent, var(--text-0));
+}
+
 /* The AnalysisLauncher search at the top of the tabpanel: a single input with a
    floating result list of intent matches. */
 .bessel-analysis-launcher {
