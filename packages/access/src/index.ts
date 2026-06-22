@@ -12,6 +12,9 @@ import {
   type Window,
 } from '@bessel/timeline';
 import { computeRangeRateWindow, type RangeRateConstraint } from './range-rate.ts';
+import { computeSunExclusionWindow, type SunExclusionConstraint } from './sun-exclusion.ts';
+import { computeAzElMaskWindow, type AzElMaskConstraint } from './az-el-mask.ts';
+import { computeTerrainMaskedLosWindow, type TerrainMaskedLosConstraint } from './terrain-los.ts';
 
 /**
  * A line-of-sight constraint: the target must NOT be occulted by `body`. The
@@ -32,7 +35,13 @@ export interface RangeConstraint {
   readonly maxKm?: number;
 }
 
-export type AccessConstraint = LineOfSightConstraint | RangeConstraint | RangeRateConstraint;
+export type AccessConstraint =
+  | LineOfSightConstraint
+  | RangeConstraint
+  | RangeRateConstraint
+  | SunExclusionConstraint
+  | AzElMaskConstraint
+  | TerrainMaskedLosConstraint;
 
 export interface AccessRequest {
   /** Observing body/spacecraft (SPICE id or name). */
@@ -70,6 +79,23 @@ export {
   RangeRateConstraintError,
   type RangeRateConstraint,
 } from './range-rate.ts';
+export {
+  computeSunExclusionWindow,
+  SunExclusionConstraintError,
+  type SunExclusionConstraint,
+} from './sun-exclusion.ts';
+export {
+  computeAzElMaskWindow,
+  interpolateMaskFloor,
+  AzElMaskConstraintError,
+  type AzElMaskConstraint,
+  type MaskPoint,
+} from './az-el-mask.ts';
+export {
+  computeTerrainMaskedLosWindow,
+  TerrainMaskedLosConstraintError,
+  type TerrainMaskedLosConstraint,
+} from './terrain-los.ts';
 
 /** One hop of an access chain: an observer seeing a target under constraints. */
 export interface AccessLink {
@@ -126,6 +152,18 @@ async function constraintWindow(
     // Range rate (km/s) within the band, derived analytically from spkezr and refined
     // by the shared root-finder. See range-rate.ts.
     return computeRangeRateWindow(spice, req.observer, req.target, req.span, req.step, abcorr, constraint);
+  }
+  if (constraint.kind === 'sunExclusion') {
+    // Sensor keep-out: observer-to-Sun separation from the target direction >= keepout (gfsep).
+    return computeSunExclusionWindow(spice, req.observer, req.target, req.span, req.step, abcorr, constraint);
+  }
+  if (constraint.kind === 'azElMask') {
+    // Topocentric elevation above a (possibly azimuth-dependent) horizon mask. See az-el-mask.ts.
+    return computeAzElMaskWindow(spice, req.target, req.span, req.step, abcorr, constraint);
+  }
+  if (constraint.kind === 'terrainLos') {
+    // Line of sight clear of the body's terrain (DEM ray test per epoch). See terrain-los.ts.
+    return computeTerrainMaskedLosWindow(spice, req.observer, req.target, req.span, req.step, abcorr, constraint);
   }
   // range: intersect the (distance < max) and (distance > min) windows.
   const pieces: Window[] = [];

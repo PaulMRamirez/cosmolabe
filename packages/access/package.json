@@ -8,6 +8,7 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@bessel/spice": "workspace:*",
+    "@bessel/terrain": "workspace:*",
     "@bessel/timeline": "workspace:*"
   }
 }

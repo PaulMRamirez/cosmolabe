@@ -265,6 +265,9 @@ importers:
       '@bessel/spice':
         specifier: workspace:*
         version: link:../spice
+      '@bessel/terrain':
+        specifier: workspace:*
+        version: link:../terrain
       '@bessel/timeline':
         specifier: workspace:*
         version: link:../timeline
