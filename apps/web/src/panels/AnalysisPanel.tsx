@@ -136,7 +136,7 @@ function CatalogScreen(props: {
       {running ? (
         <>
           <p className="bessel-analysis-stat" data-testid="screen-progress">
-            Screening {screening.done}/{screening.total} partitions...
+            Screening {screening.done}/{screening.total} primaries...
           </p>
           <Button variant="ghost" testId="screen-cancel" onClick={() => void props.engine?.cancelScreen()}>
             Cancel

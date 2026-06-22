@@ -13,6 +13,7 @@
 import type { AberrationCorrection, SpiceEngine } from '@bessel/spice';
 import { findConstraintWindow, type EphemerisTime, type Window } from '@bessel/timeline';
 import {
+  bodyRadiiKm,
   computeElevationAccess,
   facilityTopoFrame,
   topocentricElAz,
@@ -128,9 +129,7 @@ export async function computeAzElMaskWindow(
 
   // Build the facility's topocentric frame once from the body's radii, then per epoch sample the
   // target in the body-fixed frame and reduce to a topocentric (elevation, azimuth).
-  const radii = await spice.bodvrd(facility.body, 'RADII');
-  const re = radii[0]!;
-  const rp = radii[2]!;
+  const { equatorialKm: re, polarKm: rp } = await bodyRadiiKm(spice, facility.body);
   const frame = facilityTopoFrame(facility, re, rp);
 
   // g(et) = elevation(et) - floor(azimuth(et)); access is where g >= 0. Elevation and azimuth are

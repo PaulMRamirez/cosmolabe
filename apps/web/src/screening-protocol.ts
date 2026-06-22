@@ -16,11 +16,14 @@ export interface ScreeningRequest {
   readonly padKm: number;
 }
 
-/** Incremental progress from the worker: partitions screened so far out of the total. */
+/**
+ * Incremental progress from the worker: primaries screened so far. The total is fixed for the run
+ * and is carried on the 'start' event (and held in the slice), so the per-tick message only needs
+ * the advancing `done` count rather than re-sending the constant total each time.
+ */
 export interface ScreeningProgress {
   readonly kind: 'progress';
   readonly done: number;
-  readonly total: number;
 }
 
 /** Terminal success from the worker: the flagged conjunction events. */
@@ -106,7 +109,8 @@ export function reduceScreening(state: ScreeningState, event: ScreeningEvent): S
     case 'start':
       return { status: 'running', done: 0, total: Math.max(0, event.total), epoch: event.epoch, events: null };
     case 'progress':
-      return { ...state, status: 'running', done: event.done, total: event.total };
+      // The total is fixed for the run (set on 'start'); a progress tick only advances `done`.
+      return { ...state, status: 'running', done: event.done };
     case 'result':
       return { ...state, status: 'done', events: event.events, done: state.total };
     case 'error':

@@ -678,6 +678,30 @@ export class SpiceBindings {
   }
 
   /**
+   * Shared geometry-finder window scaffold: build the [start, stop] confinement window,
+   * allocate a result window for up to `maxIntervals` intervals, run the caller's gfX_c
+   * call against the two cells, check for a SPICE failure, and return the result intervals.
+   * Every gfX binding differs only in the finder-specific call, so this owns the common
+   * cnfine/result cell lifetime and the wninsd/checkFailed/readWindowCell boilerplate.
+   */
+  private runGfWindow(
+    start: number,
+    stop: number,
+    maxIntervals: number,
+    call: (cnfineCell: number, resultCell: number) => void,
+  ): [number, number][] {
+    return this.scope(() => {
+      const cnfine = this.makeWindowCell(2);
+      this.call('wninsd_c', start, stop, cnfine.cell);
+      this.checkFailed();
+      const result = this.makeWindowCell(2 * maxIntervals);
+      call(cnfine.cell, result.cell);
+      this.checkFailed();
+      return this.readWindowCell(result.cell);
+    });
+  }
+
+  /**
    * Occultation/eclipse interval finder (gfoclt): intervals over [start,stop] in
    * which `back` is occulted by `front` as seen from the observer. Returns [s,e]
    * ET-second intervals.
@@ -697,11 +721,7 @@ export class SpiceBindings {
     stop: number,
     maxIntervals = 1000,
   ): [number, number][] {
-    return this.scope(() => {
-      const cnfine = this.makeWindowCell(2);
-      this.call('wninsd_c', start, stop, cnfine.cell);
-      this.checkFailed();
-      const result = this.makeWindowCell(2 * maxIntervals);
+    return this.runGfWindow(start, stop, maxIntervals, (cnfineCell, resultCell) =>
       this.call(
         'gfoclt_c',
         this.str(occtyp),
@@ -714,12 +734,10 @@ export class SpiceBindings {
         this.str(abcorr),
         this.str(observer),
         step,
-        cnfine.cell,
-        result.cell,
-      );
-      this.checkFailed();
-      return this.readWindowCell(result.cell);
-    });
+        cnfineCell,
+        resultCell,
+      ),
+    );
   }
 
   /**
@@ -738,11 +756,7 @@ export class SpiceBindings {
     stop: number,
     maxIntervals = 1000,
   ): [number, number][] {
-    return this.scope(() => {
-      const cnfine = this.makeWindowCell(2);
-      this.call('wninsd_c', start, stop, cnfine.cell);
-      this.checkFailed();
-      const result = this.makeWindowCell(2 * maxIntervals);
+    return this.runGfWindow(start, stop, maxIntervals, (cnfineCell, resultCell) =>
       this.call(
         'gfdist_c',
         this.str(target),
@@ -753,12 +767,10 @@ export class SpiceBindings {
         0, // adjust (used only by ABSMAX/ABSMIN/LOCMAX/LOCMIN)
         step,
         maxIntervals,
-        cnfine.cell,
-        result.cell,
-      );
-      this.checkFailed();
-      return this.readWindowCell(result.cell);
-    });
+        cnfineCell,
+        resultCell,
+      ),
+    );
   }
 
   /**
@@ -787,11 +799,7 @@ export class SpiceBindings {
     stop: number,
     maxIntervals = 1000,
   ): [number, number][] {
-    return this.scope(() => {
-      const cnfine = this.makeWindowCell(2);
-      this.call('wninsd_c', start, stop, cnfine.cell);
-      this.checkFailed();
-      const result = this.makeWindowCell(2 * maxIntervals);
+    return this.runGfWindow(start, stop, maxIntervals, (cnfineCell, resultCell) =>
       this.call(
         'gfsep_c',
         this.str(targ1),
@@ -807,12 +815,10 @@ export class SpiceBindings {
         adjust,
         step,
         maxIntervals,
-        cnfine.cell,
-        result.cell,
-      );
-      this.checkFailed();
-      return this.readWindowCell(result.cell);
-    });
+        cnfineCell,
+        resultCell,
+      ),
+    );
   }
 
   /**
@@ -840,11 +846,7 @@ export class SpiceBindings {
     stop: number,
     maxIntervals = 1000,
   ): [number, number][] {
-    return this.scope(() => {
-      const cnfine = this.makeWindowCell(2);
-      this.call('wninsd_c', start, stop, cnfine.cell);
-      this.checkFailed();
-      const result = this.makeWindowCell(2 * maxIntervals);
+    return this.runGfWindow(start, stop, maxIntervals, (cnfineCell, resultCell) =>
       this.call(
         'gfposc_c',
         this.str(target),
@@ -858,12 +860,10 @@ export class SpiceBindings {
         adjust,
         step,
         maxIntervals,
-        cnfine.cell,
-        result.cell,
-      );
-      this.checkFailed();
-      return this.readWindowCell(result.cell);
-    });
+        cnfineCell,
+        resultCell,
+      ),
+    );
   }
 
   /**

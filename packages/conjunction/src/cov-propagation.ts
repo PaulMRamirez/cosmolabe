@@ -121,12 +121,19 @@ export function choleskyLower(m: ArrayLike<number>, n: number): Float64Array {
 
 /**
  * Integrate the 42-state augmented system (state + the 36 STM entries) from the state
- * epoch (t = 0) to `tcaSec` and return the 6x6 STM Phi(tca, 0), row-major (length 36).
- * `tcaSec` may be negative (TCA before the epoch): the augmented system is integrated
- * in the reversed time variable tau = -t, which leaves Phi(tca, 0) unchanged because
- * the variational equations are time-symmetric for the (conservative) force model.
+ * epoch (t = 0) to `tcaSec` and return BOTH the propagated 6-state and the 6x6 STM
+ * Phi(tca, 0), each row-major. The single augmented integration already carries the
+ * propagated state in yf[0..6) and the STM in yf[6..42), so we read both from it rather
+ * than re-integrating the bare 6-state separately. `tcaSec` may be negative (TCA before
+ * the epoch): the augmented system is integrated in the reversed time variable tau = -t,
+ * which leaves Phi(tca, 0) unchanged because the variational equations are time-symmetric
+ * for the (conservative) force model.
  */
-function stmToTca(state6: State6, tcaSec: number, model: ForceModel): Float64Array {
+function propagateStateAndStm(
+  state6: State6,
+  tcaSec: number,
+  model: ForceModel,
+): { state: Float64Array; phi: Float64Array } {
   if (state6.length !== 6) {
     throw new CovarianceError(`state must be a 6-state (got length ${state6.length})`);
   }
@@ -135,28 +142,28 @@ function stmToTca(state6: State6, tcaSec: number, model: ForceModel): Float64Arr
   }
   const s6 = Float64Array.from({ length: 6 }, (_, i) => state6[i]!);
   if (tcaSec === 0) {
-    // Phi(t0, t0) = identity; no integration needed.
+    // Phi(t0, t0) = identity; the state is unchanged, so no integration is needed.
     const phi = new Float64Array(36);
     for (let i = 0; i < 6; i++) phi[i * 6 + i] = 1;
-    return phi;
+    return { state: s6, phi };
   }
-  if (tcaSec > 0) {
-    const y0 = augmentInitialState(s6);
-    const yf = integrate(makeStmRhs(model), y0, 0, Float64Array.of(tcaSec))[0]!;
-    return yf.slice(6, 42);
-  }
-  // Backward propagation: integrate in tau = -t over [0, -tcaSec]. The reversed RHS is
-  // f_rev(tau, y) = -f(-tau, y); dy/dt = f, so dy/dtau = -f. The integrator only marches
-  // forward, so we wrap the STM RHS with a sign flip and a negated time argument.
-  const fwd = makeStmRhs(model);
-  const buf = new Float64Array(42);
-  const revRhs = (tau: number, y: Float64Array, dy: Float64Array): void => {
-    fwd(-tau, y, buf);
-    for (let i = 0; i < 42; i++) dy[i] = -buf[i]!;
-  };
   const y0 = augmentInitialState(s6);
-  const yf = integrate(revRhs, y0, 0, Float64Array.of(-tcaSec))[0]!;
-  return yf.slice(6, 42);
+  let yf: Float64Array;
+  if (tcaSec > 0) {
+    yf = integrate(makeStmRhs(model), y0, 0, Float64Array.of(tcaSec))[0]!;
+  } else {
+    // Backward propagation: integrate in tau = -t over [0, -tcaSec]. The reversed RHS is
+    // f_rev(tau, y) = -f(-tau, y); dy/dt = f, so dy/dtau = -f. The integrator only marches
+    // forward, so we wrap the STM RHS with a sign flip and a negated time argument.
+    const fwd = makeStmRhs(model);
+    const buf = new Float64Array(42);
+    const revRhs = (tau: number, y: Float64Array, dy: Float64Array): void => {
+      fwd(-tau, y, buf);
+      for (let i = 0; i < 42; i++) dy[i] = -buf[i]!;
+    };
+    yf = integrate(revRhs, y0, 0, Float64Array.of(-tcaSec))[0]!;
+  }
+  return { state: yf.slice(0, 6), phi: yf.slice(6, 42) };
 }
 
 /** Multiply two row-major NxN matrices: C = A B. */
@@ -214,38 +221,14 @@ export function propagateCovarianceToTca(
   forceModel: ForceModel = twoBodyForceModel(),
 ): PropagatedCovariance {
   assertCov6x6(cov6x6, 'epoch');
-  const phi = stmToTca(state6, tcaSec, forceModel);
+  // One augmented integration yields both the propagated state and the STM (the state was
+  // already in the augmented solution, so there is no separate bare-6-state re-integration).
+  const { state, phi } = propagateStateAndStm(state6, tcaSec, forceModel);
   // P(tca) = Phi P0 Phi^T.
   const p0Phi = matMul(cov6x6, transpose(phi, 6), 6);
   const cov = matMul(phi, p0Phi, 6);
   symmetrize(cov, 6); // strip the small numerical asymmetry the triple product accrues
-  // The propagated state is Phi-independent: re-read it from the augmented integration.
-  const state = propagateState6(state6, tcaSec, forceModel);
   return { phi, cov, state };
-}
-
-/** Propagate a bare 6-state to `tcaSec` under `model` (forward or backward in time). */
-function propagateState6(state6: State6, tcaSec: number, model: ForceModel): Float64Array {
-  const s6 = Float64Array.from({ length: 6 }, (_, i) => state6[i]!);
-  if (tcaSec === 0) return s6;
-  const rhs6 = (t: number, y: Float64Array, dy: Float64Array): void => {
-    const a = model.acceleration({ et: t, r: [y[0]!, y[1]!, y[2]!], v: [y[3]!, y[4]!, y[5]!] });
-    dy[0] = y[3]!;
-    dy[1] = y[4]!;
-    dy[2] = y[5]!;
-    dy[3] = a[0];
-    dy[4] = a[1];
-    dy[5] = a[2];
-  };
-  if (tcaSec > 0) {
-    return integrate(rhs6, s6, 0, Float64Array.of(tcaSec))[0]!;
-  }
-  const buf = new Float64Array(6);
-  const revRhs = (tau: number, y: Float64Array, dy: Float64Array): void => {
-    rhs6(-tau, y, buf);
-    for (let i = 0; i < 6; i++) dy[i] = -buf[i]!;
-  };
-  return integrate(revRhs, s6, 0, Float64Array.of(-tcaSec))[0]!;
 }
 
 /** Extract the top-left 3x3 position block (row-major, length 9) from a 6x6 covariance. */

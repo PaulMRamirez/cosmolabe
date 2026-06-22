@@ -48,6 +48,13 @@ export interface ScreenOptions {
    * it could still close inside the threshold. Default 50 km.
    */
   readonly sieveMarginKm?: number;
+  /**
+   * Optional progress hook, invoked after each primary object i finishes (its pairs with all
+   * higher-index objects screened), with done = i + 1 and total = objects.length - 1 (the count
+   * of primaries, since the last object has no higher-index partner). Lets a worker yield progress
+   * from one all-vs-all call instead of re-partitioning the catalog. Does not affect the result.
+   */
+  readonly onProgress?: (done: number, total: number) => void;
 }
 
 /** A screening input or configuration error (loud, located). */
@@ -246,6 +253,7 @@ export function screenAllVsAll(objects: readonly SampledEphemeris[], opts: Scree
   const shells = objects.map(radialShells);
 
   const events: ConjunctionEvent[] = [];
+  const total = objects.length - 1; // primaries 0..N-2 (the last object has no higher-index pair)
   for (let i = 0; i < objects.length; i++) {
     for (let j = i + 1; j < objects.length; j++) {
       const a = objects[i]!;
@@ -259,6 +267,9 @@ export function screenAllVsAll(objects: readonly SampledEphemeris[], opts: Scree
       const ev = refinePair(a, b);
       if (ev.missKm <= opts.thresholdKm) events.push(ev);
     }
+    // Report after primary i finishes (all its higher-index pairs screened). i < total covers
+    // every primary; the last object (i === total) has no pair, so it is not reported.
+    if (i < total) opts.onProgress?.(i + 1, total);
   }
   events.sort((p, q) => p.tca - q.tca);
   return events;

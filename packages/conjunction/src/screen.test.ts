@@ -145,6 +145,26 @@ describe('screenAllVsAll', () => {
     expect(ev.missKm).toBeLessThan(2.0); // true 0.5 km, far below the ~5.5 km discrete-grid minimum
   });
 
+  it('invokes onProgress once per primary with a monotonic done and the fixed total', () => {
+    const et = grid(0, 61, 10);
+    const R = 7000;
+    const a = rectilinear('A', [R - 7 * 300, 0, 0], [7, 0, 0], et);
+    const b = rectilinear('B', [R, -7 * 300, 2], [0, 7, 0], et);
+    const c = rectilinear('C', [42000, 0, 0], [0, 3, 0], et);
+    const d = rectilinear('D', [42000, -3 * 600, 0], [0, 3, 0], et);
+    const objects = [a, b, c, d];
+
+    const ticks: { done: number; total: number }[] = [];
+    screenAllVsAll(objects, { thresholdKm: 5, onProgress: (done, total) => ticks.push({ done, total }) });
+
+    const total = objects.length - 1; // the last object has no higher-index partner
+    expect(ticks).toHaveLength(total);
+    for (let i = 0; i < ticks.length; i++) {
+      expect(ticks[i]!.done).toBe(i + 1); // strictly monotonic 1..total
+      expect(ticks[i]!.total).toBe(total); // constant across the run
+    }
+  });
+
   it('fails loudly on malformed input', () => {
     const et = grid(0, 3, 10);
     const bad: SampledEphemeris = { id: 'X', et, pos: new Float64Array(6), vel: new Float64Array(9) };

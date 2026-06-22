@@ -10,6 +10,8 @@ import type { AberrationCorrection, SpiceEngine } from '@bessel/spice';
 import { findConstraintWindow, type EphemerisTime, type Window } from '@bessel/timeline';
 import { terrainMaskedLos, type Dem } from '@bessel/terrain';
 
+import { bodyRadiiKm } from './facility.ts';
+
 /**
  * A terrain-masked line-of-sight constraint: access only when the observer-to-target line clears
  * the terrain of `body`. `bodyFrame` is the body-fixed frame the DEM is defined in; `dem` gives
@@ -55,18 +57,19 @@ export async function computeTerrainMaskedLosWindow(
   if (samples !== undefined && (!Number.isInteger(samples) || samples < 2)) {
     throw new TerrainMaskedLosConstraintError(`samples must be an integer >= 2, got ${samples}`);
   }
-  const radii = await spice.bodvrd(body, 'RADII');
-  const bodyRadiusKm = radii[0];
-  if (bodyRadiusKm === undefined || !(bodyRadiusKm > 0)) {
-    throw new TerrainMaskedLosConstraintError(`body ${body} has no positive RADII`);
-  }
+  // The mean equatorial radius (RADII[0]) sets the DEM reference sphere; bodyRadiiKm owns the
+  // bodvrd read and the positive-radius validation shared with the az-el mask and elevation access.
+  const { equatorialKm: bodyRadiusKm } = await bodyRadiiKm(spice, body);
 
   // g(et) = +1 when the LOS is clear, -1 when blocked. Both positions are body-fixed (km),
-  // relative to the body center, the frame the DEM uses.
+  // relative to the body center, the frame the DEM uses. The two spkpos reads are independent,
+  // so issue them concurrently (one round-trip of latency, not two).
   const g = async (et: number): Promise<number> => {
-    const obs = (await spice.spkpos(observer, et, bodyFrame, abcorr, body)).position;
-    const tgt = (await spice.spkpos(target, et, bodyFrame, abcorr, body)).position;
-    const clear = terrainMaskedLos(obs, tgt, dem, bodyRadiusKm, samples);
+    const [obsRes, tgtRes] = await Promise.all([
+      spice.spkpos(observer, et, bodyFrame, abcorr, body),
+      spice.spkpos(target, et, bodyFrame, abcorr, body),
+    ]);
+    const clear = terrainMaskedLos(obsRes.position, tgtRes.position, dem, bodyRadiusKm, samples);
     return clear ? 1 : -1;
   };
   return findConstraintWindow(g, span, step);

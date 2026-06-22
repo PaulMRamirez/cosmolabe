@@ -7,6 +7,33 @@
 import type { AberrationCorrection, SpiceEngine, Vec3 } from '@bessel/spice';
 import { findConstraintWindow, type EphemerisTime, type Window } from '@bessel/timeline';
 
+/**
+ * The body's equatorial and polar radii (km) from RADII (RADII[0] and RADII[2]). One shared
+ * reader for the az-el mask, the elevation access, and the terrain LOS, so the bodvrd call and
+ * the positive-radius validation live in one place. Throws a located error when either radius is
+ * missing or non-positive (a body with no usable triaxial radii cannot define a horizon).
+ */
+export async function bodyRadiiKm(
+  spice: SpiceEngine,
+  body: string,
+): Promise<{ equatorialKm: number; polarKm: number }> {
+  const radii = await spice.bodvrd(body, 'RADII');
+  const equatorialKm = radii[0];
+  const polarKm = radii[2];
+  if (equatorialKm === undefined || !(equatorialKm > 0) || polarKm === undefined || !(polarKm > 0)) {
+    throw new FacilityRadiiError(`body ${body} has no positive RADII`);
+  }
+  return { equatorialKm, polarKm };
+}
+
+/** A typed, located error for a body whose RADII are missing or non-positive. */
+export class FacilityRadiiError extends Error {
+  override readonly name = 'FacilityRadiiError';
+  constructor(message: string) {
+    super(`@bessel/access radii: ${message}`);
+  }
+}
+
 export interface Facility {
   /** Central body (e.g. "EARTH") whose body-fixed frame the facility sits in. */
   readonly body: string;
@@ -92,9 +119,7 @@ export async function computeElevationAccess(
   abcorr: AberrationCorrection = 'NONE',
   up: ElevationUp = 'geodetic',
 ): Promise<Window> {
-  const radii = await spice.bodvrd(facility.body, 'RADII');
-  const re = radii[0]!;
-  const rp = radii[2]!;
+  const { equatorialKm: re, polarKm: rp } = await bodyRadiiKm(spice, facility.body);
   const facPos = geodeticToRect(facility, re, (re - rp) / re);
   const upVec = up === 'geocentric' ? geocentricNormal(facPos) : geodeticNormal(facility);
 

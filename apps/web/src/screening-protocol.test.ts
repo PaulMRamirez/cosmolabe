@@ -60,12 +60,12 @@ describe('reduceScreening', () => {
     });
   });
 
-  it('progress advances done/total while running and preserves the epoch', () => {
+  it('progress advances done while running and preserves the total and epoch', () => {
     const running = { status: 'running' as const, done: 0, total: 4, epoch: 1000, events: null };
-    const next = reduceScreening(running, { kind: 'progress', done: 2, total: 4 });
+    const next = reduceScreening(running, { kind: 'progress', done: 2 });
     expect(next.status).toBe('running');
     expect(next.done).toBe(2);
-    expect(next.total).toBe(4);
+    expect(next.total).toBe(4); // preserved from 'start', not re-sent per tick
     expect(next.epoch).toBe(1000);
   });
 
