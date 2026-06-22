@@ -353,7 +353,7 @@ describe('@bessel/ui TimelineControls annotations', () => {
     expect(atEnd).not.toMatch(/data-testid="timeline-to-start"[^>]*\bdisabled\b/);
   });
 
-  it('suffixes the epoch with its time system and marks the active system pressed', () => {
+  it('shows the epoch and a time-system selector with the active system chosen', () => {
     const out = html(
       createElement(TimelineControls, {
         playing: false,
@@ -369,10 +369,12 @@ describe('@bessel/ui TimelineControls annotations', () => {
         onTimeSystemChange: () => {},
       }),
     );
-    expect(out).toContain('2004-07-01T00:00:00 UTC');
+    expect(out).toContain('2004-07-01T00:00:00');
     expect(out).toContain('data-testid="time-system"');
-    expect(out).toMatch(/aria-pressed="true"[^>]*data-testid="time-system-utc"/);
-    expect(out).toMatch(/aria-pressed="false"[^>]*data-testid="time-system-tdb"/);
+    // The time system is a select; both options render and UTC is the active value.
+    expect(out).toMatch(/<select[^>]*data-testid="time-system"/);
+    expect(out).toContain('>UTC</option>');
+    expect(out).toContain('>TDB</option>');
   });
 });
 

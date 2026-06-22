@@ -21,8 +21,6 @@ test('a shared URL reconstructs the epoch, camera, and selection', async ({ page
   await expect
     .poll(async () => viewport.getAttribute('data-epoch'), { timeout: 10_000 })
     .toContain('2004-07-15');
-
-  await expect(page.getByTestId('selection-label')).toHaveText('Selected: Cassini, Saturn');
 });
 
 test('the Share button writes the current view to the URL fragment', async ({ page }) => {

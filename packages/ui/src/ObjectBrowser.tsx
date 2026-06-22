@@ -1,7 +1,10 @@
 // Object browser: one row per catalog object. The row name toggles selection
 // (multi-select, drives the inspector and measure), a crosshair centers the
-// camera on it, and an eye toggles its visibility. Presentational; the viewer
-// owns the selection set, focus, and visibility map and the scene wiring.
+// camera on it, an eye toggles its visibility, and a spacecraft row gains a track
+// toggle (the camera follows it). Presentational; the viewer owns the selection
+// set, focus, visibility map, tracking, and the scene wiring.
+
+import { Icon, DomainIcon } from '@bessel/selene-design';
 
 export interface CatalogEntry {
   readonly id: string;
@@ -19,6 +22,22 @@ export interface ObjectBrowserProps {
   readonly focus?: string;
   /** Center the camera on a body; when omitted the per-row crosshair is hidden. */
   readonly onCenter?: (id: string) => void;
+  /** Toggle camera tracking of a spacecraft; when omitted the per-row track icon is
+   *  hidden. Tracking is global to the mission spacecraft, so `tracking` is shared. */
+  readonly onToggleTrack?: (id: string) => void;
+  readonly tracking?: boolean;
+  /** Instrument-layer controls, surfaced on instrument rows: the eye shows/hides that
+   *  sensor's FOV + footprint (instruments have no mesh, so this is their real "show"),
+   *  and the FOV/footprint sub-toggles appear when it is shown. Replaces the separate
+   *  Show-instruments button and the instrument selector. */
+  readonly instrumentLayer?: {
+    readonly isShown: (id: string) => boolean;
+    readonly onToggle: (id: string) => void;
+    readonly fovOn: boolean;
+    readonly footprintOn: boolean;
+    readonly onToggleFov: () => void;
+    readonly onToggleFootprint: () => void;
+  };
 }
 
 /** A crosshair (center-on) glyph. */
@@ -42,6 +61,62 @@ function EyeIcon({ open }: { open: boolean }): JSX.Element {
       <circle cx="12" cy="12" r="3" />
       {open ? null : <line x1="3" y1="3" x2="21" y2="21" />}
     </svg>
+  );
+}
+
+/** The instrument-row controls: the eye toggles the sensor's FOV + footprint layer,
+ *  and the FOV / footprint sub-toggles appear (and apply) only while it is shown. */
+function InstrumentControls({
+  name,
+  id,
+  layer,
+}: {
+  name: string;
+  id: string;
+  layer: NonNullable<ObjectBrowserProps['instrumentLayer']>;
+}): JSX.Element {
+  const shown = layer.isShown(id);
+  return (
+    <>
+      {shown ? (
+        <>
+          <button
+            type="button"
+            className="bessel-body-layer"
+            aria-pressed={layer.fovOn}
+            aria-label={`${layer.fovOn ? 'Hide' : 'Show'} ${name} field of view`}
+            title={`${layer.fovOn ? 'Hide' : 'Show'} field of view`}
+            onClick={layer.onToggleFov}
+            data-testid="toggle-fov"
+          >
+            <DomainIcon name="sensor-fov" size="sm" />
+          </button>
+          <button
+            type="button"
+            className="bessel-body-layer"
+            aria-pressed={layer.footprintOn}
+            aria-label={`${layer.footprintOn ? 'Hide' : 'Show'} ${name} footprint`}
+            title={`${layer.footprintOn ? 'Hide' : 'Show'} footprint`}
+            onClick={layer.onToggleFootprint}
+            data-testid="toggle-footprint"
+          >
+            <DomainIcon name="sensor-footprint" size="sm" />
+          </button>
+        </>
+      ) : null}
+      <button
+        type="button"
+        role="switch"
+        className="bessel-eye"
+        aria-checked={shown}
+        aria-label={`${shown ? 'Hide' : 'Show'} ${name} sensor view`}
+        title={`${shown ? 'Hide' : 'Show'} sensor view`}
+        onClick={() => layer.onToggle(id)}
+        data-testid={`instrument-show-${id}`}
+      >
+        <EyeIcon open={shown} />
+      </button>
+    </>
   );
 }
 
@@ -71,31 +146,51 @@ export function ObjectBrowser(props: ObjectBrowserProps): JSX.Element {
               >
                 {entry.name}
               </button>
-              {props.onCenter && entry.kind !== 'instrument' ? (
-                <button
-                  type="button"
-                  className="bessel-body-center"
-                  aria-pressed={focused}
-                  aria-label={`Fly to ${entry.name}`}
-                  title={`Fly to ${entry.name}`}
-                  onClick={() => props.onCenter?.(entry.id)}
-                  data-testid={`center-${entry.id}`}
-                >
-                  <CenterIcon />
-                </button>
-              ) : null}
-              <button
-                type="button"
-                role="switch"
-                className="bessel-eye"
-                aria-checked={visible}
-                aria-label={`${visible ? 'Hide' : 'Show'} ${entry.name}`}
-                title={`${visible ? 'Hide' : 'Show'} ${entry.name}`}
-                onClick={() => props.onToggleVisible(entry.id, !visible)}
-                data-testid={`visible-${entry.id}`}
-              >
-                <EyeIcon open={visible} />
-              </button>
+              {entry.kind === 'instrument' && props.instrumentLayer ? (
+                <InstrumentControls name={entry.name} id={entry.id} layer={props.instrumentLayer} />
+              ) : (
+                <>
+                  {props.onToggleTrack && entry.kind === 'spacecraft' ? (
+                    <button
+                      type="button"
+                      role="switch"
+                      className="bessel-body-track"
+                      aria-checked={!!props.tracking}
+                      aria-label={`${props.tracking ? 'Stop tracking' : 'Track'} ${entry.name}`}
+                      title={`${props.tracking ? 'Stop tracking' : 'Track'} ${entry.name}`}
+                      onClick={() => props.onToggleTrack?.(entry.id)}
+                      data-testid={`track-${entry.id}`}
+                    >
+                      <Icon name="radar" size="sm" />
+                    </button>
+                  ) : null}
+                  {props.onCenter && entry.kind !== 'instrument' ? (
+                    <button
+                      type="button"
+                      className="bessel-body-center"
+                      aria-pressed={focused}
+                      aria-label={`Fly to ${entry.name}`}
+                      title={`Fly to ${entry.name}`}
+                      onClick={() => props.onCenter?.(entry.id)}
+                      data-testid={`center-${entry.id}`}
+                    >
+                      <CenterIcon />
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    role="switch"
+                    className="bessel-eye"
+                    aria-checked={visible}
+                    aria-label={`${visible ? 'Hide' : 'Show'} ${entry.name}`}
+                    title={`${visible ? 'Hide' : 'Show'} ${entry.name}`}
+                    onClick={() => props.onToggleVisible(entry.id, !visible)}
+                    data-testid={`visible-${entry.id}`}
+                  >
+                    <EyeIcon open={visible} />
+                  </button>
+                </>
+              )}
             </li>
           );
         })}

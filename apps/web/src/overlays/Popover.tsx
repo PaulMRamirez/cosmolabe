@@ -15,6 +15,8 @@ export interface PopoverProps {
   /** Which edge the panel aligns to under the trigger. */
   readonly align?: 'left' | 'right';
   readonly triggerClassName?: string;
+  /** Accessible name for the trigger, required when `label` is an icon (no text). */
+  readonly ariaLabel?: string;
   readonly testId?: string;
   /** When true, offer a pin toggle: a pinned panel does not auto-dismiss on an
    *  outside click, so a working surface (the Script console) survives canvas
@@ -57,6 +59,8 @@ export function Popover(props: PopoverProps): JSX.Element {
         aria-expanded={open}
         aria-controls={panelId}
         aria-haspopup="dialog"
+        aria-label={props.ariaLabel}
+        title={props.ariaLabel}
         onClick={() => setOpen((o) => !o)}
         data-testid={props.testId}
       >

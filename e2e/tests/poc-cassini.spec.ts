@@ -86,7 +86,8 @@ test('the track-along-trajectory camera mode renders a non-empty frame', async (
   await loadCassiniSample(page);
   const viewport = page.getByTestId('viewport');
 
-  await page.getByTestId('toggle-track').click();
+  // The track toggle lives on the spacecraft's row in the object browser.
+  await page.getByTestId('track-Cassini').click();
   await expect(viewport).toHaveAttribute('data-cam-mode', 'track');
   await page.waitForTimeout(400);
   const stats = await frameStats(viewport);

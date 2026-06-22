@@ -60,12 +60,12 @@ test('object browser, settings, readouts, and multi-select are wired', async ({ 
   await saturnVisible.click();
   await expect(saturnVisible).not.toBeChecked();
 
-  // The epoch defaults to UTC and the time-system toggle round-trips through SPICE
+  // The epoch defaults to UTC and the time-system selector round-trips through SPICE
   // (et2tdb in the worker), flipping the tag and re-deriving the displayed epoch.
   const viewport = page.getByTestId('viewport');
   await expect(viewport).toHaveAttribute('data-time-system', 'UTC');
   const utcEpoch = await viewport.getAttribute('data-epoch');
-  await page.getByTestId('time-system-tdb').click();
+  await page.getByTestId('time-system').selectOption('TDB');
   await expect(viewport).toHaveAttribute('data-time-system', 'TDB');
   await expect
     .poll(async () => (await viewport.getAttribute('data-epoch')) ?? '', { timeout: 10_000 })

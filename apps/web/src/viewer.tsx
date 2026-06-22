@@ -5,7 +5,7 @@
 // presentational; all imperative work lives in the engine.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SOLAR_SYSTEM } from '@bessel/scene';
-import { StatusDot, Icon, DomainIcon, type StatusTone } from '@bessel/selene-design';
+import { StatusDot, Icon, Button, type StatusTone } from '@bessel/selene-design';
 import { sortByEt } from '@bessel/timeline';
 import {
   BookmarksPanel,
@@ -160,7 +160,6 @@ export function BesselViewer(): JSX.Element {
   const timelineError = useStore(store, (s) => s.timelineError);
   const focus = useStore(store, (s) => s.focus);
   const instruments = useStore(store, (s) => s.instruments);
-  const instrumentNames = useStore(store, (s) => s.instrumentNames);
   const activeInstrumentId = useStore(store, (s) => s.activeInstrumentId);
   const footprintPoints = useStore(store, (s) => s.footprintPoints);
   const fovOk = useStore(store, (s) => s.fovOk);
@@ -286,15 +285,6 @@ export function BesselViewer(): JSX.Element {
     </Popover>
   ) : null;
 
-  const captureMenu = (
-    <Popover label="Capture" title="Capture" align="right" testId="capture-menu">
-      <CaptureControls
-        recording={recording}
-        onCaptureStill={() => engine?.captureStill()}
-        onToggleRecording={() => engine?.toggleRecording()}
-      />
-    </Popover>
-  );
 
   const scriptMenu = (
     <Popover label="Script" title="Scripting console" align="right" testId="script-menu" pinnable>
@@ -350,6 +340,24 @@ export function BesselViewer(): JSX.Element {
     </Popover>
   );
 
+  const layersMenu = (
+    <Popover
+      label={<Icon name="settings" />}
+      ariaLabel="Visualization settings"
+      title="Visualization layers"
+      align="right"
+      testId="layers-popover"
+    >
+      <SettingsPanel
+        settings={settings}
+        onChange={(k, v) => engine?.setSetting(k, v)}
+        onReset={() => engine?.resetSettings()}
+        showLiveGeometry={showLiveGeometry}
+        onToggleLiveGeometry={(v) => engine?.setShowLiveGeometry(v)}
+      />
+    </Popover>
+  );
+
   const themeToggle = (
     <Tooltip label="Toggle light / dark theme">
       <ThemeToggle theme={theme} onToggle={toggleTheme} />
@@ -366,21 +374,21 @@ export function BesselViewer(): JSX.Element {
         <div className="bessel-appbar-overflow">
           {missionMenu}
           {pluginsMenu}
-          {captureMenu}
           {scriptMenu}
           {viewsMenu}
         </div>
       </Popover>
+      {layersMenu}
       {themeToggle}
     </>
   ) : (
     <>
       {missionMenu}
       {pluginsMenu}
-      {captureMenu}
       {scriptMenu}
       {analyzeButton}
       {viewsMenu}
+      {layersMenu}
       {themeToggle}
     </>
   );
@@ -397,6 +405,23 @@ export function BesselViewer(): JSX.Element {
           onToggleSelect={(id) => engine?.toggleSelectObject(id)}
           onToggleVisible={(id, visible) => engine?.toggleVisibleObject(id, visible)}
           onCenter={(id) => engine?.centerOn(id)}
+          onToggleTrack={() => engine?.toggleTrack()}
+          tracking={track}
+          instrumentLayer={{
+            isShown: (id) => instruments && activeInstrumentId === id,
+            onToggle: (id) => {
+              if (instruments && activeInstrumentId === id) {
+                engine?.toggleInstruments();
+              } else {
+                if (activeInstrumentId !== id) void engine?.setActiveInstrument(id);
+                if (!instruments) engine?.toggleInstruments();
+              }
+            },
+            fovOn: settings.fov,
+            footprintOn: settings.footprint,
+            onToggleFov: () => engine?.setSetting('fov', !settings.fov),
+            onToggleFootprint: () => engine?.setSetting('footprint', !settings.footprint),
+          }}
         />
       </PanelContainer>
       {selection.length > 0 || measureMode ? (
@@ -508,96 +533,25 @@ export function BesselViewer(): JSX.Element {
           </>
         ) : null}
       </div>
-      {/* Always-mounted telemetry fault alert: a fault reaches the operator with no
-          menu open. Renders nothing (no role/contrast surface) when nominal. */}
-      <div className="bessel-fault-chrome">
-        <FaultBanner
-          fault={telemetryFault && telemetryFault !== acknowledgedFault ? telemetryFault : null}
-          onAcknowledge={() => engine?.acknowledgeFault()}
-          testId="telemetry-fault-alert"
-        />
-      </div>
-      <div className="bessel-viewcontrols" role="group" aria-label="Instruments and sharing">
-        {hasSpacecraft && (
-          <>
-            <button
-              type="button"
-              onClick={() => engine?.toggleInstruments()}
-              aria-pressed={instruments}
-              data-testid="toggle-instruments"
-            >
-              {instruments ? 'Hide instruments' : 'Show instruments'}
-            </button>
-            <button
-              type="button"
-              onClick={() => engine?.toggleTrack()}
-              aria-pressed={track}
-              data-testid="toggle-track"
-            >
-              {track ? 'Stop tracking' : 'Track spacecraft'}
-            </button>
-            {instruments && instrumentNames.length > 1 ? (
-              <label className="bessel-instrument-select">
-                <span className="bessel-visually-hidden">Active instrument</span>
-                <select
-                  value={activeInstrumentId ?? ''}
-                  onChange={(e) => void engine?.setActiveInstrument(e.target.value)}
-                  data-testid="instrument-select"
-                  aria-label="Active instrument"
-                >
-                  {instrumentNames.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {instruments ? (
-              <span
-                className="bessel-viewcontrols__layers"
-                role="group"
-                aria-label="Instrument layers"
-              >
-                <Tooltip label="Sensor FOV cone">
-                  <button
-                    type="button"
-                    className="bessel-viewcontrols__layer-toggle"
-                    onClick={() => engine?.setSetting('fov', !settings.fov)}
-                    aria-pressed={settings.fov}
-                    aria-label="Sensor FOV cone"
-                    data-testid="toggle-fov"
-                  >
-                    <DomainIcon name="sensor-fov" />
-                  </button>
-                </Tooltip>
-                <Tooltip label="Sensor footprint">
-                  <button
-                    type="button"
-                    className="bessel-viewcontrols__layer-toggle"
-                    onClick={() => engine?.setSetting('footprint', !settings.footprint)}
-                    aria-pressed={settings.footprint}
-                    aria-label="Sensor footprint"
-                    data-testid="toggle-footprint"
-                  >
-                    <DomainIcon name="sensor-footprint" />
-                  </button>
-                </Tooltip>
-              </span>
-            ) : null}
-          </>
-        )}
+      {/* View tools (share / screenshot / record), a vertical strip under the status
+          HUD, replacing the top-bar Capture menu and the floating share button. */}
+      <div className="bessel-canvas-tools" role="group" aria-label="View tools">
         <Tooltip label="Share view">
-          <button
-            type="button"
-            className="bessel-viewcontrols__layer-toggle"
+          <Button
+            iconOnly
+            variant="secondary"
+            ariaLabel="Share view"
+            testId="share"
             onClick={() => void engine?.share().then(showShare)}
-            aria-label="Share view"
-            data-testid="share"
           >
             <Icon name="share" />
-          </button>
+          </Button>
         </Tooltip>
+        <CaptureControls
+          recording={recording}
+          onCaptureStill={() => engine?.captureStill()}
+          onToggleRecording={() => engine?.toggleRecording()}
+        />
         {shareNote ? (
           shareNote.copied ? (
             <span className="bessel-share-note" role="status" data-testid="share-confirm">
@@ -614,20 +568,17 @@ export function BesselViewer(): JSX.Element {
             />
           )
         ) : null}
-        <span className="bessel-selection" data-testid="selection-label">
-          {selection.length ? `Selected: ${selection.join(', ')}` : 'No selection'}
-        </span>
+      </div>
+      {/* Always-mounted telemetry fault alert: a fault reaches the operator with no
+          menu open. Renders nothing (no role/contrast surface) when nominal. */}
+      <div className="bessel-fault-chrome">
+        <FaultBanner
+          fault={telemetryFault && telemetryFault !== acknowledgedFault ? telemetryFault : null}
+          onAcknowledge={() => engine?.acknowledgeFault()}
+          testId="telemetry-fault-alert"
+        />
       </div>
       <div className="bessel-canvas-topright">
-        <Popover label="Layers" title="Visualization layers" align="right" testId="layers-popover">
-          <SettingsPanel
-            settings={settings}
-            onChange={(k, v) => engine?.setSetting(k, v)}
-            onReset={() => engine?.resetSettings()}
-            showLiveGeometry={showLiveGeometry}
-            onToggleLiveGeometry={(v) => engine?.setShowLiveGeometry(v)}
-          />
-        </Popover>
         <Tooltip label="Keyboard shortcuts and help (press ?)">
           <button
             type="button"

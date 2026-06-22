@@ -64,7 +64,7 @@ test.describe('Cassini instruments', () => {
   test('FOV cone renders when instruments are enabled', async ({ page }) => {
     const viewport = page.getByTestId('viewport');
     const before = await colorStats(viewport);
-    await page.getByTestId('toggle-instruments').click();
+    await page.getByTestId('instrument-show-CASSINI_ISS_WAC').click();
     await page.waitForTimeout(800);
     const after = await colorStats(viewport);
     // The cyan FOV cone adds a visible translucent region over the blue baseline
@@ -74,7 +74,7 @@ test.describe('Cassini instruments', () => {
 
   test('footprint renders on Saturn from a surface intercept', async ({ page }) => {
     const viewport = page.getByTestId('viewport');
-    await page.getByTestId('toggle-instruments').click();
+    await page.getByTestId('instrument-show-CASSINI_ISS_WAC').click();
     // The footprint is computed asynchronously via sincpt; wait for points.
     await expect
       .poll(async () => Number(await viewport.getAttribute('data-footprint-points')), {
@@ -93,7 +93,7 @@ test.describe('Cassini instruments', () => {
     await expect(page.getByTestId('toggle-fov')).toHaveCount(0);
     await expect(page.getByTestId('toggle-footprint')).toHaveCount(0);
 
-    await page.getByTestId('toggle-instruments').click();
+    await page.getByTestId('instrument-show-CASSINI_ISS_WAC').click();
     await expect(page.getByTestId('toggle-fov')).toBeVisible();
     await expect(page.getByTestId('toggle-footprint')).toBeVisible();
     await expect(page.getByTestId('toggle-fov')).toHaveAttribute('aria-pressed', 'true');
@@ -107,7 +107,7 @@ test.describe('Cassini instruments', () => {
 });
 
 test.describe('instrument selector', () => {
-  test('a multi-instrument mission shows a selector that switches the active sensor', async ({
+  test('a multi-instrument mission switches the active sensor via per-row eyes', async ({
     page,
   }) => {
     await page.goto('/');
@@ -119,14 +119,17 @@ test.describe('instrument selector', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('select-Cassini')).toBeVisible({ timeout: 30_000 });
 
-    // The selector appears only once instruments are shown (single-instrument missions hide it).
-    await page.getByTestId('toggle-instruments').click();
-    const selector = page.getByTestId('instrument-select');
-    await expect(selector).toBeVisible();
-    await expect(selector).toHaveValue('CASSINI_ISS_WAC');
+    // Each instrument is its own row; its eye shows that sensor's FOV. Showing WAC marks
+    // its eye checked and leaves NAC unchecked (only one sensor is the active one).
+    const wac = page.getByTestId('instrument-show-CASSINI_ISS_WAC');
+    const nac = page.getByTestId('instrument-show-CASSINI_ISS_NAC');
+    await wac.click();
+    await expect(wac).toHaveAttribute('aria-checked', 'true');
+    await expect(nac).toHaveAttribute('aria-checked', 'false');
 
-    // Switching the active instrument updates the selection (reloads the FOV sensor).
-    await selector.selectOption('CASSINI_ISS_NAC');
-    await expect(selector).toHaveValue('CASSINI_ISS_NAC');
+    // Showing NAC switches the active sensor: NAC becomes checked and WAC clears.
+    await nac.click();
+    await expect(nac).toHaveAttribute('aria-checked', 'true');
+    await expect(wac).toHaveAttribute('aria-checked', 'false');
   });
 });

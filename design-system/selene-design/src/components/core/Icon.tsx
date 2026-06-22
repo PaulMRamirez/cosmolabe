@@ -30,6 +30,7 @@ import {
   LineChart,
   Table,
   Camera,
+  Radar,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -69,6 +70,7 @@ const ICONS = {
   chart: LineChart,
   table: Table,
   camera: Camera,
+  radar: Radar,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

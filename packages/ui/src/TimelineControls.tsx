@@ -173,28 +173,26 @@ export function TimelineControls(props: TimelineControlsProps): JSX.Element {
           </div>
         ) : null}
       </div>
-      <span data-testid="epoch" className="bessel-epoch">
-        {props.epochLabel}
-        {props.epochLabel ? ` ${props.timeSystem}` : ''}
-      </span>
-      <div
-        className="bessel-time-system"
-        role="group"
-        aria-label="Epoch time system"
-        data-testid="time-system"
-      >
-        {TIME_SYSTEMS.map((sys) => (
-          <button
-            key={sys}
-            type="button"
-            onClick={() => props.onTimeSystemChange(sys)}
-            aria-pressed={props.timeSystem === sys}
-            data-testid={`time-system-${sys.toLowerCase()}`}
+      <span className="bessel-epoch-group">
+        <span data-testid="epoch" className="bessel-epoch">
+          {props.epochLabel}
+        </span>
+        <label className="bessel-time-system">
+          <span className="bessel-visually-hidden">Epoch time system</span>
+          <select
+            value={props.timeSystem}
+            onChange={(e) => props.onTimeSystemChange(e.target.value as TimeSystem)}
+            data-testid="time-system"
+            aria-label="Epoch time system"
           >
-            {sys}
-          </button>
-        ))}
-      </div>
+            {TIME_SYSTEMS.map((sys) => (
+              <option key={sys} value={sys}>
+                {sys}
+              </option>
+            ))}
+          </select>
+        </label>
+      </span>
       <input
         type="text"
         className="bessel-goto-epoch"
