@@ -80,6 +80,40 @@ export type SpiceWorkerRequest =
     }
   | {
       id: number;
+      method: 'gfsep';
+      targ1: string;
+      shape1: string;
+      frame1: string;
+      targ2: string;
+      shape2: string;
+      frame2: string;
+      abcorr: AberrationCorrection;
+      observer: string;
+      relate: string;
+      refval: number;
+      adjust: number;
+      step: number;
+      start: number;
+      stop: number;
+    }
+  | {
+      id: number;
+      method: 'gfposc';
+      target: string;
+      frame: string;
+      abcorr: AberrationCorrection;
+      observer: string;
+      crdsys: string;
+      coord: string;
+      relate: string;
+      refval: number;
+      adjust: number;
+      step: number;
+      start: number;
+      stop: number;
+    }
+  | {
+      id: number;
       method: 'occult';
       targ1: string;
       shape1: string;
@@ -193,6 +227,8 @@ export type SpiceWorkerResultMap = {
   prop2b: CartesianState;
   gfoclt: [number, number][];
   gfdist: [number, number][];
+  gfsep: [number, number][];
+  gfposc: [number, number][];
   occult: number;
   getfov: FovResult;
   bodvrd: number[];

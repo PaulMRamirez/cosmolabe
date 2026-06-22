@@ -62,6 +62,12 @@ export async function createSpiceEngine(options?: SpiceEngineOptions): Promise<S
     async gfdist(target, abcorr, observer, relate, refval, step, start, stop) {
       return bindings.gfdist(target, abcorr, observer, relate, refval, step, start, stop);
     },
+    async gfsep(targ1, shape1, frame1, targ2, shape2, frame2, abcorr, observer, relate, refval, adjust, step, start, stop) {
+      return bindings.gfsep(targ1, shape1, frame1, targ2, shape2, frame2, abcorr, observer, relate, refval, adjust, step, start, stop);
+    },
+    async gfposc(target, frame, abcorr, observer, crdsys, coord, relate, refval, adjust, step, start, stop) {
+      return bindings.gfposc(target, frame, abcorr, observer, crdsys, coord, relate, refval, adjust, step, start, stop);
+    },
     async occult(targ1, shape1, frame1, targ2, shape2, frame2, abcorr, observer, et) {
       return bindings.occult(targ1, shape1, frame1, targ2, shape2, frame2, abcorr, observer, et);
     },

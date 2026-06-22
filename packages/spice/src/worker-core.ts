@@ -83,6 +83,38 @@ export async function dispatchSpice(engine: SpiceEngine, req: SpiceWorkerRequest
         req.start,
         req.stop,
       );
+    case 'gfsep':
+      return engine.gfsep(
+        req.targ1,
+        req.shape1,
+        req.frame1,
+        req.targ2,
+        req.shape2,
+        req.frame2,
+        req.abcorr,
+        req.observer,
+        req.relate,
+        req.refval,
+        req.adjust,
+        req.step,
+        req.start,
+        req.stop,
+      );
+    case 'gfposc':
+      return engine.gfposc(
+        req.target,
+        req.frame,
+        req.abcorr,
+        req.observer,
+        req.crdsys,
+        req.coord,
+        req.relate,
+        req.refval,
+        req.adjust,
+        req.step,
+        req.start,
+        req.stop,
+      );
     case 'occult':
       return engine.occult(
         req.targ1,

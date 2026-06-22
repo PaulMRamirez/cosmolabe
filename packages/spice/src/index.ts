@@ -127,6 +127,51 @@ export interface SpiceEngine {
     start: number,
     stop: number,
   ): Promise<[number, number][]>;
+  /**
+   * Angular-separation interval finder (gfsep): intervals over [start,stop] in which
+   * the apparent angular separation (rad) between targ1 (shape1/frame1) and targ2
+   * (shape2/frame2) seen from observer satisfies `relate` (e.g. "<", ">") vs refval.
+   * `shapeN` is "POINT" or "SPHERE"; `frameN` is used only for a SPHERE. `adjust`
+   * applies only to the ABSMAX/ABSMIN/LOCMAX/LOCMIN relations.
+   */
+  gfsep(
+    targ1: string,
+    shape1: string,
+    frame1: string,
+    targ2: string,
+    shape2: string,
+    frame2: string,
+    abcorr: AberrationCorrection,
+    observer: string,
+    relate: string,
+    refval: number,
+    adjust: number,
+    step: number,
+    start: number,
+    stop: number,
+  ): Promise<[number, number][]>;
+  /**
+   * Coordinate interval finder on an observer-target position (gfposc): intervals
+   * over [start,stop] in which one coordinate (`coord`) of the observer-to-target
+   * vector, in reference frame `frame` and coordinate system `crdsys` (e.g.
+   * "LATITUDINAL"), satisfies `relate` vs refval. For topocentric elevation use a
+   * topocentric `frame` with crdsys="LATITUDINAL", coord="LATITUDE" (rad). `adjust`
+   * applies only to the ABSMAX/ABSMIN/LOCMAX/LOCMIN relations.
+   */
+  gfposc(
+    target: string,
+    frame: string,
+    abcorr: AberrationCorrection,
+    observer: string,
+    crdsys: string,
+    coord: string,
+    relate: string,
+    refval: number,
+    adjust: number,
+    step: number,
+    start: number,
+    stop: number,
+  ): Promise<[number, number][]>;
   /** Instantaneous occultation code at et (occult); nonzero when an occultation occurs. */
   occult(
     targ1: string,

@@ -762,6 +762,111 @@ export class SpiceBindings {
   }
 
   /**
+   * Angular-separation interval finder (gfsep): intervals over [start,stop] in which
+   * the apparent angular separation (rad) between targ1 (shape1/frame1) and targ2
+   * (shape2/frame2), as seen from the observer, satisfies `relate` (e.g. "<", ">",
+   * "=") against refval. `shape` is "POINT" or "SPHERE"; `frame` is used only for a
+   * SPHERE target (pass a non-blank frame, e.g. "J2000", but it is ignored for a
+   * POINT). `adjust` applies only to the ABSMAX/ABSMIN/LOCMAX/LOCMIN relations.
+   * Returns [s,e] ET-second intervals. Mirrors gfdist's relate/refval handling.
+   */
+  gfsep(
+    targ1: string,
+    shape1: string,
+    frame1: string,
+    targ2: string,
+    shape2: string,
+    frame2: string,
+    abcorr: AberrationCorrection,
+    observer: string,
+    relate: string,
+    refval: number,
+    adjust: number,
+    step: number,
+    start: number,
+    stop: number,
+    maxIntervals = 1000,
+  ): [number, number][] {
+    return this.scope(() => {
+      const cnfine = this.makeWindowCell(2);
+      this.call('wninsd_c', start, stop, cnfine.cell);
+      this.checkFailed();
+      const result = this.makeWindowCell(2 * maxIntervals);
+      this.call(
+        'gfsep_c',
+        this.str(targ1),
+        this.str(shape1),
+        this.str(frame1),
+        this.str(targ2),
+        this.str(shape2),
+        this.str(frame2),
+        this.str(abcorr),
+        this.str(observer),
+        this.str(relate),
+        refval,
+        adjust,
+        step,
+        maxIntervals,
+        cnfine.cell,
+        result.cell,
+      );
+      this.checkFailed();
+      return this.readWindowCell(result.cell);
+    });
+  }
+
+  /**
+   * Coordinate interval finder on an observer-target position (gfposc): intervals
+   * over [start,stop] in which a single coordinate of the observer-to-target
+   * position, expressed in reference frame `frame` and coordinate system `crdsys`
+   * (e.g. "LATITUDINAL", "RECTANGULAR", "RA/DEC", "SPHERICAL", "CYLINDRICAL",
+   * "GEODETIC"), satisfies `relate` against refval. For topocentric az/el, use a
+   * topocentric `frame` with crdsys="LATITUDINAL" and coord="LATITUDE" (elevation,
+   * rad) or coord="LONGITUDE" (azimuth, rad). `adjust` applies only to the
+   * ABSMAX/ABSMIN/LOCMAX/LOCMIN relations. Returns [s,e] ET-second intervals.
+   */
+  gfposc(
+    target: string,
+    frame: string,
+    abcorr: AberrationCorrection,
+    observer: string,
+    crdsys: string,
+    coord: string,
+    relate: string,
+    refval: number,
+    adjust: number,
+    step: number,
+    start: number,
+    stop: number,
+    maxIntervals = 1000,
+  ): [number, number][] {
+    return this.scope(() => {
+      const cnfine = this.makeWindowCell(2);
+      this.call('wninsd_c', start, stop, cnfine.cell);
+      this.checkFailed();
+      const result = this.makeWindowCell(2 * maxIntervals);
+      this.call(
+        'gfposc_c',
+        this.str(target),
+        this.str(frame),
+        this.str(abcorr),
+        this.str(observer),
+        this.str(crdsys),
+        this.str(coord),
+        this.str(relate),
+        refval,
+        adjust,
+        step,
+        maxIntervals,
+        cnfine.cell,
+        result.cell,
+      );
+      this.checkFailed();
+      return this.readWindowCell(result.cell);
+    });
+  }
+
+  /**
    * Instantaneous occultation state (occult) at et: the occultation code for the
    * configuration of targ1 (shape1/frame1) and targ2 (shape2/frame2) seen from the
    * observer. Negative = targ1 occulted by targ2; positive = the reverse; 0 = none.
