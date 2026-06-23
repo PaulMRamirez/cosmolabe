@@ -1502,6 +1502,17 @@ button[aria-pressed='true'] {
   gap: var(--space-2);
 }
 
+/* The "don't show again" opt-out under the actions: a quiet, secondary control. */
+.bessel-welcome-dismiss {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  color: var(--text-1);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
 /* The Frame-mode/Lock-frame coupling hint (B9). */
 .bessel-frame-hint {
   color: var(--text-1);

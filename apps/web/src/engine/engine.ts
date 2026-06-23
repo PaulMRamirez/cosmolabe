@@ -1543,17 +1543,21 @@ export class BesselEngine {
     if (!this.disposed && seen) this.store.setState({ welcomeSeen: true });
   }
 
-  /** Dismiss the first-run welcome card and persist that it has been seen. */
-  async dismissWelcome(): Promise<void> {
-    if (this.store.getState().welcomeSeen) return;
-    this.store.setState({ welcomeSeen: true });
-    const e = this.core;
-    if (e) await persistWelcomeSeen(e.storage);
+  /** Close the welcome card for this session. When `optOut` is true the user asked not
+   *  to see it again, so persist that preference (otherwise it returns on the next open). */
+  async dismissWelcome(optOut = false): Promise<void> {
+    this.store.setState({ welcomeDismissed: true });
+    if (optOut && !this.store.getState().welcomeSeen) {
+      this.store.setState({ welcomeSeen: true });
+      const e = this.core;
+      if (e) await persistWelcomeSeen(e.storage);
+    }
   }
 
-  /** Dismiss the welcome card and load a sample mission from a URL (the front-door path). */
+  /** Close the welcome card (session) and load a sample mission from a URL (the
+   *  front-door path). Opting out is handled by the caller via dismissWelcome. */
   async loadSampleMission(url: string): Promise<void> {
-    await this.dismissWelcome();
+    this.store.setState({ welcomeDismissed: true });
     await this.loadCatalogUrl(url);
   }
 

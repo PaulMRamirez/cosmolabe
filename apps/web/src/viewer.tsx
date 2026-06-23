@@ -191,6 +191,7 @@ export function BesselViewer(): JSX.Element {
   const loadedName = useStore(store, (s) => s.loadedName);
   const loadError = useStore(store, (s) => s.loadError);
   const welcomeSeen = useStore(store, (s) => s.welcomeSeen);
+  const welcomeDismissed = useStore(store, (s) => s.welcomeDismissed);
   const measurement = useStore(store, (s) => s.measurement);
   const measureMode = useStore(store, (s) => s.measureMode);
   const bookmarks = useStore(store, (s) => s.bookmarks);
@@ -601,15 +602,14 @@ export function BesselViewer(): JSX.Element {
           onDismiss={() => engine?.setShowLiveGeometry(false)}
         />
       ) : null}
-      {!loadedName && !welcomeSeen ? (
+      {!loadedName && !welcomeSeen && !welcomeDismissed ? (
         <WelcomeCard
-          onLoadSample={() => void engine?.loadSampleMission(SAMPLE_CATALOGS[0]!.url)}
-          onTour={() => {
-            void engine?.dismissWelcome();
-            engine?.runTour();
+          onLoadSample={(optOut) => {
+            void engine?.dismissWelcome(optOut);
+            void engine?.loadSampleMission(SAMPLE_CATALOGS[0]!.url);
           }}
-          onExplore={() => void engine?.dismissWelcome()}
-          onClose={() => void engine?.dismissWelcome()}
+          onExplore={(optOut) => void engine?.dismissWelcome(optOut)}
+          onClose={(optOut) => void engine?.dismissWelcome(optOut)}
         />
       ) : null}
     </div>

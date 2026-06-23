@@ -154,8 +154,12 @@ export interface AppState {
   analysisContext: AnalysisContext;
   /** The typed scenario object model: the role slots the tasks read by role. */
   scenario: ScenarioState;
-  /** True once the first-run welcome card has been dismissed or acted on (persisted). */
+  /** Persisted opt-out: true once the user checked "don't show again" on the welcome
+   *  card. While false, the card appears on every cold open. */
   welcomeSeen: boolean;
+  /** Session-only: true once the welcome card has been closed this visit (so it does not
+   *  reappear until the next load). Not persisted, unlike welcomeSeen. */
+  welcomeDismissed: boolean;
   /** A loud go-to-epoch parse error to surface next to the field, or null. */
   timelineError: string | null;
   /** Per-tool run status keyed by the tool's action id (= its button data-testid). */
@@ -766,6 +770,7 @@ export const initialAppState: AppState = {
     assetSet: [],
   },
   welcomeSeen: false,
+  welcomeDismissed: false,
   timelineError: null,
   runStatus: {},
   keptSnapshots: [],

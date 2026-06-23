@@ -1,18 +1,28 @@
 import { test, expect } from '@playwright/test';
 
-// The first-run welcome card is the front door on a cold open: it offers the bundled
-// mission, a tour, or just exploring, and once dismissed it stays dismissed (persisted
-// through PAL Storage), so it does not nag on the next visit.
+// The welcome card is the front door on every cold open: it offers the bundled mission
+// or just exploring. Closing it hides it for the session but it returns on the next
+// visit, unless the user ticks "don't show again", which persists through PAL Storage.
 
-test('the welcome card shows on first run, dismisses, and stays dismissed', async ({ page }) => {
+test('the welcome card reappears on reload unless the user opts out', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
   await expect(page.getByTestId('welcome-card')).toBeVisible();
 
+  // Closing without opting out hides it for this session.
   await page.getByTestId('welcome-explore').click();
   await expect(page.getByTestId('welcome-card')).toHaveCount(0);
 
-  // Reloading in the same context (storage persisted) does not show the card again.
+  // It is back on the next load (a mere close does not suppress it).
+  await page.reload();
+  await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
+  await expect(page.getByTestId('welcome-card')).toBeVisible();
+
+  // Ticking "don't show again" then closing persists the opt-out: it stays gone.
+  await page.getByTestId('welcome-dont-show-again').check();
+  await page.getByTestId('welcome-explore').click();
+  await expect(page.getByTestId('welcome-card')).toHaveCount(0);
+
   await page.reload();
   await expect(page.getByTestId('status')).toHaveText('Ready', { timeout: 60_000 });
   await expect(page.getByTestId('welcome-card')).toHaveCount(0);
