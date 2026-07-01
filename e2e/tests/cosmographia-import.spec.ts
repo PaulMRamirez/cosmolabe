@@ -7,7 +7,7 @@ import { frameStats } from './frame-stats.ts';
 // object browser catalog-driven, AND rebuilds the rendered 3D scene. The
 // spacecraft uses a SPICE trajectory (target "-82", center Saturn "6") so it
 // renders with the bundled Cassini-class kernels, proving the
-// catalog-load -> renderNativeMission path end to end.
+// catalog-load -> renderMission path end to end.
 
 test('importing a multi-item Cosmographia catalog rebuilds the rendered scene', async ({ page }) => {
   await page.goto('/');

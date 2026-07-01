@@ -39,7 +39,7 @@ export async function parseAnyCatalog(filename: string, text: string): Promise<L
     // The full importer turns every item (bodies, spacecraft, geometry,
     // rotationModel, instruments, observations) into a schema-valid native
     // catalog, so a Cosmographia file now carries a `catalog` and reaches
-    // renderNativeMission exactly like a native one.
+    // renderMission exactly like a native one.
     const catalog = await fromCosmographia(raw);
     return {
       name: catalog.name || filename,

@@ -242,12 +242,13 @@ export function BesselViewer(): JSX.Element {
   const missionMenu = (
       <Popover label="Mission" title="Load a mission" align="right" testId="mission-menu">
         <CatalogLoader
-          onLoad={(file) => void engine?.loadCatalog(file)}
+          onLoad={(file) => void engine?.loadCatalog({ file })}
           status={loadedName ? `Loaded ${loadedName}: ${objects.length} objects` : null}
           error={loadError}
           samples={SAMPLE_CATALOGS}
-          onLoadSample={(url) => void engine?.loadCatalogUrl(url)}
-          onLoadUrl={(url) => void engine?.loadCatalogUrl(url)}
+          onLoadSample={(url) => void engine?.loadCatalog({ url })}
+          onLoadUrl={(url) => void engine?.loadCatalog({ url })}
+          onUnload={loadedName ? () => engine?.unloadCatalog() : undefined}
         />
       </Popover>
   );
@@ -573,7 +574,7 @@ export function BesselViewer(): JSX.Element {
         <WelcomeCard
           onLoadSample={(optOut) => {
             void engine?.dismissWelcome(optOut);
-            void engine?.loadSampleMission(SAMPLE_CATALOGS[0]!.url);
+            void engine?.loadCatalog({ url: SAMPLE_CATALOGS[0]!.url });
           }}
           onExplore={(optOut) => void engine?.dismissWelcome(optOut)}
           onClose={(optOut) => void engine?.dismissWelcome(optOut)}

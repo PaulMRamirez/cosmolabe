@@ -19,6 +19,8 @@ export interface CatalogLoaderProps {
   readonly onLoadSample?: (url: string) => void;
   /** When set, render a text field to load a catalog from an arbitrary URL. */
   readonly onLoadUrl?: (url: string) => void;
+  /** When set, render an Unload button that returns to the neutral solar system. */
+  readonly onUnload?: () => void;
 }
 
 export function CatalogLoader(props: CatalogLoaderProps): JSX.Element {
@@ -100,6 +102,16 @@ export function CatalogLoader(props: CatalogLoaderProps): JSX.Element {
           ev.target.value = '';
         }}
       />
+      {props.onUnload ? (
+        <button
+          type="button"
+          className="bessel-loader-unload"
+          onClick={() => props.onUnload?.()}
+          data-testid="unload-catalog"
+        >
+          Return to solar system
+        </button>
+      ) : null}
       <div role="status" className="bessel-loader-status">
         {props.error ? null : props.status}
       </div>

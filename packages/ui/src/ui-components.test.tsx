@@ -33,6 +33,14 @@ describe('@bessel/ui CatalogLoader', () => {
     const out = html(createElement(CatalogLoader, { onLoad: () => {} }));
     expect(out).not.toContain('data-testid="load-url-input"');
   });
+
+  it('renders an Unload button only when onUnload is wired', () => {
+    const without = html(createElement(CatalogLoader, { onLoad: () => {} }));
+    expect(without).not.toContain('data-testid="unload-catalog"');
+    const withUnload = html(createElement(CatalogLoader, { onLoad: () => {}, onUnload: () => {} }));
+    expect(withUnload).toContain('data-testid="unload-catalog"');
+    expect(withUnload).toContain('Return to solar system');
+  });
 });
 
 describe('@bessel/ui ReadoutPanel', () => {

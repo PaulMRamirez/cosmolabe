@@ -1553,6 +1553,11 @@ button[aria-pressed='true'] {
   font-size: 0.8rem;
 }
 
+.bessel-loader-unload {
+  font-size: 0.8rem;
+  flex-basis: 100%;
+}
+
 .bessel-loader-url {
   display: flex;
   gap: var(--space-1);

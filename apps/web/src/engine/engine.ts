@@ -24,19 +24,12 @@ import {
   type TimeSystem,
 } from '@bessel/ui';
 import { encodeView, decodeView, TelemetryAdapter, type ViewModel } from '@bessel/state';
-import type { PluginRegistry, BesselCatalog } from '@bessel/catalog';
-import { HttpKernelSource } from '@bessel/pal-web';
-import { furnishMissionKernels } from './load-mission.ts';
+import type { BesselCatalog } from '@bessel/catalog';
 import { positionAt, velocityAt, rangeRate } from '../sampler.ts';
 import { resolveTwoVector } from '../trajectory/twovector.ts';
 import { fovRim, footprint } from '../instruments.ts';
 import { toggleSelection, rollMeasurePair } from '../selection.ts';
-import {
-  parseAnyCatalog,
-  nativeEntries,
-  formatLoadError,
-  DEFAULT_OBJECT_ENTRIES,
-} from '../catalog-load.ts';
+import { parseAnyCatalog, formatLoadError, DEFAULT_OBJECT_ENTRIES } from '../catalog-load.ts';
 import { buildCatalogMissionScene } from '../generic-mission.ts';
 import { buildMissionAnnotations } from './mission-annotations.ts';
 import { createScript } from '../scripting.ts';
@@ -166,8 +159,16 @@ export interface ShareResult {
   readonly copied: boolean;
 }
 
+/** Where a catalog to load comes from: a fetchable URL or an already-read file. */
+export type CatalogSource =
+  | { readonly url: string }
+  | { readonly file: { readonly name: string; readonly text: string } };
+
 export class BesselEngine {
   private core: EngineCore | null = null;
+  // The single boot promise, so a load triggered before boot finishes awaits the
+  // same in-flight boot instead of racing a null core (the boot-vs-click bug).
+  private bootPromise: Promise<void> | null = null;
   private raf = 0;
   private lastTs = 0;
   private snapSeq = 0;
@@ -226,7 +227,14 @@ export class BesselEngine {
 
   private readonly isDisposed = (): boolean => this.disposed;
 
-  async boot(): Promise<void> {
+  // Idempotent: the first call starts boot, later calls (e.g. from loadCatalog)
+  // await the same in-flight promise. This is what lets a pre-boot load render
+  // once the core exists instead of silently no-op'ing against a null core.
+  boot(): Promise<void> {
+    return (this.bootPromise ??= this.runBoot());
+  }
+
+  private async runBoot(): Promise<void> {
     try {
       this.core = await bootScene(this.canvas, this.store, this.isDisposed);
       if (this.disposed) return;
@@ -1554,13 +1562,6 @@ export class BesselEngine {
     }
   }
 
-  /** Close the welcome card (session) and load a sample mission from a URL (the
-   *  front-door path). Opting out is handled by the caller via dismissWelcome. */
-  async loadSampleMission(url: string): Promise<void> {
-    this.store.setState({ welcomeDismissed: true });
-    await this.loadCatalogUrl(url);
-  }
-
   async saveBookmark(name: string): Promise<void> {
     const e = this.core;
     const trimmed = name.trim();
@@ -1811,7 +1812,7 @@ export class BesselEngine {
       // The dynamic import or texture-manager bootstrap failed: clear the guard so a
       // later toggle can retry. On success the guard stays set so a repeated toggle
       // does not re-import the manager and re-fetch every texture. A scene rebuild
-      // (renderNativeMission) clears the guard explicitly, since fresh procedural
+      // (renderMission) clears the guard explicitly, since fresh procedural
       // materials genuinely need re-texturing.
       this.realImageryStarted = false;
       console.error('real imagery unavailable', err);
@@ -1848,11 +1849,24 @@ export class BesselEngine {
     }
   }
 
-  // Parse and validate a picked or dropped catalog file. On success the object
-  // list becomes catalog-driven; for a native catalog the 3D scene is rebuilt
-  // from it (arbitrary-mission rendering). On failure a located error is shown
-  // loudly (CLAUDE.md: never a silent fallback).
-  async loadCatalog(file: { name: string; text: string }): Promise<void> {
+  // Load a catalog from a URL or an already-read file, then render it. Awaits boot
+  // first, so a load triggered before the scene core exists renders once boot
+  // finishes instead of silently no-op'ing (the boot-vs-click race). On a
+  // parse/render failure a located error is shown loudly and the "loaded" label is
+  // NOT set (CLAUDE.md: never a silent fallback, never lie about state).
+  async loadCatalog(source: CatalogSource): Promise<void> {
+    await this.boot();
+    if (!this.core) {
+      this.store.setState({ loadError: 'Engine failed to start; cannot load a catalog' });
+      return;
+    }
+    let file;
+    try {
+      file = await this.resolveCatalogSource(source);
+    } catch (err) {
+      this.store.setState({ loadError: formatLoadError(err) });
+      return;
+    }
     let loaded;
     try {
       loaded = await parseAnyCatalog(file.name, file.text);
@@ -1860,81 +1874,38 @@ export class BesselEngine {
       this.store.setState({ loadError: formatLoadError(err) });
       return;
     }
-    this.store.setState({ objects: loaded.entries, loadedName: loaded.name, loadError: null });
 
     // A catalog (native or imported from Cosmographia) with a spacecraft time
-    // window re-renders the scene generically. A bodies-only catalog (no window
-    // to sample over) updates only the object list, never a loud error.
+    // window rebuilds the 3D scene; a bodies-only catalog (no window to sample
+    // over) updates only the object list. The object list and "loaded" label are
+    // committed only after a successful build, so a failed render never leaves the
+    // UI claiming a mission is loaded over the untouched neutral scene.
     const hasWindow = !!loaded.catalog?.spacecraft?.[0]?.arcs?.[0]?.timeRange;
-    if (loaded.catalog && hasWindow) {
-      await this.renderNativeMission(loaded.catalog);
-    }
-  }
-
-  // Load a mission from the plugin registry, mirroring a Cosmographia add-on:
-  // furnish the plugin's declared kernels in SPICE-data-before-objects order
-  // BEFORE rendering, verify any declared frames resolve, then activate (fetch
-  // and parse the catalog, once) and render. Fails loudly on a missing plugin,
-  // an unresolved kernel, or an unresolved frame (never a silent fallback).
-  async loadMission(registry: PluginRegistry, id: string): Promise<void> {
-    const e = this.core;
-    const plugin = registry.get(id);
-    if (!plugin) {
-      this.store.setState({
-        status: 'Ready',
-        loadError: `Unknown plugin "${id}" (not registered)`,
-      });
+    if (loaded.catalog && hasWindow && !(await this.renderMission(loaded.catalog))) {
       return;
     }
-    if (!e) {
-      this.store.setState({ loadError: 'Engine not ready' });
-      return;
-    }
-    try {
-      this.store.setState({ status: `Loading ${plugin.name}`, loadError: null });
-      // SPICE data before objects: furnish each declared kernel in order, then
-      // verify the declared frames resolve, all before the catalog renders.
-      const source = new HttpKernelSource(
-        Object.fromEntries(plugin.kernels.map((k) => [k.name, k.source])),
-      );
-      await furnishMissionKernels(plugin.kernels, plugin.frames ?? [], {
-        resolve: async (ref) => source.read(await source.resolve(ref.name)),
-        furnish: (name, bytes) => this.furnishKernel(name, bytes),
-        isFurnished: (name) => this.furnished.has(name),
-        verifyFrame: (frame) => this.verifyFrame(frame),
-      });
-      const catalog = await registry.activate(id);
-      this.store.setState({
-        objects: nativeEntries(catalog),
-        loadedName: catalog.name ?? plugin.name,
-        loadError: null,
-      });
-      await this.renderNativeMission(catalog);
-    } catch (err) {
-      this.store.setState({ status: 'Ready', loadError: formatLoadError(err) });
-    }
+    this.store.setState({ objects: loaded.entries, loadedName: loaded.name, loadError: null });
   }
 
-  // Verify one declared SPICE frame resolves now that the kernels are furnished.
-  // pxform throws a loud SpiceError for an unknown frame, so a typo in a plugin's
-  // frame name surfaces as a located error instead of a silent identity rotation.
-  private async verifyFrame(frame: string): Promise<void> {
-    const e = this.core;
-    if (!e) return;
-    try {
-      await e.spice.pxform(frame, 'J2000', e.clock.state.et);
-    } catch (err) {
-      throw new Error(`Frame "${frame}" is not resolvable after furnishing kernels`, {
-        cause: err,
-      });
-    }
+  // Resolve a catalog source to its name and text: fetch a URL, or pass an
+  // already-read file straight through. A failed fetch throws (shown loudly).
+  private async resolveCatalogSource(
+    source: CatalogSource,
+  ): Promise<{ name: string; text: string }> {
+    if ('file' in source) return source.file;
+    const res = await fetch(source.url);
+    if (!res.ok) throw new Error(`Catalog not found at ${source.url} (${res.status})`);
+    const text = await res.text();
+    const name = source.url.split('/').pop() ?? source.url;
+    return { name, text };
   }
 
-  // Rebuild the rendered scene from a parsed native catalog. Shared by the file
-  // loader and the plugin registry; the object list is set by the caller.
-  private async renderNativeMission(catalog: BesselCatalog): Promise<void> {
+  // Rebuild the rendered scene from a parsed native catalog. Returns true when the
+  // scene was rebuilt, false when the build failed (a located error is set) or the
+  // engine was disposed mid-build; the caller commits the object list only on true.
+  private async renderMission(catalog: BesselCatalog): Promise<boolean> {
     const e = this.core;
-    if (!e) return;
+    if (!e) return false;
     try {
       this.store.setState({ status: 'Building mission' });
       const mission = await buildCatalogMissionScene(
@@ -1943,7 +1914,7 @@ export class BesselEngine {
         (status) => this.store.setState({ status }),
         e.fs,
       );
-      if (this.disposed) return;
+      if (this.disposed) return false;
       e.scene.reset();
       buildScene(e.scene, mission.spec);
       if (mission.spacecraftModel) e.scene.setSpacecraftModel(mission.spacecraftModel);
@@ -1958,7 +1929,7 @@ export class BesselEngine {
       // the previous instrument's FOV/footprint. The disposed re-check covers a
       // dispose during this await.
       const loadedInstrument = await loadInstrument(e.spice, mission.instrument ?? null);
-      if (this.disposed) return;
+      if (this.disposed) return false;
       e.table = mission.table;
       e.identity = mission.identity;
       e.bodyFrames = mission.bodyFrames;
@@ -2003,16 +1974,18 @@ export class BesselEngine {
       // repeated toggle on an unchanged scene (which the guard correctly blocks).
       this.realImageryStarted = false;
       if (this.store.getState().settings.realImagery) void this.applyRealImagery();
+      return true;
     } catch (err) {
       this.store.setState({ status: 'Ready', loadError: formatLoadError(err) });
+      return false;
     }
   }
 
-  // Unload the active mission and return to the neutral inner-solar-system scene,
+  // Unload the active catalog and return to the neutral inner-solar-system scene,
   // mirroring Cosmographia's File > Unload Last Catalog. Furnished kernels stay
   // loaded (SPICE has no per-kernel unfurnsh here); only the rendered objects and
-  // scene reset. Activation caches in the registry remain, so a re-load is cheap.
-  unloadMission(): void {
+  // scene reset.
+  unloadCatalog(): void {
     const e = this.core;
     this.stopTelemetry();
     if (e) {
@@ -2064,19 +2037,6 @@ export class BesselEngine {
     if (this.telemetry) {
       this.telemetry.adapter.dispose();
       this.telemetry = null;
-    }
-  }
-
-  // Fetch a bundled sample catalog by URL and load it (e.g. the Cassini sample).
-  async loadCatalogUrl(url: string): Promise<void> {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Sample not found at ${url} (${res.status})`);
-      const text = await res.text();
-      const name = url.split('/').pop() ?? url;
-      await this.loadCatalog({ name, text });
-    } catch (err) {
-      this.store.setState({ loadError: formatLoadError(err) });
     }
   }
 

@@ -210,7 +210,7 @@ export function createScriptHost(engine: BesselEngine, store: AppStore): ScriptH
       if (store.getState().recording !== on) engine.toggleRecording();
     },
     note: (text) => store.setState({ status: text }),
-    loadCatalog: (url) => void engine.loadCatalogUrl(url),
+    loadCatalog: (url) => void engine.loadCatalog({ url }),
     viewFromSun: () => engine.viewFromSun(),
     viewAlongVelocity: () => engine.viewAlongVelocity(),
   };

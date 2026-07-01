@@ -28,7 +28,7 @@ test('the one-click sample chip loads the bundled mission', async ({ page }) => 
   await expect(page.getByTestId('select-Cassini')).toHaveCount(0);
 
   // The sample chip resolves its catalog URL under the deploy base path and loads it
-  // through engine.loadCatalogUrl, so the spacecraft appears with no file picked.
+  // through engine.loadCatalog, so the spacecraft appears with no file picked.
   await page.getByTestId('mission-menu').click();
   await page.getByTestId('load-sample-cassini-saturn.json').click();
   await page.keyboard.press('Escape');
