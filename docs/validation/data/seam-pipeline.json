@@ -28,9 +28,9 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 94.9,
+      "maxPosErrM": 0,
       "pointErrArcsec": null,
-      "posWithinTripwire": false,
+      "posWithinTripwire": true,
       "pointWithinTripwire": null
     },
     {
@@ -52,7 +52,7 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 0.0343,
+      "maxPosErrM": 0.0000708,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null
@@ -64,7 +64,7 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 0.0434,
+      "maxPosErrM": 0.000103,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null
@@ -76,7 +76,7 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 0.0571,
+      "maxPosErrM": 0.0000766,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null
@@ -88,7 +88,7 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 0.0705,
+      "maxPosErrM": 0.0000945,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null
@@ -100,7 +100,7 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 0.102,
+      "maxPosErrM": 0.000106,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null
@@ -112,7 +112,7 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 0.177,
+      "maxPosErrM": 0.000116,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null
@@ -124,11 +124,11 @@
       "correction": "NONE",
       "frame": "ECLIPJ2000",
       "epochs": 5,
-      "maxPosErrM": 0.11,
+      "maxPosErrM": 0.0000655,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null
     }
   ],
-  "allWithinTripwires": false
+  "allWithinTripwires": true
 }
