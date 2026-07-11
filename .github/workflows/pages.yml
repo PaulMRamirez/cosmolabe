@@ -1,0 +1,61 @@
+name: pages
+
+# Stubbed GitHub Pages deploy for the public validation page (docs/validation).
+# It carries the Pages OIDC permissions and single-deploy concurrency the real
+# deploy will use, so activating the page later is a content change, not a
+# permissions change. It does NOT deploy on push yet: the validation page is not
+# built until the validation harness lands (W1 onward, see
+# docs/validation/README.md). Trigger it manually (workflow_dispatch) to dry-run
+# the OIDC path; flip the trigger to `push: branches: [main]` when the page ships.
+
+on:
+  workflow_dispatch:
+
+# The minimum a Pages deploy needs: read the repo, write the Pages artifact, mint
+# the OIDC token deploy-pages verifies.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer run supersedes an in-flight one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/configure-pages@v5
+      - name: Assemble the validation page (stub)
+        run: |
+          mkdir -p _site
+          # Placeholder until the validation harness populates docs/validation
+          # with a built page. Once it does, this copies the generated site.
+          if [ -f docs/validation/index.html ]; then
+            cp -r docs/validation/. _site/
+          else
+            printf '%s\n' \
+              '<!doctype html><meta charset="utf-8">' \
+              '<title>Cosmolabe validation</title>' \
+              '<h1>Cosmolabe validation report</h1>' \
+              '<p>Not yet published. See docs/validation/README.md in the repository.</p>' \
+              > _site/index.html
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

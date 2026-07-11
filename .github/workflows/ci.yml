@@ -1,0 +1,54 @@
+name: ci
+
+# The unified gate for the merged monorepo, ported from the bessel CI pattern.
+# It runs the same `pnpm verify` a developer runs: scripts/fetch-kernels, then
+# bessel's gate (typecheck, lint, test, build:web, size), then cosmolabe's build
+# and tests. Installs are federated because the trees still carry their own
+# lockfiles (pnpm for bessel, npm for cosmolabe); unifying the install tooling
+# follows the packages/ restructure after the bake-off.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# One run per ref; a newer push supersedes an in-flight one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # fetch-depth 0 brings the cosmolabe-pre-merge tag and its blobs, which
+      # scripts/fetch-kernels reads for the text kernels and the one synthetic
+      # fixture. lfs: false keeps the heavy LFS pack out of the checkout; the
+      # single NAIF-pruned binary (de425s.bsp) is pulled on demand by the script
+      # with a targeted `git lfs fetch`, the minimal-bandwidth path M-0009 wants.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      # Pin pnpm to bessel's packageManager version so no version guard fires
+      # when the root gate shells into `pnpm -C bessel`.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: bessel/pnpm-lock.yaml
+
+      - name: Install bessel (pnpm, frozen lockfile)
+        run: pnpm -C bessel install --frozen-lockfile
+
+      - name: Install cosmolabe (npm ci)
+        run: npm --prefix cosmolabe ci
+
+      - name: Gate (fetch-kernels; bessel typecheck/lint/test/build:web/size; cosmolabe build/test)
+        run: pnpm verify
