@@ -375,7 +375,11 @@ importers:
         specifier: workspace:*
         version: link:../cspice-wasm
 
-  packages/interop: {}
+  packages/interop:
+    dependencies:
+      '@bessel/compute':
+        specifier: workspace:*
+        version: link:../compute
 
   packages/map-projection: {}
 
