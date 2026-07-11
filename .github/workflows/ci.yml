@@ -32,6 +32,21 @@ jobs:
           fetch-depth: 0
           lfs: false
 
+      # Cache the fetched SPICE kernels between runs, keyed on the manifest,
+      # which lives inside scripts/fetch-kernels, so any manifest change rolls
+      # the key. Safe by construction: fetch-kernels re-verifies every file's
+      # sha256 on each run and re-fetches any mismatch, so a stale or partial
+      # restore (restore-keys) only trims downloads, never weakens the gate.
+      - name: Cache fetched kernels
+        uses: actions/cache@v4
+        with:
+          path: |
+            cosmolabe/packages/spice/test-kernels
+            cosmolabe/apps/viewer/test-catalogs/kernels
+          key: kernels-${{ hashFiles('scripts/fetch-kernels') }}
+          restore-keys: |
+            kernels-
+
       # Pin pnpm to bessel's packageManager version so no version guard fires
       # when the root gate shells into `pnpm -C bessel`.
       - uses: pnpm/action-setup@v4

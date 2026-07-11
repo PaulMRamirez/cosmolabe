@@ -32,7 +32,14 @@ the gate excludes exactly those two files by name (it does not edit them, per
 rule 2), and the proper fix (a skip-guard or a fetched fixture) is a baseline PR
 in Aaron-owned paths, recorded in the re-entry brief. cosmolabe ships no eslint
 dependency or config, so its lint is not yet wired; bessel's lint runs in the
-gate. <code>de425s.bsp</code> has been pruned from NAIF's public generic archive,
+gate. Naked epoch strings parse as local time in the cosmolabe path, recorded as
+a named finding in the re-entry brief: the gate pins
+<code>TZ=America/Los_Angeles</code> as the workaround, and the real fix
+(zone-explicit parsing plus goldens regenerated under UTC) is a Class B
+baseline-diffed change flagged review-on-return; Session 2's baseline captures
+run under the pinned environment and record it in
+<code>tests/golden/pre-merge/ENVIRONMENT.md</code>.
+<code>de425s.bsp</code> has been pruned from NAIF's public generic archive,
 so fetch-kernels obtains that one file with a single verified
 <code>git lfs fetch</code> rather than an HTTP download; all other kernels come
 from public NAIF and PDS URLs.</p>
@@ -61,7 +68,10 @@ and fixed by pinning <code>TZ=America/Los_Angeles</code> for the cosmolabe tests
 in the gate (deterministic on any machine, no cosmolabe source touched). The
 re-run is green: the <code>verify</code> check passed in about 2m17s, gate step
 success, including fetch-kernels obtaining every kernel on the runner (NAIF and
-PDS downloads plus the one <code>git lfs fetch</code> for de425s.bsp).</td></tr>
+PDS downloads plus the one <code>git lfs fetch</code> for de425s.bsp). Fetched
+kernels are now cached between runs, keyed on the manifest hash; fetch-kernels
+re-verifies every sha256 on a hit, so a stale or poisoned cache cannot pass the
+gate.</td></tr>
 
 <tr><td>Fresh clone with <code>GIT_LFS_SKIP_SMUDGE=1</code> plus fetch-kernels
 passes verify (stranger-cloneability without LFS bandwidth)</td><td class="pass">PASS</td>
