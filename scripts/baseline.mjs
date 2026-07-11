@@ -64,6 +64,25 @@ if (process.env.TZ !== PINNED_TZ) {
   console.error(`baseline: TZ must be pinned: run with TZ=${PINNED_TZ} (got ${process.env.TZ ?? 'unset'})`);
   process.exit(2);
 }
+// Compare must run on the exact node the baselines were captured with: the
+// byte-for-byte fingerprint claim depends on it. Capture defines the
+// environment; compare asserts it.
+if (mode === 'compare') {
+  const envPath = join(BASELINE, 'environment.json');
+  if (!existsSync(envPath)) {
+    console.error(`baseline: ${envPath} is missing; cannot verify the pinned capture environment`);
+    process.exit(2);
+  }
+  const pinned = JSON.parse(readFileSync(envPath, 'utf-8'));
+  if (pinned.node !== process.version) {
+    console.error(
+      `baseline: node ${process.version} does not match the pinned capture environment ` +
+        `(${pinned.node} in environment.json). Byte-for-byte comparison requires the exact ` +
+        `node version; see tests/golden/pre-merge/ENVIRONMENT.md for how to obtain it.`,
+    );
+    process.exit(2);
+  }
+}
 
 const require_ = createRequire(join(CL, 'apps/viewer/package.json'));
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
