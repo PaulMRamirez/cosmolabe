@@ -1,0 +1,13 @@
+# Root ignores for the merged monorepo. Each subtree keeps its own .gitignore;
+# this file covers the merge seams and the fetched-kernel destinations.
+node_modules/
+.DS_Store
+*.tsbuildinfo
+dist/
+out/
+
+# Fetched SPICE kernels are never committed (Iron rule 7, ADR M-0009).
+# scripts/fetch-kernels populates these paths, verified against sha256, for the
+# spice tests and viewer demos.
+/cosmolabe/packages/spice/test-kernels/
+/cosmolabe/apps/viewer/test-catalogs/kernels/

@@ -1,0 +1,21 @@
+# Merged workspace topology after the history-preserving subtree merge of Bessel
+# and Cosmolabe. It spans both trees where they sit; there is no packages/ hoist
+# yet, that follows the bake-off (ADR M-0001, and the Session 1B goal: "no
+# packages/ restructure yet").
+#
+# Install tooling is deliberately NOT unified here. Each tree still installs and
+# builds with its own toolchain and lockfile so neither heritage is disrupted
+# (Iron rule 2): bessel with pnpm + bessel/pnpm-lock.yaml (shielded by its own
+# bessel/pnpm-workspace.yaml, which pnpm resolves before this one), cosmolabe
+# with npm + cosmolabe/package-lock.json. The unified gate is the root
+# `pnpm verify`, which federates to both trees. A single root install / one
+# lockfile is deferred with the packages/ restructure. Do not run a bare
+# `pnpm install` at this root; use `pnpm verify` (see package.json) or the
+# per-tree installs the CI workflow runs.
+packages:
+  - "bessel/packages/*"
+  - "bessel/apps/*"
+  - "bessel/design-system/*"
+  - "bessel/e2e"
+  - "cosmolabe/packages/*"
+  - "cosmolabe/apps/*"
