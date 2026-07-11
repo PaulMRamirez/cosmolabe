@@ -28,8 +28,8 @@ running the command or reading the artifact, not by trusting prose.</p>
 
 <div class="summary">
 <p><strong>Verdict:</strong> every Verified-by assertion is met on observed
-evidence except CI, which structurally requires the PR run (recorded
-pending below and amended when observed, per the standing precedent). The
+evidence, including CI (amended after observation, per the standing
+precedent; green on the first run). The
 suite's fidelity claims are measured, not asserted: the tolerances live in
 the test names and assertions (1e-6 km and 1e-9 km/s through OEM, 1e-12
 per quaternion component through AEM), every comparison failure names the
@@ -105,9 +105,10 @@ hold open on those items alone.</p>
 </tr>
 <tr>
   <td><code>pnpm verify</code> green in CI</td>
-  <td class="pend">pending</td>
-  <td>Structurally requires the PR run; amended when observed, per
-  precedent.</td>
+  <td class="pass">pass</td>
+  <td>Amended after observation, per precedent: the <code>verify</code>
+  check passes on the PR head in 1m55s (run 29171876428, first run,
+  observed via <code>gh pr checks 9</code>).</td>
 </tr>
 <tr>
   <td>Strict seam green</td>
