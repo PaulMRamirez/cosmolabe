@@ -103,9 +103,13 @@ gitignored.</p>
 </tr>
 <tr>
   <td>pnpm verify green in CI</td>
-  <td class="pend">pending</td>
-  <td>CI runs on the PR; the branch had not been pushed at report time.
-  Amended when observed, per precedent.</td>
+  <td class="pass">pass</td>
+  <td>Amended after the PR run, per precedent: the <code>verify</code> check
+  on PR #6 concluded success for head commit 4f2fd9a
+  (github.com/PaulMRamirez/cosmolabe/actions/runs/29161708317), running the
+  full chain including the emitters, the demo unit tests, and the strict
+  seam. The Playwright spec runs locally by design (the CI gate does not run
+  e2e); its observed local pass is the evidence of record above.</td>
 </tr>
 <tr>
   <td>Seam harness still green in strict mode</td>
