@@ -1,0 +1,261 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 9 (the CCSDS round-trip suite)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 9</h1>
+<p>The CCSDS round-trip suite, the W4 stretch: interchange fidelity measured
+and stated per format for OEM, AEM, and CDM, the SPICE-truth cross-check
+lane, and the OEM ingest adapter as the host door's second exercise.
+Adversarial cross-check of <code>docs/goals/SESSION-9-CCSDS.goal.md</code>
+against observed evidence, binding ADRs M-0004 (the product schema and its
+wire encoding), M-0011 (the adapter charter), and the heritage
+interchange posture of ADR-0008. Generated 2026-07-11 on branch
+<code>session-9</code>. Every row was reproduced during this cross-check by
+running the command or reading the artifact, not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence except CI, which structurally requires the PR run (recorded
+pending below and amended when observed, per the standing precedent). The
+suite's fidelity claims are measured, not asserted: the tolerances live in
+the test names and assertions (1e-6 km and 1e-9 km/s through OEM, 1e-12
+per quaternion component through AEM), every comparison failure names the
+field and sample it happened at, and the stretch lane compares ingested
+states against a second independent frames-tier computation, so the chain
+is measured against SPICE truth rather than against the array the file was
+written from.</p>
+<p><strong>Residual risk and honest carryover.</strong> First, rule 4's
+'host' authority now has exactly two construction sites (the MMGIS-shaped
+adapter in @bessel/panel and the OEM ingest adapter in @bessel/interop),
+both under the M-0011 charter and both charter-tested; the grep is in this
+report's rule 4 row, and any third site should arrive the same way.
+Second, the interop package's zero-dependency property changed: it now
+declares @bessel/compute for the product schema, type-only in source
+(nothing from the compute plane runs in the adapter), with the runtime
+import confined to tests. Third, CK-binary attitude IO remains deferred
+exactly as the AEM writer's doc block has always recorded (the ckopn,
+ckw03, ckcls exports are not bound in the WASM allowlist); the AEM
+round trip is the portable attitude path meanwhile. Fourth, no CLI
+command consumes the product-file contract yet: the suite names the CLI
+as the JSON contract's consumer and pins that contract bit-exact, and a
+user-facing command waits for a real batch consumer rather than shipping
+as dead surface. Fifth, the device items remain hardware-blocked; the W4
+gate assessment is Session 10's opening move, with the window expected to
+hold open on those items alone.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>Round-trip suite green in pnpm verify with tolerances stated</td>
+  <td class="pass">pass</td>
+  <td><code>ccsds-round-trip.test.ts</code>: 6 tests, all passing inside
+  <code>pnpm verify</code> (44 interop tests total). Frames-tier states
+  (CASSINI from SATURN, J2000, correction NONE explicit, 25 samples over 4
+  hours of the GS-2 era) round-trip through writeOem and parseOem within
+  1e-6 km per position component and 1e-9 km/s per velocity component; the
+  tolerances are in the test names and derive from the writers' 13
+  significant digit quantization, with one order of headroom on velocity.
+  Every assertion message names the field and sample (position component x
+  at sample 7, and so on). AEM: Saturn body-orientation quaternions from
+  the frames tier round-trip within 1e-12 per component, scalar-first
+  preserved and asserted against the m2q layout.</td>
+</tr>
+<tr>
+  <td>Metadata fidelity pinned</td>
+  <td class="pass">pass</td>
+  <td>OEM header (ORIGINATOR, CREATION_DATE, captured additively by
+  parseOem and emitted by writeOem) and all seven metadata fields
+  (object name and id, center, frame, time system, span) reproduce
+  exactly, as do the AEM metadata block and epoch strings (compared as
+  strings, bit for bit). The CDM read is pinned against a committed
+  fixture (<code>test-fixtures/jspoc.cdm</code>, the CCSDS example
+  message): TCA, miss distance, relative speed, both designators.</td>
+</tr>
+<tr>
+  <td>OEM ingest adapter produces a product in the file's own terms</td>
+  <td class="pass">pass</td>
+  <td><code>oemToProduct</code> pinned by 4 tests over the committed MGS
+  fixture: authority 'host', engine <code>oem:NASA/JPL</code> (the file's
+  own ORIGINATOR), kernel-set identity <code>file:mgs.oem</code>
+  (prefixed, per the M-0011 pattern), computedAt the file's
+  CREATION_DATE, jobId its OBJECT_ID, frame its REF_FRAME. Geometry
+  re-packs positions into one polyline layer; series re-columns per axis
+  on a caller-supplied ET mapping; and the adapter refuses to invent a
+  time model (series without toEt throws, pinned).</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green locally</td>
+  <td class="pass">pass</td>
+  <td>Run from the repository root after the final commit set: exit 0.</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green in CI</td>
+  <td class="pend">pending</td>
+  <td>Structurally requires the PR run; amended when observed, per
+  precedent.</td>
+</tr>
+<tr>
+  <td>Strict seam green</td>
+  <td class="pass">pass</td>
+  <td>Observed: <code>TZ=America/Los_Angeles node scripts/seam.mjs
+  --strict-pipeline</code> exits 0; call-parity GREEN on GS-1 through
+  GS-4, pipeline within tripwires on every row.</td>
+</tr>
+<tr>
+  <td>Baseline compare green against the session-4-repoint anchor</td>
+  <td class="pass">pass</td>
+  <td>Observed under the pinned node v22.23.1 with TZ pinned: all three
+  renders at 0.000 percent (earth-moon byte-identical), checksums
+  verified on 6 files. Expected: zero cosmolabe-heritage changes this
+  session.</td>
+</tr>
+<tr>
+  <td>Carryover ledger updated</td>
+  <td class="pass">pass</td>
+  <td>Read back in the brief: the W4 stretch closed as executed
+  (including its cross-check lane); the porkchop inspector scheduled as
+  Session 10's work body alongside the W4 gate assessment; the Session 9
+  paragraph records the second host adapter and the interop dependency
+  change.</td>
+</tr>
+</table>
+
+<h2>Step assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>The suite measures engine output, not hand-built numbers</td>
+  <td class="pass">pass</td>
+  <td>Both the OEM and AEM lanes generate their inputs from the frames
+  tier over the fetched GS-2 boot kernels inside the test (createComputeEnv
+  plus furnish, the same path the compute suite uses); the correction is
+  explicit ('NONE') at the query.</td>
+</tr>
+<tr>
+  <td>The two file contracts stated with their fidelities</td>
+  <td class="pass">pass</td>
+  <td>The fidelity-statement test constructs the contrast: the
+  f64le-base64 JSON encoding round-trips bit-exact (Object.is on every
+  double, NaN included), named in the test as the CLI's format; the same
+  irrational value through the OEM text boundary moves by a nonzero
+  amount that stays inside the stated tolerance. One test, both contracts,
+  both behaviors asserted.</td>
+</tr>
+<tr>
+  <td>Stretch: the SPICE-truth cross-check lane</td>
+  <td class="pass">pass</td>
+  <td>Executed (not carried): ingested OEM states compare against a
+  second, independent frames-tier computation of the same query at the
+  same tolerances, so write, parse, and ingest are measured against truth
+  rather than self-consistency.</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>1: CSPICE only under frames; correction explicit</td>
+  <td class="pass">pass</td>
+  <td>The suite queries states and orientation through the frames tier
+  with correction explicit; the adapter touches no SPICE surface and
+  states 'NONE' literally as "no light-time model asserted".</td>
+</tr>
+<tr>
+  <td>2: mechanically minimal heritage diffs</td>
+  <td class="pass">pass</td>
+  <td><code>git diff --stat main...HEAD -- cosmolabe/</code> is empty.</td>
+</tr>
+<tr>
+  <td>3: seam gate</td>
+  <td class="pass">pass</td>
+  <td>Strict seam row above; nothing in the diff touches cspice-wasm,
+  frames, or core state paths.</td>
+</tr>
+<tr>
+  <td>4: authority 'host' only from host data adapters</td>
+  <td class="pass">pass</td>
+  <td>The grep now shows exactly two value-level construction sites:
+  <code>panel/src/mmgis-adapter.ts</code> and
+  <code>interop/src/oem-product.ts</code>, both adapters under the
+  M-0011 charter (fidelity, not computation; charter language in both
+  doc blocks), both pinned by tests. Engines and submitJob unchanged.</td>
+</tr>
+<tr>
+  <td>5: golden-image pass</td>
+  <td class="pass">pass</td>
+  <td>Baseline compare row above; this session has no visual surface.</td>
+</tr>
+<tr>
+  <td>6: model-layer purity</td>
+  <td class="pass">pass</td>
+  <td>Purity lint passes inside verify; interop is in the audited set and
+  gains no DOM or view imports (its new compute import is type-only in
+  source).</td>
+</tr>
+<tr>
+  <td>7: kernels never committed</td>
+  <td class="pass">pass</td>
+  <td>No kernel-extension files in the diff; the committed fixtures are
+  CCSDS text messages (mgs.oem existing, jspoc.cdm added), not kernels;
+  the suite's kernels come from the fetch-kernels cache at runtime.</td>
+</tr>
+<tr>
+  <td>9: SPICE kilometers and ET seconds at the contracts</td>
+  <td class="pass">pass</td>
+  <td>OEM states are kilometers and kilometers per second by the format
+  and the parser doc; the adapter re-packs without unit change; the one
+  time conversion (epoch strings to ET for the series axis) is refused by
+  the adapter and owned by the caller, stated loudly.</td>
+</tr>
+<tr>
+  <td>10: no em or en dashes</td>
+  <td class="pass">pass</td>
+  <td>Dash sweep over every file in the session diff: clean.</td>
+</tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>review-on-return run; register and brief refreshed</td>
+  <td class="pass">pass</td>
+  <td>Script run 2026-07-11: the flagged set is unchanged (six, M-0011
+  included; the second adapter lands under M-0011's existing charter and
+  flag, no new ADR); the commits in Aaron-owned paths remain the Session
+  4 pair. The brief gains the Session 9 paragraph and the ledger
+  updates.</td>
+</tr>
+<tr>
+  <td>verify-spec report committed</td>
+  <td class="pass">pass</td>
+  <td>This file, <code>docs/validation/reports/session-9.html</code>.</td>
+</tr>
+<tr>
+  <td>Next goal drafted</td>
+  <td class="pass">pass</td>
+  <td><code>docs/goals/SESSION-10-W4-GATE-AND-PORKCHOP.goal.md</code>:
+  open with /gate on W4 (expected held open by the device items alone,
+  recorded honestly), then the porkchop inspector, the W3 stretch three
+  windows standing, as a field-kind job behind JobHandle with the M-0004
+  schema question (a time-by-time domain against ScalarField's lat/lon
+  vocabulary) decided in the session, not silently. Device-truth
+  preempts, as ever.</td>
+</tr>
+</table>
