@@ -32,6 +32,7 @@
     "@bessel/scene": "workspace:*",
     "@bessel/selene-design": "workspace:*",
     "@bessel/compute": "workspace:*",
+    "@bessel/panel": "workspace:*",
     "@bessel/spice": "workspace:*",
     "cspice-wasm": "workspace:*",
     "@bessel/state": "workspace:*",

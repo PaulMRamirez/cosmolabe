@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0e14" />
+    <title>Bessel panel embed host</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #0b0e14;
+        color: #e6e6e6;
+        font-family: system-ui, sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 data-testid="embed-host-title">Bare embed host</h1>
+      <p>
+        This page consumes @bessel/panel the way a third-party host would: no workbench
+        chrome, one mount() call, fallback compute through the worker substrate (M-0007).
+      </p>
+      <div id="panel-host"></div>
+    </main>
+    <script type="module" src="/src/embed.tsx"></script>
+  </body>
+</html>

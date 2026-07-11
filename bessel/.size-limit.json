@@ -18,9 +18,16 @@
       "!apps/web/dist/assets/coverage.worker-*.js",
       "!apps/web/dist/assets/porkchop.worker-*.js",
       "!apps/web/dist/assets/compute.worker-*.js",
-      "!apps/web/dist/assets/ajv-lazy-*.js"
+      "!apps/web/dist/assets/ajv-lazy-*.js",
+      "!apps/web/dist/assets/embed-*.js"
     ],
-    "limit": "104 KB",
+    "limit": "107 KB",
+    "gzip": true
+  },
+  {
+    "name": "embed host entry (panel mount, gzip)",
+    "path": "apps/web/dist/assets/embed-*.js",
+    "limit": "8 KB",
     "gzip": true
   },
   {

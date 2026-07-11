@@ -63,14 +63,23 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
     rollupOptions: {
+      // Two HTML entries: the workbench (index) and the bare embed host page
+      // that consumes @bessel/panel as a third party would (M-0007's smoke
+      // test surface).
+      input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        embed: fileURLToPath(new URL('./embed.html', import.meta.url)),
+      },
       output: {
         // Stable, greppable chunk file names so the size-limit globs target the
         // first-paint shell (the entry app chunk + vendor) and the lazy chunks
-        // separately. The entry is named app-*.js (distinct from any auto-named
-        // shared "index-*" lazy chunk, so the shell glob is unambiguous). The lazy
-        // panel chunks keep their source-module names (e.g. AnalysisPanel-*.js), and
-        // the split analysis code lands in analysis-ops-*.js / mcs-*.js.
-        entryFileNames: 'assets/app-[hash].js',
+        // separately. The workbench entry is named app-*.js and the embed host
+        // entry embed-*.js (distinct from any auto-named shared "index-*" lazy
+        // chunk, so the shell glob is unambiguous). The lazy panel chunks keep
+        // their source-module names (e.g. AnalysisPanel-*.js), and the split
+        // analysis code lands in analysis-ops-*.js / mcs-*.js.
+        entryFileNames: (chunk) =>
+          chunk.name === 'embed' ? 'assets/embed-[hash].js' : 'assets/app-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         // Pin the always-loaded third-party code (the renderer and React) into one
         // vendor chunk. These are needed for first paint, so they stay eager; naming

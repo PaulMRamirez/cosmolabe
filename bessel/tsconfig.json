@@ -36,7 +36,8 @@
       "@bessel/pal-capacitor": ["./packages/pal-capacitor/src/index.ts"],
       "@bessel/pal-electron": ["./packages/pal-electron/src/index.ts"],
       "@bessel/pal-node": ["./packages/pal-node/src/index.ts"],
-      "@bessel/ui": ["./packages/ui/src/index.ts"]
+      "@bessel/ui": ["./packages/ui/src/index.ts"],
+      "@bessel/panel": ["./packages/panel/src/index.ts"]
     }
   },
   "include": [
