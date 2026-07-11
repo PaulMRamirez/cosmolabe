@@ -37,6 +37,8 @@ export {
 } from './job.ts';
 export { accessJob, type AccessJobRequest } from './access-job.ts';
 export { coverageJob, type CoverageJobRequest } from './coverage-job.ts';
+export { seriesJob, type SeriesJobRequest, type SeriesProviderSpec } from './series-job.ts';
+export { groundTrackJob, type GroundTrackJobRequest } from './ground-track-job.ts';
 export {
   encodeAnalysisProduct,
   decodeAnalysisProduct,

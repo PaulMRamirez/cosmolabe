@@ -113,6 +113,18 @@ type _CoverageJobRequestKeys = Assert<
     'grid' | 'assets' | 'span' | 'step' | 'minElevationRad' | 'correction'
   >
 >;
+type _SeriesJobRequestKeys = Assert<
+  Exact<
+    keyof api.SeriesJobRequest,
+    'providers' | 'span' | 'step' | 'frame' | 'correction' | 'chunks'
+  >
+>;
+type _GroundTrackJobRequestKeys = Assert<
+  Exact<
+    keyof api.GroundTrackJobRequest,
+    'body' | 'satellite' | 'bodyFrame' | 'span' | 'step' | 'correction' | 'chunks'
+  >
+>;
 type _SerializedProductKinds = Assert<
   Exact<api.SerializedProduct['kind'], 'intervals' | 'series' | 'geometry' | 'field'>
 >;
@@ -129,6 +141,8 @@ describe('compute plane API surface (stability policy)', () => {
       'decodeF64',
       'encodeAnalysisProduct',
       'encodeF64',
+      'groundTrackJob',
+      'seriesJob',
       'submitJob',
     ]);
   });
