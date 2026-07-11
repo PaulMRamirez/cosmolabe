@@ -1,5 +1,5 @@
 {
-  "description": "Differential harness, pipeline mode (M-0002): cosmolabe through its own pipeline (Universe, CatalogLoader, trajectory caching and interpolation; per-leg relative absolutePositionOf, composed rotation pole) vs the frames tier over cspice-wasm (cache-free), identical kernel bytes, ECLIPJ2000, correction NONE. Tripwires 1 m position, 5 arcsec pointing; recorded, not asserted: green is required before any re-point merges (Session 3 goal), and this table is that record. GS-1 carries no pointing row: the cruise fixture has no rotating oracle body; pointing is exercised on GS-2. Named finding, first caught by this table: the GS-1 position row sits outside the 1 m tripwire because the heritage EclipticJ2000 conversion uses a truncated J2000 obliquity (23.4392911 deg, kinematics.ts) where SPICE ECLIPJ2000 uses 84381.448 arcsec; the 1.94e-10 rad difference is sub-millimeter at GS-2 planetocentric scale and 87 to 95 m at the GS-1 heliocentric 5.6 AU scale. Attribution is exact: rotating the SPICE truth by the constant difference collapses the residual to about 0.1 mm at every sweep epoch. The fix belongs to the Session 4 re-point (frames owns frame semantics), not to a heritage edit in this session (iron rule 2).",
+  "description": "Differential harness, pipeline mode (M-0002): cosmolabe through its own pipeline (Universe, CatalogLoader, trajectory caching and interpolation; per-leg relative absolutePositionOf, composed rotation pole, body-fixed site placement) vs the frames tier over cspice-wasm (cache-free), identical kernel bytes, ECLIPJ2000, correction NONE, all four golden scenarios. Tripwires 1 m position, 5 arcsec pointing; scripts/seam.mjs --strict-pipeline is the re-point merge gate. GS-1 and GS-3 satellites of note: the Session 3 GS-1 tripwire breach (the truncated heritage obliquity, 87 to 95 m at 5.6 AU) closed when the Session 4 Class B fix landed; the GS-2 sub-meter rows of the Session 3 table were the same constant on the J2000-framed legs, and the post-fix table shows the true pipeline noise floor near 0.1 mm.",
   "tripwires": {
     "positionM": 1,
     "pointingArcsec": 5
@@ -10,14 +10,48 @@
   },
   "scenarios": {
     "GS-1": {
+      "fixture": "Cassini cruise, 010420R_SCPSE_EP1_JP83.bsp",
       "epoch": "2000-06-01T00:00:00",
       "sweep": "epoch -30d..+30d (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "cassini/010420R_SCPSE_EP1_JP83.bsp"
+      ],
       "kernelSetHash": "43cc1b058594299eab87b09b804fc41a57ed7d5094c062922b66da3a795d2a76"
     },
     "GS-2": {
+      "fixture": "saturn-soi harness scene, SOI SCPSE kernel",
       "epoch": "2004-07-01T02:48:00",
       "sweep": "epoch -12h..+12h (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "cassini/040629AP_SCPSE_04179_04185.bsp"
+      ],
       "kernelSetHash": "035e18772ee7aa6a0cbb3001ae383090b2c0ce5f215c8e3968e06c9d61831acd"
+    },
+    "GS-3": {
+      "fixture": "lunar south pole site, authored TK frame over IAU_MOON, de425s ephemerides",
+      "epoch": "2004-07-01T00:00:00",
+      "sweep": "epoch -14d..+14d (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "de425s.bsp"
+      ],
+      "kernelSetHash": "f095ebe51131c8745e20ccf2d1cf7cd260363f46232b3bcc6923c4873f635c5b"
+    },
+    "GS-4": {
+      "fixture": "six-plane Walker LEO constellation, rig-generated Type 13 SPKs via writeSpkType13",
+      "epoch": "2004-07-01T00:00:00",
+      "sweep": "epoch -45min..+45min (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "de425s.bsp"
+      ],
+      "kernelSetHash": "f282a1ddb0c29c756ec799138e2a7dc7dddff241c20c6ac5315fa71ed207298b"
     }
   },
   "rows": [
@@ -125,6 +159,126 @@
       "frame": "ECLIPJ2000",
       "epochs": 5,
       "maxPosErrM": 0.0000655,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-3",
+      "body": "Earth",
+      "center": "SUN",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-3",
+      "body": "Moon",
+      "center": "EARTH",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.0000326,
+      "pointErrArcsec": 0,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": true
+    },
+    {
+      "scenario": "GS-3",
+      "body": "Site",
+      "center": "MOON",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.0000455,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-4",
+      "body": "Earth",
+      "center": "SUN",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0,
+      "pointErrArcsec": 0,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": true
+    },
+    {
+      "scenario": "GS-4",
+      "body": "Walker-0",
+      "center": "EARTH",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.0000106,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-4",
+      "body": "Walker-1",
+      "center": "EARTH",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.0000209,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-4",
+      "body": "Walker-2",
+      "center": "EARTH",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.0000122,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-4",
+      "body": "Walker-3",
+      "center": "EARTH",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.0000128,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-4",
+      "body": "Walker-4",
+      "center": "EARTH",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.000024,
+      "pointErrArcsec": null,
+      "posWithinTripwire": true,
+      "pointWithinTripwire": null
+    },
+    {
+      "scenario": "GS-4",
+      "body": "Walker-5",
+      "center": "EARTH",
+      "correction": "NONE",
+      "frame": "ECLIPJ2000",
+      "epochs": 5,
+      "maxPosErrM": 0.0000245,
       "pointErrArcsec": null,
       "posWithinTripwire": true,
       "pointWithinTripwire": null

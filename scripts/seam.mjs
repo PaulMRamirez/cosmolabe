@@ -48,7 +48,8 @@ const parity = table('seam-call-parity.json');
 console.log(`== call-parity (gate: relative ${parity.gateRelative}) ==`);
 console.log(`toolkits: cosmolabe ${parity.toolkit.cosmolabe}, cspice-wasm ${parity.toolkit.cspiceWasm}`);
 print(parity.rows, ['scenario', 'call', 'detail', 'correction', 'epochs', 'maxRelDelta', 'pass']);
-console.log(parity.allPass ? 'call-parity: GREEN on GS-1 and GS-2.' : 'call-parity: RED.');
+const scenarioNames = Object.keys(parity.scenarios).join(', ');
+console.log(parity.allPass ? `call-parity: GREEN on ${scenarioNames}.` : 'call-parity: RED.');
 
 const pipeline = table('seam-pipeline.json');
 console.log(`\n== pipeline (tripwires: ${pipeline.tripwires.positionM} m position, ${pipeline.tripwires.pointingArcsec} arcsec pointing) ==`);
