@@ -1,0 +1,254 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 4 (the re-point)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 4</h1>
+<p>The re-point: the obliquity fix first, GS-3 and GS-4 completing the golden
+scenario set, the strict pipeline gate, and cosmolabe consuming the frames
+tier with timecraftjs off the runtime state path. Adversarial cross-check of
+<code>docs/goals/SESSION-4-REPOINT.goal.md</code> (as amended at the Session 3
+pre-merge gate) against observed evidence, binding ADRs M-0002 (and its
+caching clarification), M-0005, M-0009. Generated 2026-07-11 on branch
+<code>session-4</code>. Every row was reproduced during this cross-check by
+running the command or reading the artifact, not by trusting prose. The W1
+window gate was closed by /gate at session start and is recorded in the
+re-entry brief.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence except CI, which cannot run until the PR exists and is recorded
+pending below. The commit order the amendment demanded is in the history:
+the one-constant obliquity fix (095714b) landed first and alone, the fixtures
+and the strict flip followed, and the re-point (7c85dec) landed last, behind
+an already-green strict gate. Call-parity is exactly zero on all four golden
+scenarios; every pipeline row sits at the 0.1 mm noise floor; the 312-test
+cosmolabe suite passes unchanged over the re-pointed path; and the deliberate
+re-baseline carries a fully attributed diff (0.163 m worst fingerprint
+component, 2 pixels of 786432 on one render, all of it the obliquity
+constant, none of it the swap).</p>
+<p><strong>Residual risk and honest carryover.</strong> First, the
+cross-tree consumption is a bridge, not an architecture: cosmolabe reaches
+the seam packages through postinstall symlinks and built dist because npm
+cannot follow pnpm workspace protocols; the packages/ restructure retires
+this, and until then a stale dist is possible locally (the gate rebuilds it
+inside bessel verify before any cosmolabe step, so CI cannot see one).
+Second, the heritage adapter throws typed errors for cidfrm, fovray, fovtrg,
+and nonzero gfdist adjust, whose CSPICE entry points are not in the WASM
+export allowlist; no runtime path calls them today and the conformance tests
+pin the loud failure, but a future caller must extend the allowlist (a
+deliberate WASM rebuild). Third, two dormant duplicates of the truncated
+obliquity remain in heritage code with no runtime consumer
+(<code>InertialFrame.ts</code>, cesium-adapter) and are recorded in the brief
+as Aaron's call. Fourth, the viewer dev server may need
+<code>server.fs.allow</code> widened for the symlinked packages during local
+development; the production build and the gate are unaffected and no heritage
+config was touched for it. Fifth, @cosmolabe/spice (timecraftjs) remains in
+the tree as the heritage reference and the harness's parity lane; deleting it
+is Aaron's decision on return, per M-0002's consequence that it retires from
+the runtime, which it has.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>Obliquity fix is its own first commit, before any re-point work</td>
+  <td class="pass">pass</td>
+  <td><code>git log</code>: 095714b (fix(core), kinematics.ts only plus the
+  regenerated pipeline table and the brief re-tag) precedes the fixtures
+  (390e6ca), the strict flip (90fa462), and the re-point (7c85dec). The
+  before table is docs/validation/data/seam-pipeline.json at the parent
+  commit (GS-1 Cassini 94.9 m, outside the tripwire); the after table in the
+  commit shows GS-1 at 0 m and every GS-2 row collapsed from sub-meter to at
+  most 0.12 mm, confirming the Session 3 attribution exactly. The baseline
+  diff is attached in physical units in the commit and the re-baseline
+  README.</td>
+</tr>
+<tr>
+  <td>Call-parity green on all scenarios</td>
+  <td class="pass">pass</td>
+  <td>Fresh <code>scripts/seam.mjs --strict-pipeline</code> run: exit 0,
+  &quot;call-parity: GREEN on GS-1, GS-2, GS-3, GS-4&quot;. The committed
+  table holds 72 rows across the four scenarios (str2et, spkezr under the
+  contract corrections including the site-frame and all six Walker
+  satellites, pxform including the topocentric TK chain), every
+  <code>maxRelDelta</code> exactly 0, toolkits CSPICE_N0066 both sides. The
+  rig builds its own timecraftjs reference lane, so parity still compares
+  the heritage wrapper against the frames tier after the harness swap.</td>
+</tr>
+<tr>
+  <td>Pipeline green at 1 m and 5 arcsec on GS-1 through GS-4, strict mode enforcing before the re-point commits</td>
+  <td class="pass">pass</td>
+  <td><code>seam-pipeline.json</code>: 19 rows across the four scenarios
+  (including the GS-3 body-fixed site through cosmolabe's FixedSpherical
+  path vs the frames chain, the Moon and Earth poles, and all six Walker
+  satellites), every row within tripwires, worst position 0.12 mm, worst
+  pointing 0.922 arcsec (the analytical Saturn model, as in Session 2).
+  <code>verify:seam</code> carries <code>--strict-pipeline</code> since
+  commit 90fa462, which precedes the re-point commit.</td>
+</tr>
+<tr>
+  <td>pnpm verify green locally</td>
+  <td class="pass">pass</td>
+  <td>Full run at HEAD: exit 0. Stages observed: fetch-kernels, purity-lint
+  clean (220 files, 25 directories), golden-immutability clean on the
+  pre-merge pin, bessel gate (typecheck, lint, 240 test files including the
+  new adapter and DAF-walk conformance suites, build:seam, build:web from
+  the seam dist, size limits), cosmolabe build plus 312 tests over the
+  re-pointed path, strict seam green.</td>
+</tr>
+<tr>
+  <td>pnpm verify green in CI</td>
+  <td class="pend">pending</td>
+  <td>CI runs on the PR; the branch had not been pushed at report time. This
+  row will be amended to the observed result, as the Session 2 and 3 reports
+  were.</td>
+</tr>
+<tr>
+  <td>Purity lint green</td>
+  <td class="pass">pass</td>
+  <td><code>node scripts/purity-lint.mjs</code>: clean; the REQUIRED_AUDIT
+  set still pins cspice-wasm, frames (now carrying the heritage adapter),
+  and the cosmolabe core.</td>
+</tr>
+<tr>
+  <td>Re-point PR carries the reviewed baseline diff; pre-merge immutability holds</td>
+  <td class="pass">pass</td>
+  <td><code>tests/golden/session-4-repoint/</code> committed with README
+  stating the diff next to the M-0002 tolerances: saturn-soi fingerprint at
+  most 0.163 m in any component, analytical fingerprint byte-identical,
+  renders 2 px of 786432 on the SOI frame and 0 on the others (pixelmatch
+  0.1, gate 0.5 percent). The sibling reproduces:
+  <code>BASELINE_DIR=tests/golden/session-4-repoint baseline.mjs compare</code>
+  under pinned node v22.23.1 exits 0 with fingerprints byte-identical.
+  golden-immutability still passes on the untouched pre-merge pin, and
+  capture now mechanically refuses to target pre-merge.</td>
+</tr>
+<tr>
+  <td>timecraftjs no longer on cosmolabe core's runtime state path</td>
+  <td class="pass">pass</td>
+  <td>Grep over cosmolabe apps and packages excluding tests and the heritage
+  @cosmolabe/spice package itself: zero <code>Spice.init()</code> sites. The
+  three injection points (viewer loader, trajectory cache worker, test
+  harness) construct <code>createHeritageSpice</code> over cspice-wasm; the
+  re-baseline renders were produced by that path end to end in the browser.
+  The heritage package remains in the tree, constructed only by its own unit
+  tests and the harness's parity reference lane.</td>
+</tr>
+</table>
+
+<h2>Step and amendment assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>GS-3 fixture: topocentric site, sun geometry, manifest as needed</td>
+  <td class="pass">pass</td>
+  <td>Authored TK class 4 frame over IAU_MOON furnished byte-identically to
+  both wrappers; sun state driven through the site frame under all five
+  corrections; the pipeline places the site through cosmolabe's
+  FixedSpherical body-fixed path against the frames chain (0.05 mm). The
+  lunar kernels GS-3 needs were already in the fetch manifest (naif0012,
+  pck00010, de425s with Moon, Earth, Sun coverage 1964 to 2050, probed via
+  spkobj and spkcov), so the manifest is unchanged, satisfying the step by
+  inclusion rather than extension.</td>
+</tr>
+<tr>
+  <td>GS-4 fixture: six-plane Walker as Type 13 SPKs, no external kernel</td>
+  <td class="pass">pass</td>
+  <td>Rig-generated circular two-body ephemerides written through
+  writeSpkType13, read back with the new readKernelBytes binding, furnished
+  as identical bytes to both stacks; six satellites in call-parity at exactly
+  zero, ground-track IAU_EARTH frame pair, Earth pole pipeline row. The
+  write-then-read-back path has its own conformance test.</td>
+</tr>
+<tr>
+  <td>GS-3 chain decision honored (J2000 pivot, no allowlist extension)</td>
+  <td class="pass">pass</td>
+  <td>The rig comment and the goal state the rationale; the WASM allowlist
+  and binary are untouched this session (wasm/cspice.{mjs,wasm} unchanged in
+  the diff; only the sibling type declaration file moved).</td>
+</tr>
+<tr>
+  <td>Re-point mechanically minimal in Aaron's paths (rule 2)</td>
+  <td class="pass">pass</td>
+  <td>The register lists exactly two commits in Aaron-owned paths: the
+  obliquity fix (one constant plus its comment) and the re-point, whose
+  heritage diff is confined to the three injection sites, the harness type
+  loosening (Spice to SpiceInstance), one ambient Vite declaration, the
+  postinstall line, and the link script. SpiceTrajectory, SpiceRotation,
+  TwoVectorFrame, CatalogLoader, the renderer, and the render packages are
+  untouched; the adapter absorbs the interface.</td>
+</tr>
+<tr>
+  <td>M-0002 caching clarification honored</td>
+  <td class="pass">pass</td>
+  <td>The frames tier remains cache-free; pipeline mode was re-measured
+  after the re-point (the tables at HEAD are post-re-point runs) and its
+  description now states that the cosmolabe pipeline runs over the frames
+  tier, so the mode measures caching and composition only.</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>1: CSPICE only under the frames tier</td><td class="pass">pass</td>
+  <td>The heritage adapter lives inside @cosmolabe/frames; cosmolabe code
+  above the tier calls the adapter's SpiceInstance surface and never touches
+  cspice-wasm directly (its only cross-tree imports are @cosmolabe/frames
+  and the wasm asset URL handed to the tier).</td></tr>
+<tr><td>2: mechanically minimal heritage diffs</td><td class="pass">pass</td>
+  <td>See the register row above; the two heritage commits are the two
+  review units the amended goal demanded, in the demanded order.</td></tr>
+<tr><td>4: authority host-only</td><td class="na">n/a</td>
+  <td>No <code>authority</code> field is introduced anywhere in the diff
+  (checked by grep over added lines).</td></tr>
+<tr><td>5: golden discipline</td><td class="pass">pass</td>
+  <td>The visual change ships as a reviewed sibling baseline set with its
+  diff attached; pre-merge is untouched and its pin passes.</td></tr>
+<tr><td>6: model-layer purity</td><td class="pass">pass</td>
+  <td>purity-lint clean including the adapter (fetch and WASM only, no DOM
+  globals).</td></tr>
+<tr><td>7: kernels never committed</td><td class="pass">pass</td>
+  <td>No kernel file in the diff; the GS-4 SPKs exist only in memory during
+  the rig run; the re-baseline directory holds fingerprints, renders, and
+  checksums only.</td></tr>
+<tr><td>9: SPICE kilometers at the contracts</td><td class="pass">pass</td>
+  <td>The adapter converts shapes, never units; batch layouts and the
+  heritage surface both remain km and km/s.</td></tr>
+<tr><td>10: dash sweep on new prose</td><td class="pass">pass</td>
+  <td>Zero em or en dashes in the added lines of the session diff.</td></tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>W1 gate closed by /gate</td><td class="pass">pass</td>
+  <td>.claude/commands/gate.md fills the referenced slot; the W1 close with
+  criteria and carryover is in the brief's window-gate section (commit
+  5a077f9), every criterion cited to an artifact.</td></tr>
+<tr><td>Register and brief refreshed</td><td class="pass">pass</td>
+  <td>scripts/review-on-return.sh re-run; flagged ADR set unchanged; the
+  brief carries the Session 4 paragraph naming the two heritage commits as
+  review anchors, the dormant obliquity duplicates, and the re-tagged
+  landed finding.</td></tr>
+<tr><td>verify-spec run and report committed</td><td class="pass">pass</td>
+  <td>This report, docs/validation/reports/session-4.html.</td></tr>
+<tr><td>Next goal file drafted</td><td class="pass">pass</td>
+  <td>docs/goals/SESSION-5-COMPUTE-PLANE.goal.md: /gate on W2, then the job
+  protocol and AnalysisProduct v0 with provenance sourced from the frames
+  tier's kernel set hash, per docs/design/02 section 5.</td></tr>
+</table>
