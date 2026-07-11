@@ -44,14 +44,23 @@ describe('workspace metadata', () => {
     expect(broken, `library packages missing exports/types: ${broken.join(', ')}`).toEqual([]);
   });
 
-  it('holds the architecture package count (27 packages, 4 apps) so additions are deliberate', async () => {
+  it('holds the architecture package count (29 packages, 4 apps) so additions are deliberate', async () => {
     const libs = await readPackages('packages');
     const apps = await readPackages('apps');
-    expect(libs.length).toBe(27);
+    // 29 = the 27 of the pre-merge architecture plus the two Session 3 seam
+    // packages of ADR M-0002: cspice-wasm (extracted from the spice layer,
+    // which remains as a facade) and @cosmolabe/frames.
+    expect(libs.length).toBe(29);
     expect(apps.length).toBe(4);
-    // The headless automation and OD additions must be present.
+    // The headless automation, OD, and seam additions must be present.
     const names = new Set(libs.map((p) => p.pkg.name));
-    for (const required of ['@bessel/sdk', '@bessel/od', '@bessel/pal-node']) {
+    for (const required of [
+      '@bessel/sdk',
+      '@bessel/od',
+      '@bessel/pal-node',
+      'cspice-wasm',
+      '@cosmolabe/frames',
+    ]) {
       expect(names.has(required), `expected workspace to include ${required}`).toBe(true);
     }
   });
