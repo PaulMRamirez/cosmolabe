@@ -30,8 +30,9 @@ reading the artifact, not by trusting prose.</p>
 
 <div class="summary">
 <p><strong>Verdict:</strong> every Verified-by assertion is met on observed
-evidence except CI, which structurally requires the PR run (recorded pending
-below and amended when observed, per the standing precedent). The two
+evidence, including CI (amended after observation, per the standing
+precedent; the first CI run failed the conformance test's wall-clock anchor
+honestly, and the stream-anchored fix passed the second run). The two
 substantive claims are observed, not argued: the conformance test lands a
 macrotask-delivered cancel mid-stream inside a worker-protocol round trip,
 and the Playwright embed smoke test drives a bare host page (no workbench
@@ -121,9 +122,12 @@ executioner.</p>
 </tr>
 <tr>
   <td><code>pnpm verify</code> green in CI</td>
-  <td class="pend">pending</td>
-  <td>Structurally requires the PR run; this row is amended when the check
-  is observed, per the standing precedent.</td>
+  <td class="pass">pass</td>
+  <td>Amended after observation, per precedent: the <code>verify</code>
+  check passes on the PR head in 2m26s (run 29165434094, observed via
+  <code>gh pr checks 7</code>). The first CI run failed honestly on the
+  wall-clock-anchored conformance test (the iteration recorded in the first
+  row above); the stream-anchored fix is the head this run covers.</td>
 </tr>
 <tr>
   <td>Strict seam green</td>
