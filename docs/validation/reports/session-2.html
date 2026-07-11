@@ -24,10 +24,10 @@ reproduced during this cross-check by running the command or reading the
 artifact, not by trusting prose.</p>
 
 <div class="summary">
-<p><strong>Verdict:</strong> every Verified-by assertion is met locally; the one
-CI assertion is wired and pending its first run on the PR (it cannot be
-observed before the PR exists). No cosmolabe-heritage source was changed: the
-session diff under <code>cosmolabe/</code> is empty.</p>
+<p><strong>Verdict:</strong> every Verified-by assertion is met, including CI:
+the <code>verify</code> check on PR #2 passed (run 29140300072). No
+cosmolabe-heritage source was changed: the session diff under
+<code>cosmolabe/</code> is empty.</p>
 <p><strong>Residual risk and honest carryover.</strong> The five bake-off
 measurements land at honest scope: jitter and purity (the two decision-critical
 measurements) are measured; state and orientation error versus SPICE truth is
@@ -126,11 +126,11 @@ purity lint, bessel gate through all seven size budgets (web shell 284.31 kB of
 345 kB, CSPICE WASM 360.53 kB of 4 MB), cosmolabe build plus
 <code>Test Files 37 passed, Tests 312 passed | 1 skipped</code>.</td></tr>
 
-<tr><td>Root <code>pnpm verify</code> green in CI</td><td class="pend">PENDING</td>
-<td>CI runs the identical <code>pnpm verify</code> on pull requests
-(<code>.github/workflows/ci.yml</code>, kernel cache keyed on the fetch-kernels
-manifest, which this session's manifest change correctly rolls). The PR is
-opened at the end of this session; this row is updated when the run completes.</td></tr>
+<tr><td>Root <code>pnpm verify</code> green in CI</td><td class="pass">PASS</td>
+<td>The <code>verify</code> check on PR #2 passed in 2m5s
+(<code>actions/runs/29140300072</code>), running the identical
+<code>pnpm verify</code> including the new purity stage; the kernel cache key
+rolled correctly with the manifest change.</td></tr>
 </table>
 
 <h2>Exit deliverables</h2>
