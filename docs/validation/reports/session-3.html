@@ -26,8 +26,8 @@ running the command or reading the artifact, not by trusting prose.</p>
 
 <div class="summary">
 <p><strong>Verdict:</strong> every Verified-by assertion is met on observed
-evidence except CI, which cannot run until the PR exists and is recorded
-pending below. Call-parity is green on both scenarios with every delta exactly
+evidence, CI included (the row below was amended to pass after the PR run was
+observed green). Call-parity is green on both scenarios with every delta exactly
 zero (both wrappers marshal into CSPICE_N0066; the asm.js and WASM builds
 agree bit for bit over identical kernel bytes). Pipeline mode is measured and
 reported: all eight GS-2 rows sit inside the 1 m and 5 arcsec tripwires; the
@@ -45,8 +45,7 @@ FrameChain inspection pivots through J2000 only; a deeper kernel-defined walk
 needs frinfo_c, which the WASM export allowlist does not yet carry (recorded
 in the contract doc comment). Fourth, GS-1 carries no pointing row (the cruise
 fixture has no rotating oracle body); pointing is exercised on GS-2 and the
-table says so. Fifth, CI green is pending the PR run and this report will be
-amended when observed, mirroring the Session 2 precedent.</p>
+table says so.</p>
 </div>
 
 <h2>Verified-by assertions</h2>
@@ -101,9 +100,13 @@ amended when observed, mirroring the Session 2 precedent.</p>
 </tr>
 <tr>
   <td>pnpm verify green in CI</td>
-  <td class="pend">pending</td>
-  <td>CI runs on the PR; the branch had not been pushed at report time. This
-  row will be amended to the observed result, as the Session 2 report was.</td>
+  <td class="pass">pass</td>
+  <td>Amended after the PR run, mirroring the Session 2 precedent: the
+  <code>verify</code> check on PR #3 concluded success for head commit
+  e399bb4 (github.com/PaulMRamirez/cosmolabe/actions/runs/29142337853),
+  running the same <code>pnpm verify</code> chain including verify:seam, with
+  the kernel cache key rolled by the manifest edit and the GS-1 cruise kernel
+  fetched from NAIF in CI.</td>
 </tr>
 <tr>
   <td>Purity lint green with the two new packages audited</td>
