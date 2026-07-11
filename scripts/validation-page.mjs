@@ -65,6 +65,14 @@ const html = `<!doctype html>
 </style>
 
 <h1>Cosmolabe validation report</h1>
+<p class="gate">This page belongs to the merged
+<a href="https://github.com/PaulMRamirez/bessel">Bessel</a> +
+<a href="https://github.com/AaronPlave/cosmolabe">Cosmolabe</a> project, a
+work in progress combining Aaron Plave's Cosmolabe (visualization engine and
+instrument; see his <a href="https://aaronplave.com/cosmolabe/">heritage
+demo</a>) with Bessel (compute engines, SDK, and CLI). Both parents are
+Apache 2.0; the merged repository is
+<a href="https://github.com/PaulMRamirez/cosmolabe">PaulMRamirez/cosmolabe</a>.</p>
 <p>Capability claims point here and nowhere else. Everything on this page is
 generated from the committed machine-readable tables in
 <code>docs/validation/data/</code> by <code>node scripts/validation-page.mjs</code>;
