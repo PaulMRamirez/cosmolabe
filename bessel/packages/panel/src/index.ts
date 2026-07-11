@@ -136,5 +136,11 @@ export {
   startTimeFromCursorEt,
   type MmgisPanelLink,
 } from './mmgis-deep-link.ts';
+export {
+  createMmgisDataAdapter,
+  mmgisLayerToGeoLayer,
+  mmgisLayerToProduct,
+  type MmgisComputedLayer,
+} from './mmgis-adapter.ts';
 export { PanelSurface, ProductView, ProvenanceChip } from './PanelSurface.tsx';
 export { fieldToCells, layerToLonLat, type FieldCellRect } from './mappers.ts';
