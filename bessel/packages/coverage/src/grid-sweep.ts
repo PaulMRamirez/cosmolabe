@@ -226,6 +226,11 @@ export async function sweepCoverageGrid(
       done++;
       req.onCell?.(cell, done, total);
       req.onProgress?.(done / total);
+      // Yield a macrotask between cells: the SPICE calls above resolve as
+      // microtasks, so without this a worker-hosted sweep runs as one
+      // uninterruptible chain and a queued cancel message is never delivered
+      // (the eval-series interpreter yields for exactly the same reason).
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
   return { grid: g, cells, areaWeightedPercentCoverage: areaWeightedPercentCoverage(cells) };

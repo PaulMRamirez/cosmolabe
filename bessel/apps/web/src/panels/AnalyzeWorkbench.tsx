@@ -21,6 +21,7 @@ import {
   AccessCommsPanel,
   ConjunctionPanel,
   CoveragePanel,
+  GrammarPanel,
   LightingGeometryPanel,
   OrbitManeuverPanel,
   PanelSuspense,
@@ -52,6 +53,7 @@ const TABS: readonly { readonly id: AnalyzeTab; readonly label: string; readonly
   { id: 'access-comms', label: 'Access & Comms', icon: <Icon name="share" size="sm" /> },
   { id: 'conjunction', label: 'Conjunction', icon: <DomainIcon name="conjunction" size="sm" /> },
   { id: 'coverage', label: 'Coverage & Constellation', icon: <DomainIcon name="walker-constellation" size="sm" /> },
+  { id: 'grammar', label: 'Jobs (M-0008 demo)', icon: <Icon name="chart" size="sm" /> },
   { id: 'report-compare', label: 'Report & Compare', icon: <Icon name="chart" size="sm" /> },
 ];
 
@@ -190,6 +192,9 @@ export function AnalyzeWorkbench(props: AnalyzeWorkbenchProps): JSX.Element {
               hasSpacecraft={props.hasSpacecraft}
               {...(reqFor('coverage') ? { expandRequest: reqFor('coverage') } : {})}
             />
+          )}
+          {activeTab === 'grammar' && (
+            <GrammarPanel engine={engine} store={store} />
           )}
           {activeTab === 'report-compare' && (
             <ReportComparePanel

@@ -66,11 +66,31 @@ export interface EngineJob {
  * the frames layer share a single bindings instance, and kernels flow in
  * through the frames layer so the set hash tracks them.
  */
+/** A synthetic Type 13 ephemeris to publish into the environment. */
+export interface SpkPublication {
+  readonly name: string;
+  readonly body: number;
+  readonly center: number;
+  readonly frame: string;
+  readonly segid: string;
+  readonly degree: number;
+  readonly epochs: Float64Array;
+  readonly states: Float64Array;
+}
+
 export interface ComputeEnv {
   readonly engine: SpiceEngine;
   readonly frames: FramesLayer;
   /** Furnish a kernel through the frames tier (tracked in the set hash). */
   furnish(name: string, bytes: Uint8Array): void;
+  /**
+   * Publish a synthetic Type 13 SPK (a designed constellation, a propagated
+   * arc) through the frames tier: the written kernel's bytes are read back
+   * and furnished on the tracked path, so a product computed against a
+   * synthetic ephemeris carries it in the provenance kernel set like any
+   * fetched kernel. Provenance that omitted synthetic inputs would lie.
+   */
+  publishSpk(spk: SpkPublication): void;
 }
 
 export async function createComputeEnv(options?: SpiceEngineOptions): Promise<ComputeEnv> {
@@ -82,6 +102,14 @@ export async function createComputeEnv(options?: SpiceEngineOptions): Promise<Co
     frames,
     furnish(name, bytes) {
       frames.furnish(name, bytes);
+    },
+    publishSpk(spk) {
+      bindings.writeSpkType13(
+        spk.name, spk.body, spk.center, spk.frame, spk.segid, spk.degree, spk.epochs, spk.states,
+      );
+      const bytes = bindings.readKernelBytes(spk.name);
+      bindings.unload(spk.name);
+      frames.furnish(spk.name, bytes);
     },
   };
 }
@@ -152,6 +180,11 @@ export function submitJob(env: ComputeEnv, job: EngineJob): JobHandle {
           pct: step.value.pct,
           partial: step.value.partial ? wrap(step.value.partial) : undefined,
         });
+        // Yield a macrotask per progress step so a worker-hosted job delivers
+        // queued messages (cancel included) at every stream boundary; the
+        // engines' own awaits are microtasks and would otherwise starve the
+        // event loop for the whole job.
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
     } finally {
       queue.close();

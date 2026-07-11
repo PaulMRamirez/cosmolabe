@@ -143,6 +143,9 @@ importers:
       '@bessel/color':
         specifier: workspace:*
         version: link:../../packages/color
+      '@bessel/compute':
+        specifier: workspace:*
+        version: link:../../packages/compute
       '@bessel/conjunction':
         specifier: workspace:*
         version: link:../../packages/conjunction

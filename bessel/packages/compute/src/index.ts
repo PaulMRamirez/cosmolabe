@@ -31,6 +31,7 @@ export {
   JobCancelledError,
   type ComputeEnv,
   type EngineJob,
+  type SpkPublication,
   type JobHandle,
   type JobProgress,
   type JobRunContext,

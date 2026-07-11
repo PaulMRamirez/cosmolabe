@@ -69,6 +69,8 @@ import type {
   ObservationScheduleSpec,
 } from './analysis-defaults.ts';
 import { bootScene, loadInstrument, type EngineCore } from './bootstrap.ts';
+import type { GrammarJobKind } from '../store/app-state.ts';
+import type { GrammarRef } from './grammar-ops.ts';
 import { applyViewModel } from './apply-view.ts';
 import { type HpopForceModel } from './hpop-model.ts';
 import { type McsDesign } from './mcs.ts';
@@ -219,6 +221,12 @@ export class BesselEngine {
   // sweep (inside the dynamic-import op so the coverage worker chunk stays off the first-paint
   // shell) and reused/cancelled across runs. A mutable ref the lazily-imported coverage ops own.
   private readonly coverageRef: CoverageRef = { client: null };
+  /** M-0008 grammar demo: the compute worker client and in-flight job runs. */
+  private readonly grammarRef: {
+    client: { dispose(): void } | null;
+    et0: number;
+    runs: Map<GrammarJobKind, { cancel(): void }>;
+  } = { client: null, et0: 0, runs: new Map() };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -268,6 +276,8 @@ export class BesselEngine {
     this.porkchopRef.client?.cancel();
     // [ux-p3-coverage] Terminate any in-flight coverage worker (and its nested SPICE worker) too.
     this.coverageRef.client?.dispose();
+    // Terminate the grammar demo's compute worker (M-0008).
+    this.grammarRef.client?.dispose();
     if (this.core) {
       cancelAnimationFrame(this.raf);
       this.core.scene.dispose();
@@ -755,6 +765,23 @@ export class BesselEngine {
   // Every compute/run/export action runs through runTool, keyed by the action id (which
   // is the panel button's data-testid), so each tool transitions idle -> running -> ok
   // or { error } and the panel can show a busy state and a located success or failure.
+  /** M-0008 grammar demo: run one of the four product-kind jobs through the
+   *  compute worker; partials stream into the grammar store slice and the
+   *  scene drapes. */
+  async runGrammarJob(kind: GrammarJobKind): Promise<void> {
+    const e = this.core;
+    if (!e) return;
+    await this.runTool(`grammar-${kind}`, async () => {
+      const ops = await import('./grammar-ops.ts');
+      await ops.runGrammarJob(e, this.store, this.grammarRef as GrammarRef, kind);
+    });
+  }
+
+  /** Cancel an in-flight grammar job cooperatively (JobHandle.cancel). */
+  cancelGrammarJob(kind: GrammarJobKind): void {
+    this.grammarRef.runs.get(kind)?.cancel();
+  }
+
   private async runTool(id: string, fn: () => Promise<void> | void): Promise<void> {
     this.setRunStatus(id, 'running');
     try {

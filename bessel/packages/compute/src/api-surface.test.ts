@@ -100,7 +100,9 @@ type _EngineJobKeys = Assert<
 type _JobRunContextKeys = Assert<
   Exact<keyof api.JobRunContext, 'engine' | 'frames' | 'signal' | 'throwIfCancelled'>
 >;
-type _ComputeEnvKeys = Assert<Exact<keyof api.ComputeEnv, 'engine' | 'frames' | 'furnish'>>;
+type _ComputeEnvKeys = Assert<
+  Exact<keyof api.ComputeEnv, 'engine' | 'frames' | 'furnish' | 'publishSpk'>
+>;
 type _AccessJobRequestKeys = Assert<
   Exact<
     keyof api.AccessJobRequest,

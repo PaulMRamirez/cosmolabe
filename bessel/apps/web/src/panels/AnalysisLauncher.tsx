@@ -61,6 +61,7 @@ const DOMAIN_LABELS: Readonly<Record<AnalyzeTab, string>> = {
   'access-comms': 'access & comms',
   conjunction: 'conjunction',
   coverage: 'coverage',
+  grammar: 'analysis jobs (M-0008 demo)',
   'report-compare': 'report & compare',
 };
 
