@@ -33,6 +33,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint packages/ apps/",
+    "postinstall": "node scripts/link-seam-packages.mjs",
     "preprocess:displacement": "node scripts/preprocess-displacement.mjs"
   },
   "engines": {

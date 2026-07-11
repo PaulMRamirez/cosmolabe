@@ -385,6 +385,17 @@ async function buildFramesLayer(kernels: string[], extras: ExtraKernel[] = []): 
  * site FK, the generated GS-4 SPKs) furnished before the catalog loads. Kept
  * here so the heritage harness stays untouched (iron rule 2).
  */
+/** The timecraftjs reference instance for call-parity, same kernel bytes. */
+async function buildTimecraftRef(kernels: string[], extras: ExtraKernel[] = []): Promise<Spice> {
+  const ref = await Spice.init();
+  await furnishKernels(ref, kernels);
+  for (const e of extras) {
+    const buf = e.bytes.buffer.slice(e.bytes.byteOffset, e.bytes.byteOffset + e.bytes.byteLength);
+    await ref.furnish({ type: 'buffer', data: buf as ArrayBuffer, filename: e.name });
+  }
+  return ref;
+}
+
 async function buildSceneWithExtras(
   catalog: CatalogJson,
   kernels: string[],
@@ -407,6 +418,10 @@ async function buildSceneWithExtras(
 interface ScenarioCtx {
   scenario: string;
   scene: BuiltScene;
+  /** The timecraftjs reference wrapper, rig-built: after the Session 4
+   *  re-point the harness scenes run over the frames tier, so the rig
+   *  constructs the heritage reference lane itself from the same bytes. */
+  ref: Spice;
   frames: FramesLayer;
   offsets: number[];
   parity: ParityPair[];
@@ -473,6 +488,7 @@ describe('seam differential harness (M-0002)', () => {
       {
         scenario: 'GS-1',
         scene: gs1Scene,
+        ref: await buildTimecraftRef(GS1_KERNELS),
         frames: await buildFramesLayer(GS1_KERNELS),
         offsets: GS1_OFFSETS_S,
         parity: GS1_PARITY,
@@ -486,6 +502,7 @@ describe('seam differential harness (M-0002)', () => {
       {
         scenario: 'GS-2',
         scene: gs2Scene,
+        ref: await buildTimecraftRef(GS2.kernels),
         frames: await buildFramesLayer(GS2.kernels),
         offsets: GS2_OFFSETS_S,
         parity: GS2_PARITY,
@@ -504,6 +521,7 @@ describe('seam differential harness (M-0002)', () => {
       {
         scenario: 'GS-3',
         scene: gs3Scene,
+        ref: await buildTimecraftRef(GS3_KERNELS, [gs3Fk]),
         frames: await buildFramesLayer(GS3_KERNELS, [gs3Fk]),
         offsets: GS3_OFFSETS_S,
         parity: GS3_PARITY,
@@ -518,6 +536,7 @@ describe('seam differential harness (M-0002)', () => {
       {
         scenario: 'GS-4',
         scene: gs4Scene,
+        ref: await buildTimecraftRef(GS4_KERNELS, walkerSpks),
         frames: await buildFramesLayer(GS4_KERNELS, walkerSpks),
         offsets: GS4_OFFSETS_S,
         parity: GS4_PARITY,
@@ -534,7 +553,7 @@ describe('seam differential harness (M-0002)', () => {
     let cosmolabeToolkit = 'unknown';
     try {
       const mod = (
-        gs2Scene.spice as unknown as {
+        scenarios[1]!.ref as unknown as {
           module: { ccall: (...a: unknown[]) => unknown; UTF8ToString: (p: number) => string };
         }
       ).module;
@@ -564,12 +583,13 @@ describe('seam differential harness (M-0002)', () => {
     const rows: ParityRow[] = [];
 
     for (const ctx of scenarios) {
-      const { spice, et } = ctx.scene;
+      const { et } = ctx.scene;
+      const spice = ctx.ref;
       const epochs = ctx.offsets.map((s) => et + s);
 
       // str2et vs toEt: the epoch conversion authority against the heritage parser.
       const relEt =
-        Math.abs(ctx.frames.toEt(ctx.defaultTime) - spice!.str2et(ctx.defaultTime)) / Math.abs(et);
+        Math.abs(ctx.frames.toEt(ctx.defaultTime) - spice.str2et(ctx.defaultTime)) / Math.abs(et);
       rows.push({
         scenario: ctx.scenario,
         call: 'str2et',
@@ -592,7 +612,7 @@ describe('seam differential harness (M-0002)', () => {
           });
           let maxRel = 0;
           for (let i = 0; i < epochs.length; i++) {
-            const ref = spice!.spkezr(p.target, epochs[i]!, p.frame, correction, p.observer);
+            const ref = spice.spkezr(p.target, epochs[i]!, p.frame, correction, p.observer);
             const base = i * 6;
             const relPos = relVec(
               [batch.states[base]!, batch.states[base + 1]!, batch.states[base + 2]!],
@@ -627,7 +647,7 @@ describe('seam differential harness (M-0002)', () => {
         let maxRel = 0;
         for (const t of epochs) {
           const ours = ctx.frames.chain(from!, to!, t).rotation;
-          const ref = spice!.pxform(from!, to!, t);
+          const ref = spice.pxform(from!, to!, t);
           for (let k = 0; k < 9; k++) maxRel = Math.max(maxRel, Math.abs(ours[k]! - ref[k]!));
         }
         rows.push({
@@ -751,7 +771,7 @@ describe('seam differential harness (M-0002)', () => {
       JSON.stringify(
         {
           description:
-            'Differential harness, pipeline mode (M-0002): cosmolabe through its own pipeline (Universe, CatalogLoader, trajectory caching and interpolation; per-leg relative absolutePositionOf, composed rotation pole, body-fixed site placement) vs the frames tier over cspice-wasm (cache-free), identical kernel bytes, ECLIPJ2000, correction NONE, all four golden scenarios. Tripwires 1 m position, 5 arcsec pointing; scripts/seam.mjs --strict-pipeline is the re-point merge gate. GS-1 and GS-3 satellites of note: the Session 3 GS-1 tripwire breach (the truncated heritage obliquity, 87 to 95 m at 5.6 AU) closed when the Session 4 Class B fix landed; the GS-2 sub-meter rows of the Session 3 table were the same constant on the J2000-framed legs, and the post-fix table shows the true pipeline noise floor near 0.1 mm.',
+            'Differential harness, pipeline mode (M-0002): cosmolabe through its own pipeline (Universe, CatalogLoader, trajectory caching and interpolation; per-leg relative absolutePositionOf, composed rotation pole, body-fixed site placement; since the Session 4 re-point that pipeline runs over the frames tier through the heritage adapter) vs the frames tier direct (cache-free), identical kernel bytes, ECLIPJ2000, correction NONE, all four golden scenarios. Tripwires 1 m position, 5 arcsec pointing; scripts/seam.mjs --strict-pipeline is the re-point merge gate. GS-1 and GS-3 satellites of note: the Session 3 GS-1 tripwire breach (the truncated heritage obliquity, 87 to 95 m at 5.6 AU) closed when the Session 4 Class B fix landed; the GS-2 sub-meter rows of the Session 3 table were the same constant on the J2000-framed legs, and the post-fix table shows the true pipeline noise floor near 0.1 mm.',
           tripwires: { positionM: TRIP_POS_M, pointingArcsec: TRIP_POINT_ARCSEC },
           toolkit,
           scenarios: scenarioMeta(),

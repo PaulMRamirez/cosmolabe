@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "bench": "vitest bench --run",
+    "build:seam": "tsc -p packages/cspice-wasm/tsconfig.build.json && tsc -p packages/frames/tsconfig.build.json",
     "build:web": "pnpm --filter @bessel/web build",
     "build:pages": "BESSEL_BASE=/bessel/ pnpm --filter @bessel/web build",
     "build:desktop": "pnpm --filter @bessel/desktop build",
@@ -23,7 +24,7 @@
     "audit:prod": "pnpm audit --prod --audit-level high",
     "lhci": "lhci autorun",
     "release:dry": "changeset status --verbose",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:web && pnpm size",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:seam && pnpm build:web && pnpm size",
     "cspice:build": "bash packages/cspice-wasm/scripts/build-cspice.sh"
   },
   "devDependencies": {
