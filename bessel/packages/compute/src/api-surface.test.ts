@@ -100,7 +100,9 @@ type _EngineJobKeys = Assert<
 type _JobRunContextKeys = Assert<
   Exact<keyof api.JobRunContext, 'engine' | 'frames' | 'signal' | 'throwIfCancelled'>
 >;
-type _ComputeEnvKeys = Assert<Exact<keyof api.ComputeEnv, 'engine' | 'frames' | 'furnish'>>;
+type _ComputeEnvKeys = Assert<
+  Exact<keyof api.ComputeEnv, 'engine' | 'frames' | 'furnish' | 'publishSpk'>
+>;
 type _AccessJobRequestKeys = Assert<
   Exact<
     keyof api.AccessJobRequest,
@@ -111,6 +113,18 @@ type _CoverageJobRequestKeys = Assert<
   Exact<
     keyof api.CoverageJobRequest,
     'grid' | 'assets' | 'span' | 'step' | 'minElevationRad' | 'correction'
+  >
+>;
+type _SeriesJobRequestKeys = Assert<
+  Exact<
+    keyof api.SeriesJobRequest,
+    'providers' | 'span' | 'step' | 'frame' | 'correction' | 'chunks'
+  >
+>;
+type _GroundTrackJobRequestKeys = Assert<
+  Exact<
+    keyof api.GroundTrackJobRequest,
+    'body' | 'satellite' | 'bodyFrame' | 'span' | 'step' | 'correction' | 'chunks'
   >
 >;
 type _SerializedProductKinds = Assert<
@@ -129,6 +143,8 @@ describe('compute plane API surface (stability policy)', () => {
       'decodeF64',
       'encodeAnalysisProduct',
       'encodeF64',
+      'groundTrackJob',
+      'seriesJob',
       'submitJob',
     ]);
   });

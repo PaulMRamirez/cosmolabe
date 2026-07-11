@@ -62,6 +62,9 @@ export const ConjunctionPanel = lazy(() =>
 export const CoveragePanel = lazy(() =>
   import('./CoveragePanel.tsx').then((m) => ({ default: m.CoveragePanel })),
 );
+export const GrammarPanel = lazy(() =>
+  import('./GrammarPanel.tsx').then((m) => ({ default: m.GrammarPanel })),
+);
 export const ReportComparePanel = lazy(() =>
   import('./ReportComparePanel.tsx').then((m) => ({ default: m.ReportComparePanel })),
 );

@@ -1,0 +1,208 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Cosmolabe validation</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.5rem; } h2 { font-size: 1.15rem; margin-top: 2.2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.92em; }
+  th, td { border: 1px solid #8888; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #8882; position: sticky; top: 0; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .fail { color: #cf222e; font-weight: 600; }
+  .na { color: #888; }
+  .gate { border-left: 3px solid #888; padding: 0.4rem 1rem; background: #8881; margin: 0.6rem 0; }
+  .scroll { overflow-x: auto; }
+</style>
+
+<h1>Cosmolabe validation report</h1>
+<p class="gate">This page belongs to the merged
+<a href="https://github.com/PaulMRamirez/bessel">Bessel</a> +
+<a href="https://github.com/AaronPlave/cosmolabe">Cosmolabe</a> project, a
+work in progress combining Aaron Plave's Cosmolabe (visualization engine and
+instrument; see his <a href="https://aaronplave.com/cosmolabe/">heritage
+demo</a>) with Bessel (compute engines, SDK, and CLI). Both parents are
+Apache 2.0; the merged repository is
+<a href="https://github.com/PaulMRamirez/cosmolabe">PaulMRamirez/cosmolabe</a>.</p>
+<p>Capability claims point here and nowhere else. Everything on this page is
+generated from the committed machine-readable tables in
+<code>docs/validation/data/</code> by <code>node scripts/validation-page.mjs</code>;
+each table names its gate and the command that reproduces it under the pinned
+environment (<code>TZ=America/Los_Angeles</code>, node 22). The adversarial
+per-session cross-checks live in <a href="reports/session-2.html">the
+verify-spec reports</a> (<a href="reports/session-3.html">3</a>,
+<a href="reports/session-4.html">4</a>, <a href="reports/session-5.html">5</a>).</p>
+
+<p class="gate"><strong>Differential harness (ADR M-0002):</strong> <span class="pass">GREEN</span>.
+Call-parity passes on all four golden scenarios at
+relative 1e-12; pipeline mode is
+within the 1 m
+position and 5 arcsec pointing tripwires on every row.
+Toolkits: cosmolabe CSPICE_N0066, cspice-wasm CSPICE_N0066.</p>
+
+<h2>Seam call-parity (gate: relative 1e-12)</h2>
+<p>Differential harness, call-parity mode (M-0002): identical CSPICE invocations through both wrappers, cosmolabe @cosmolabe/spice (timecraftjs) as reference vs the frames tier over cspice-wasm, identical kernel bytes, gate relative 1e-12, all four golden scenarios. maxRelDelta is the worst epoch: vector-norm relative for spkezr position and velocity (plus relative light time under corrections), relative for str2et, max elementwise (unit scale) for pxform.</p>
+<p>Reproduce: <code>TZ=America/Los_Angeles node scripts/seam.mjs --strict-pipeline</code></p>
+<div class="scroll">
+<table>
+<tr><th>scenario</th><th>call</th><th>detail</th><th>correction</th><th>epochs</th><th>maxRelDelta</th><th>pass</th></tr>
+<tr><td>GS-1</td><td>str2et</td><td>2000-06-01T00:00:00</td><td class="na">null</td><td>1</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>CASSINI wrt SUN @ ECLIPJ2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>CASSINI wrt SUN @ ECLIPJ2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>CASSINI wrt SUN @ ECLIPJ2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>CASSINI wrt SUN @ ECLIPJ2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>CASSINI wrt SUN @ ECLIPJ2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>EARTH wrt SUN @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>EARTH wrt SUN @ J2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>EARTH wrt SUN @ J2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>EARTH wrt SUN @ J2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>EARTH wrt SUN @ J2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>JUPITER wrt SUN @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>JUPITER wrt SUN @ J2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>JUPITER wrt SUN @ J2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>JUPITER wrt SUN @ J2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>spkezr</td><td>JUPITER wrt SUN @ J2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>pxform</td><td>ECLIPJ2000 -&gt; J2000</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>pxform</td><td>J2000 -&gt; IAU_EARTH</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>pxform</td><td>ECLIPJ2000 -&gt; IAU_JUPITER</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>str2et</td><td>2004-07-01T02:48:00</td><td class="na">null</td><td>1</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>CASSINI wrt SATURN @ ECLIPJ2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>CASSINI wrt SATURN @ ECLIPJ2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>CASSINI wrt SATURN @ ECLIPJ2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>CASSINI wrt SATURN @ ECLIPJ2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>CASSINI wrt SATURN @ ECLIPJ2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>TITAN wrt SATURN @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>TITAN wrt SATURN @ J2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>TITAN wrt SATURN @ J2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>TITAN wrt SATURN @ J2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>TITAN wrt SATURN @ J2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>SATURN wrt SUN @ ECLIPJ2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>SATURN wrt SUN @ ECLIPJ2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>SATURN wrt SUN @ ECLIPJ2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>SATURN wrt SUN @ ECLIPJ2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>spkezr</td><td>SATURN wrt SUN @ ECLIPJ2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>pxform</td><td>ECLIPJ2000 -&gt; J2000</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>pxform</td><td>ECLIPJ2000 -&gt; IAU_SATURN</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>pxform</td><td>J2000 -&gt; IAU_SATURN</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>str2et</td><td>2004-07-01T00:00:00</td><td class="na">null</td><td>1</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>MOON wrt EARTH @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>MOON wrt EARTH @ J2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>MOON wrt EARTH @ J2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>MOON wrt EARTH @ J2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>MOON wrt EARTH @ J2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ ECLIPJ2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ ECLIPJ2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ ECLIPJ2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ ECLIPJ2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ ECLIPJ2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ SEAM_GS3_SITE</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ SEAM_GS3_SITE</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ SEAM_GS3_SITE</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ SEAM_GS3_SITE</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>spkezr</td><td>SUN wrt MOON @ SEAM_GS3_SITE</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>pxform</td><td>J2000 -&gt; IAU_MOON</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>pxform</td><td>ECLIPJ2000 -&gt; IAU_MOON</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>pxform</td><td>IAU_MOON -&gt; SEAM_GS3_SITE</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>pxform</td><td>ECLIPJ2000 -&gt; SEAM_GS3_SITE</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>str2et</td><td>2004-07-01T00:00:00</td><td class="na">null</td><td>1</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9000 wrt EARTH @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9001 wrt EARTH @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9002 wrt EARTH @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9003 wrt EARTH @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9004 wrt EARTH @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9005 wrt EARTH @ J2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9000 wrt EARTH @ ECLIPJ2000</td><td>NONE</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9000 wrt EARTH @ ECLIPJ2000</td><td>LT</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9000 wrt EARTH @ ECLIPJ2000</td><td>LT+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9000 wrt EARTH @ ECLIPJ2000</td><td>CN</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>spkezr</td><td>-9000 wrt EARTH @ ECLIPJ2000</td><td>CN+S</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>pxform</td><td>J2000 -&gt; IAU_EARTH</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>pxform</td><td>ECLIPJ2000 -&gt; J2000</td><td class="na">null</td><td>5</td><td>0</td><td class="pass">true</td></tr>
+</table>
+</div>
+
+<h2>Seam pipeline (tripwires: 1 m position, 5 arcsec pointing)</h2>
+<p>Differential harness, pipeline mode (M-0002): cosmolabe through its own pipeline (Universe, CatalogLoader, trajectory caching and interpolation; per-leg relative absolutePositionOf, composed rotation pole, body-fixed site placement; since the Session 4 re-point that pipeline runs over the frames tier through the heritage adapter) vs the frames tier direct (cache-free), identical kernel bytes, ECLIPJ2000, correction NONE, all four golden scenarios. Tripwires 1 m position, 5 arcsec pointing; scripts/seam.mjs --strict-pipeline is the re-point merge gate. GS-1 and GS-3 satellites of note: the Session 3 GS-1 tripwire breach (the truncated heritage obliquity, 87 to 95 m at 5.6 AU) closed when the Session 4 Class B fix landed; the GS-2 sub-meter rows of the Session 3 table were the same constant on the J2000-framed legs, and the post-fix table shows the true pipeline noise floor near 0.1 mm.</p>
+<p>Reproduce: <code>TZ=America/Los_Angeles node scripts/seam.mjs --strict-pipeline</code></p>
+<div class="scroll">
+<table>
+<tr><th>scenario</th><th>body</th><th>center</th><th>correction</th><th>frame</th><th>epochs</th><th>maxPosErrM</th><th>pointErrArcsec</th><th>posWithinTripwire</th><th>pointWithinTripwire</th></tr>
+<tr><td>GS-1</td><td>Cassini</td><td>SUN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Saturn</td><td>SUN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0</td><td>0.922</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Mimas</td><td>SATURN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000708</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Enceladus</td><td>SATURN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.000103</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Tethys</td><td>SATURN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000766</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Dione</td><td>SATURN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000945</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Rhea</td><td>SATURN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.000106</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Titan</td><td>SATURN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.000116</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Cassini</td><td>SATURN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000655</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-3</td><td>Earth</td><td>SUN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-3</td><td>Moon</td><td>EARTH</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000326</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-3</td><td>Site</td><td>MOON</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000455</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-4</td><td>Earth</td><td>SUN</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-4</td><td>Walker-0</td><td>EARTH</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000106</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-4</td><td>Walker-1</td><td>EARTH</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000209</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-4</td><td>Walker-2</td><td>EARTH</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000122</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-4</td><td>Walker-3</td><td>EARTH</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000128</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-4</td><td>Walker-4</td><td>EARTH</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.000024</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+<tr><td>GS-4</td><td>Walker-5</td><td>EARTH</td><td>NONE</td><td>ECLIPJ2000</td><td>5</td><td>0.0000245</td><td class="na">null</td><td class="pass">true</td><td class="na">null</td></tr>
+</table>
+</div>
+
+<h2>State and orientation error vs SPICE truth</h2>
+<p>Cosmolabe core state and orientation error vs SPICE truth on saturn-soi (GS-2 analog): per-leg relative position vs spkpos (ECLIPJ2000, correction NONE), max over the -12h..+12h sweep; composed pole vs the pxform IAU pole at the scene epoch.</p>
+<p>Reproduce: <code>TZ=America/Los_Angeles node scripts/state-error.mjs</code></p>
+<div class="scroll">
+<table>
+<tr><th>body</th><th>center</th><th>correction</th><th>epochs</th><th>maxPosErrKm</th><th>maxPosErrM</th><th>poleErrDeg</th><th>poleErrArcsec</th></tr>
+<tr><td>Saturn</td><td>SUN</td><td>NONE</td><td>5</td><td>0</td><td>0</td><td>0.000256</td><td>0.922</td></tr>
+<tr><td>Mimas</td><td>SATURN</td><td>NONE</td><td>5</td><td>7.08e-8</td><td>0.0000708</td><td class="na">null</td><td class="na">null</td></tr>
+<tr><td>Enceladus</td><td>SATURN</td><td>NONE</td><td>5</td><td>1.03e-7</td><td>0.000103</td><td class="na">null</td><td class="na">null</td></tr>
+<tr><td>Tethys</td><td>SATURN</td><td>NONE</td><td>5</td><td>7.66e-8</td><td>0.0000766</td><td class="na">null</td><td class="na">null</td></tr>
+<tr><td>Dione</td><td>SATURN</td><td>NONE</td><td>5</td><td>9.45e-8</td><td>0.0000945</td><td class="na">null</td><td class="na">null</td></tr>
+<tr><td>Rhea</td><td>SATURN</td><td>NONE</td><td>5</td><td>1.06e-7</td><td>0.000106</td><td class="na">null</td><td class="na">null</td></tr>
+<tr><td>Titan</td><td>SATURN</td><td>NONE</td><td>5</td><td>1.16e-7</td><td>0.000116</td><td class="na">null</td><td class="na">null</td></tr>
+<tr><td>Cassini</td><td>SATURN</td><td>NONE</td><td>5</td><td>6.55e-8</td><td>0.0000655</td><td class="na">null</td><td class="na">null</td></tr>
+</table>
+</div>
+
+<h2>Screen-space jitter (envelope: 0.5 device px on gated modes)</h2>
+<p>Float32 render-origin jitter vs float64 reference, device pixels, camera 1000 km from target, tracking; gated envelope 0.5 px; originMode none is the no-rebase counterfactual, reported ungated.</p>
+<p>Reproduce: <code>TZ=America/Los_Angeles node scripts/jitter-scaffold.mjs</code></p>
+<div class="scroll">
+<table>
+<tr><th>scenario</th><th>target</th><th>originMode</th><th>tier</th><th>absMaxPx</th><th>frameJitterMaxPx</th><th>gated</th><th>pass</th></tr>
+<tr><td>GS-2</td><td>Cassini</td><td>tracked</td><td>A</td><td>0.0000495</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Cassini</td><td>tracked</td><td>B</td><td>0.000042</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Cassini</td><td>tracked</td><td>C</td><td>0.0000319</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Cassini</td><td>parent</td><td>A</td><td>0.0116</td><td>0.0125</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Cassini</td><td>parent</td><td>B</td><td>0.00987</td><td>0.0106</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Cassini</td><td>parent</td><td>C</td><td>0.00749</td><td>0.00806</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-1</td><td>Cassini</td><td>none</td><td>A</td><td>166</td><td>187</td><td class="fail">false</td><td class="na">null</td></tr>
+<tr><td>GS-1</td><td>Cassini</td><td>none</td><td>B</td><td>141</td><td>159</td><td class="fail">false</td><td class="na">null</td></tr>
+<tr><td>GS-1</td><td>Cassini</td><td>none</td><td>C</td><td>107</td><td>121</td><td class="fail">false</td><td class="na">null</td></tr>
+<tr><td>GS-2</td><td>Enceladus</td><td>tracked</td><td>A</td><td>0.0000495</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Enceladus</td><td>tracked</td><td>B</td><td>0.000042</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Enceladus</td><td>tracked</td><td>C</td><td>0.0000319</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Enceladus</td><td>parent</td><td>A</td><td>0.0208</td><td>0.022</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Enceladus</td><td>parent</td><td>B</td><td>0.0176</td><td>0.0187</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>GS-2</td><td>Enceladus</td><td>parent</td><td>C</td><td>0.0134</td><td>0.0142</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>tracked</td><td>A</td><td>0.0000495</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>tracked</td><td>B</td><td>0.000042</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>tracked</td><td>C</td><td>0.0000319</td><td>0</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>parent</td><td>A</td><td>0.0478</td><td>0.0515</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>parent</td><td>B</td><td>0.0406</td><td>0.0437</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>parent</td><td>C</td><td>0.0308</td><td>0.0332</td><td class="pass">true</td><td class="pass">true</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>none</td><td>A</td><td>19.1</td><td>23.3</td><td class="fail">false</td><td class="na">null</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>none</td><td>B</td><td>16.2</td><td>19.8</td><td class="fail">false</td><td class="na">null</td></tr>
+<tr><td>analytical</td><td>Moon</td><td>none</td><td>C</td><td>12.3</td><td>15</td><td class="fail">false</td><td class="na">null</td></tr>
+</table>
+</div>
+
+<h2>Scope, stated honestly</h2>
+<p>This is the skeleton of the page described in docs/validation/README.md.
+Present: the M-0002 differential harness over the four golden scenarios and
+the Session 2 measurement rig tables. Future scope, named as such and not yet
+claimed: SGP4 conformance against SGP4-VER, HPOP force-model fixtures against
+GMAT, Horizons cross-checks, OD synthetic-truth recovery, and RF closed-form
+checks.</p>

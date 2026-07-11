@@ -35,7 +35,74 @@ export type AnalyzeTab =
   | 'access-comms'
   | 'conjunction'
   | 'coverage'
+  | 'grammar'
   | 'report-compare';
+
+// ── M-0008 grammar demo (Session 6): job views and product views ─────────────
+
+export type GrammarJobKind = 'gs2-access' | 'gs2-series' | 'gs2-track' | 'gs4-field';
+export type GrammarJobStatus = 'idle' | 'running' | 'done' | 'cancelled' | { readonly error: string };
+
+/** The provenance block a legend chip's popover shows, straight from the product. */
+export interface GrammarProvenanceView {
+  readonly engine: string;
+  readonly version: string;
+  readonly setHash: string;
+  readonly frame: string;
+  readonly correction: string;
+  readonly computedAt: string;
+  readonly jobId: string;
+}
+
+export interface GrammarJobView {
+  readonly status: GrammarJobStatus;
+  readonly pct: number;
+  readonly partials: number;
+  readonly provenance: GrammarProvenanceView | null;
+}
+
+export interface GrammarIntervalsView {
+  readonly sets: readonly {
+    readonly label: string;
+    readonly intervals: readonly (readonly [number, number])[];
+  }[];
+  readonly span: readonly [number, number];
+}
+
+export interface GrammarSeriesView {
+  readonly name: string;
+  readonly unit: string;
+  readonly et: Float64Array;
+  readonly values: Float64Array;
+}
+
+export interface GrammarState {
+  readonly kernelSetHash: string | null;
+  readonly jobs: Readonly<Record<GrammarJobKind, GrammarJobView>>;
+  readonly intervals: GrammarIntervalsView | null;
+  readonly series: GrammarSeriesView | null;
+  /** In-scene drape bookkeeping for the legend chips. */
+  readonly trackPoints: number;
+  readonly fieldCellsResolved: number;
+  readonly fieldCellsTotal: number;
+}
+
+const idleGrammarJob: GrammarJobView = { status: 'idle', pct: 0, partials: 0, provenance: null };
+
+export const initialGrammarState: GrammarState = {
+  kernelSetHash: null,
+  jobs: {
+    'gs2-access': idleGrammarJob,
+    'gs2-series': idleGrammarJob,
+    'gs2-track': idleGrammarJob,
+    'gs4-field': idleGrammarJob,
+  },
+  intervals: null,
+  series: null,
+  trackPoints: 0,
+  fieldCellsResolved: 0,
+  fieldCellsTotal: 0,
+};
 
 /** Per-tool run status: a compute action is idle, running, succeeded, or failed loudly. */
 export type RunStatus = 'idle' | 'running' | 'ok' | { readonly error: string };
@@ -246,6 +313,8 @@ export interface AppState {
   designedConstellation: DesignedConstellation | null;
   /** Summary of the last coverage-grid overlay run (cell count + area-weighted FOM). */
   coverageGrid: CoverageGridResult | null;
+  /** M-0008 grammar demo state (Session 6). */
+  grammar: GrammarState;
   /** [ux-p3-coverage] Off-main-thread coverage grid-sweep progress: status + cells done/total. */
   coverageSweep: CoverageSweepState;
   /** Eigen-axis slew angle (deg) over time from the last attitude run. */
@@ -808,6 +877,7 @@ export const initialAppState: AppState = {
   constellation: null,
   designedConstellation: null,
   coverageGrid: null,
+  grammar: initialGrammarState,
   coverageSweep: INITIAL_COVERAGE_SWEEP,
   slewSeries: null,
   transfer: null,

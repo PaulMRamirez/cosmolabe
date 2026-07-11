@@ -1,7 +1,10 @@
 [
   {
     "name": "web app shell (first-paint JS, gzip)",
-    "path": ["apps/web/dist/assets/app-*.js", "apps/web/dist/assets/vendor-*.js"],
+    "path": [
+      "apps/web/dist/assets/app-*.js",
+      "apps/web/dist/assets/vendor-*.js"
+    ],
     "limit": "345 KB",
     "gzip": true
   },
@@ -14,9 +17,10 @@
       "!apps/web/dist/assets/spice.worker-*.js",
       "!apps/web/dist/assets/coverage.worker-*.js",
       "!apps/web/dist/assets/porkchop.worker-*.js",
+      "!apps/web/dist/assets/compute.worker-*.js",
       "!apps/web/dist/assets/ajv-lazy-*.js"
     ],
-    "limit": "101 KB",
+    "limit": "104 KB",
     "gzip": true
   },
   {
@@ -41,6 +45,12 @@
     "name": "spice worker (gzip)",
     "path": "apps/web/dist/assets/spice.worker-*.js",
     "limit": "32 KB",
+    "gzip": true
+  },
+  {
+    "name": "compute worker (gzip)",
+    "path": "apps/web/dist/assets/compute.worker-*.js",
+    "limit": "36 KB",
     "gzip": true
   },
   {
