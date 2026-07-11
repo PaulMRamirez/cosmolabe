@@ -29,8 +29,8 @@ re-entry brief.</p>
 
 <div class="summary">
 <p><strong>Verdict:</strong> every Verified-by assertion is met on observed
-evidence except CI, which cannot run until the PR exists and is recorded
-pending below. The commit order the amendment demanded is in the history:
+evidence, CI included (the row below was amended to pass after the PR run was
+observed green). The commit order the amendment demanded is in the history:
 the one-constant obliquity fix (095714b) landed first and alone, the fixtures
 and the strict flip followed, and the re-point (7c85dec) landed last, behind
 an already-green strict gate. Call-parity is exactly zero on all four golden
@@ -112,10 +112,13 @@ the runtime, which it has.</p>
 </tr>
 <tr>
   <td>pnpm verify green in CI</td>
-  <td class="pend">pending</td>
-  <td>CI runs on the PR; the branch had not been pushed at report time. This
-  row will be amended to the observed result, as the Session 2 and 3 reports
-  were.</td>
+  <td class="pass">pass</td>
+  <td>Amended after the PR run, per the standing precedent: the
+  <code>verify</code> check on PR #4 concluded success for head commit
+  03d4037 (github.com/PaulMRamirez/cosmolabe/actions/runs/29144189576),
+  running the full chain including the postinstall symlink bridge at npm ci
+  time, build:seam inside the bessel gate, the cosmolabe suite over the
+  re-pointed path, and the strict seam.</td>
 </tr>
 <tr>
   <td>Purity lint green</td>
