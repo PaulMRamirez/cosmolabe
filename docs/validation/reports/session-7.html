@@ -1,0 +1,328 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 7 (the worker substrate and the panel)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 7</h1>
+<p>The worker substrate and the panel: the demo's compute worker generalized
+into the package-level job substrate with cancellation pinned where it broke,
+and <code>@bessel/panel</code> implementing <code>mount()</code> per
+docs/design/02 section 7 with fallback compute, observed materializing all
+four product kinds in a bare host page. Adversarial cross-check of
+<code>docs/goals/SESSION-7-PANEL.goal.md</code> against observed evidence,
+binding ADRs M-0007 (the mount contract), M-0004 (the job protocol the
+substrate carries), and M-0010 (the isolation posture the unimplemented
+'iframe' mode cites). Generated 2026-07-11 on branch <code>session-7</code>.
+Every row was reproduced during this cross-check by running the command or
+reading the artifact, not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence except CI, which structurally requires the PR run (recorded pending
+below and amended when observed, per the standing precedent). The two
+substantive claims are observed, not argued: the conformance test lands a
+macrotask-delivered cancel mid-stream inside a worker-protocol round trip,
+and the Playwright embed smoke test drives a bare host page (no workbench
+chrome, one <code>mount()</code> call) to all four product kinds with
+streamed field partials and a live provenance chip, in 4.0 seconds against
+the built app.</p>
+<p><strong>Residual risk and honest carryover.</strong> First, the panel's
+compute axis is 'transfer' only: 'threads' and 'iframe' throw loudly with
+their ADR citations rather than degrading, and both now carry named
+executioners in the ledger (the W4 device-truth probe and the M-0010
+cross-origin host respectively). Second, the profiles stretch was again not
+attempted (three carries now); it is owed to the device-truth session by
+name. Third, the physical-device items (Companion prototype, WKWebView
+SharedArrayBuffer and WebGPU probes, the M-0007 addendum) need hardware in
+hand and were named as carryover, not absorbed. Fourth, two deliberate size
+moves are recorded for review: the embed entry got its own 8 KB budget (3.0
+KB observed) and the lazy-analysis cap moved 104 to 107 KB, paying for the
+shared UI chunks (GroundTrackMap, ProgressRing) the second vite entry hoists
+out of single-consumer lazy panels; the panel surface itself lives entirely
+in the embed chunk. Fifth, the full Playwright suite passes 66 of 67; the
+one failure is <code>electron-dsk.spec.ts</code> refusing to run because the
+desktop build artifact does not exist locally (its own guard message says
+run <code>pnpm build:desktop</code> first); this is a missing local
+prerequisite, not a regression, and the web suite including both new specs
+is green. Sixth, the panel renders geometry and field in 2D (the
+ground-track map and a flat heatmap); the in-scene drapes remain the
+inventoried scene welds, and the render-binding interface remains their
+executioner.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>A worker-hosted job cancelled mid-stream by conformance test</td>
+  <td class="pass">pass</td>
+  <td>Observed: <code>packages/compute/src/substrate.test.ts</code> passes
+  (2 tests, in the 21-test compute suite). The first test is the starvation
+  pin, placed where Session 6 broke: a 24-row coverage job runs while a
+  <code>setTimeout</code>-delivered (macrotask) cancel is queued; the job
+  must reject with <code>JobCancelledError</code> after more than zero and
+  fewer than 24 partials, which fails if any await chain starves the
+  macrotask queue. The second drives the full wire protocol (init, ready,
+  run, progress, cancel, error with the cancelled flag) through
+  <code>JobClient</code> over a same-thread fake worker and asserts the
+  client surfaces <code>JobClientCancelled</code> at the second progress
+  event.</td>
+</tr>
+<tr>
+  <td>The panel mounts in a bare host page with fallback compute producing all four product kinds through the substrate</td>
+  <td class="pass">pass</td>
+  <td>Observed via Playwright (<code>e2e/tests/embed.spec.ts</code>) against
+  the built app: exit 0 in 4.0 s. The host page (<code>embed.html</code>, a
+  second vite entry with no workbench chrome) calls <code>mount()</code>
+  once with a HostDataAdapter supplying kernels, worker construction, and
+  four job specs; all four cards reach <code>data-status="done"</code>, the
+  intervals render per-target lanes (CASSINI with bars, SUN honestly empty),
+  the series draws its strip-chart polyline, the geometry draws on the 2D
+  ground-track map, the field heatmap resolves with at least one streamed
+  partial asserted from <code>data-partials</code>, and the provenance chip
+  opens to "Computed here" with correction NONE. Worker and wasm URL
+  resolution stay with the host bundler, per the substrate protocol's
+  rule.</td>
+</tr>
+<tr>
+  <td>The embed smoke test green in the gate</td>
+  <td class="pass">pass</td>
+  <td>Green as observed local evidence (the run above), with the posture
+  stated exactly: e2e is not wired into <code>pnpm verify</code>, matching
+  the Session 6 precedent where the observed Playwright run is the gate
+  evidence for demo surfaces. The full suite run also passes both new specs
+  (66 of 67; the one failure is the desktop-build prerequisite named in the
+  summary).</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green locally</td>
+  <td class="pass">pass</td>
+  <td>Run from the repository root after the final commit set: exit 0
+  (build, typecheck, lint, tests including the 10 new panel tests and the
+  substrate conformance pair, purity lint, golden immutability, seam, size
+  with the new embed budget).</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green in CI</td>
+  <td class="pend">pending</td>
+  <td>Structurally requires the PR run; this row is amended when the check
+  is observed, per the standing precedent.</td>
+</tr>
+<tr>
+  <td>Strict seam green</td>
+  <td class="pass">pass</td>
+  <td>Observed: <code>TZ=America/Los_Angeles node scripts/seam.mjs
+  --strict-pipeline</code> exits 0. Call-parity GREEN on GS-1 through GS-4
+  (relative 1e-12 gate); pipeline within tripwires on every row, worst
+  position residual 0.116 mm (GS-2 Titan class), worst pointing 0.922
+  arcsec against the 5 arcsec tripwire.</td>
+</tr>
+<tr>
+  <td>Baseline compare green against the session-4-repoint anchor</td>
+  <td class="pass">pass</td>
+  <td>Observed: <code>TZ=America/Los_Angeles
+  BASELINE_DIR=tests/golden/session-4-repoint node scripts/baseline.mjs
+  compare</code> under the pinned node v22.23.1 reports all three renders at
+  0.000 percent pixel diff (earth-moon byte-identical) and checksums
+  verified on 6 files. Expected: this session changed no cosmolabe-heritage
+  source.</td>
+</tr>
+<tr>
+  <td>Carryover ledger updated with what this session executed and what it did not</td>
+  <td class="pass">pass</td>
+  <td>Read back in <code>docs/collab/RE-ENTRY-BRIEF.md</code>: the
+  worker-substrate and cancellation-hardening item and the GS-4 lanes gap
+  are closed as executed; the unimplemented compute modes gained named
+  executioners; profiles (three carries) is owed to the device-truth session
+  by name; the device items are named, not absorbed; the temp-wiring
+  inventory's five executioners re-asserted, with items four and five
+  updated for the panel now existing.</td>
+</tr>
+</table>
+
+<h2>Step assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>W3 gate closed by /gate with the two named precisions and the scaffolding duty</td>
+  <td class="pass">pass</td>
+  <td>Commit 8ccac79 and the brief's W3 paragraph: every criterion met on
+  observed evidence, the demo read as mechanics-complete across the pair
+  with the GS-4 lanes card the named gap (absorbed this session), the
+  porkchop stretch carried, and all five temporary-wiring executioners
+  re-asserted per the gate duty.</td>
+</tr>
+<tr>
+  <td>The demo worker generalized into the package substrate; the demo migrated onto it</td>
+  <td class="pass">pass</td>
+  <td>Commit b54d6e0: <code>substrate-protocol.ts</code> (typed wire
+  protocol), <code>substrate.worker.ts</code> (exported as
+  <code>@bessel/compute/worker</code>, hosting a ComputeEnv), and
+  <code>substrate-client.ts</code> (<code>JobClient</code>) land in
+  <code>@bessel/compute</code> with the API snapshot pins extended
+  additively; the app's worker file shrinks to one import line and the
+  app-local client and protocol files are deleted. The grammar spec passes
+  on the substrate.</td>
+</tr>
+<tr>
+  <td>Per-cell macrotask yield replaced by a time-budgeted cadence</td>
+  <td class="pass">pass</td>
+  <td><code>packages/coverage/src/grid-sweep.ts</code>: the sweep now yields
+  a macrotask when 12 ms of wall clock has elapsed
+  (<code>YIELD_BUDGET_MS</code>) instead of every cell, so a 50000-cell grid
+  pays yields proportional to elapsed time, not cell count, while the
+  conformance test above pins that cancellation still lands mid-stream
+  through this path.</td>
+</tr>
+<tr>
+  <td>GS-4 lanes card (Walker site passes) absorbs the W3 precision</td>
+  <td class="pass">pass</td>
+  <td>Observed in the grammar spec run: the fifth card
+  (<code>gs4-access</code>, Walker access windows over a ground site at 100
+  W, 40 N, 10 degree mask) ends done with
+  <code>grammar-lanes-gs4-access</code> visible and a per-satellite lane
+  asserted. The ledger closes the gap as absorbed.</td>
+</tr>
+<tr>
+  <td>mount() transcribes the design 02 section 7 signature; unimplemented modes throw loudly</td>
+  <td class="pass">pass</td>
+  <td><code>packages/panel/src/index.ts</code> against the design text: the
+  signature (node, data, optional compute mode, optional profile) matches
+  verbatim; v0 resolves 'transfer' when the mode is omitted and throws with
+  ADR citations for 'threads' (the M-0007 SharedArrayBuffer upgrade) and
+  'iframe' (the M-0010 isolation posture), pinned by unit test in
+  <code>panel.test.tsx</code>. The profile key is carried for signature
+  fidelity and documented as not yet consumed.</td>
+</tr>
+<tr>
+  <td>The four forms render as the panel's first mounted content</td>
+  <td class="pass">pass</td>
+  <td>10 panel unit tests pass: static markup pins one timeline lane per
+  interval set, one strip chart per series with a drawn polyline, the first
+  geometry layer on the 2D ground-track map, and one heatmap rect per field
+  cell with NaN cells dimmed; the pure mappers (planetocentric lon/lat,
+  NaN-to-null cells) are tested directly. The live rendering is the embed
+  smoke test above.</td>
+</tr>
+<tr>
+  <td>Profiles package skeleton (stretch, twice carried)</td>
+  <td class="na">not attempted</td>
+  <td>Capacity went to the panel and the substrate. Third carry, recorded in
+  the ledger with the device-truth session as its named owner.</td>
+</tr>
+<tr>
+  <td>Physical-device items named as carryover, not absorbed</td>
+  <td class="pass">pass</td>
+  <td>The ledger names the Companion prototype, the WKWebView
+  SharedArrayBuffer and WebGPU probes, and the M-0007 addendum as W4 items
+  needing hardware in hand.</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>1: CSPICE only under frames; correction explicit</td>
+  <td class="pass">pass</td>
+  <td>The panel speaks JobSpec to the substrate and touches no SPICE surface;
+  every job spec in the embed host carries <code>correction: 'NONE'</code>
+  explicitly. The substrate worker builds its ComputeEnv through the same
+  frames-tier path the demo used.</td>
+</tr>
+<tr>
+  <td>2: mechanically minimal heritage diffs</td>
+  <td class="pass">pass</td>
+  <td><code>git diff --stat main...HEAD -- cosmolabe/</code> is empty: zero
+  changes in the heritage tree this session.</td>
+</tr>
+<tr>
+  <td>3: seam gate</td>
+  <td class="pass">pass</td>
+  <td>Strict seam row above; nothing in the diff touches cspice-wasm, frames,
+  or core state paths, and the gate ran green anyway.</td>
+</tr>
+<tr>
+  <td>4: authority 'host' only from host data adapters</td>
+  <td class="pass">pass</td>
+  <td>Every product the panel computes flows through <code>submitJob</code>,
+  which stamps 'exploratory' and refuses jobs carrying an authority property
+  (unchanged, pinned since Session 5). The HostDataAdapter is documented as
+  the only future door for 'host' and no adapter asserting it exists; the
+  embed fixture supplies compute only.</td>
+</tr>
+<tr>
+  <td>5: golden-image pass for visual changes</td>
+  <td class="pass">pass</td>
+  <td>Baseline compare row above; the session's visual surface (the panel,
+  the embed page) is bessel-side and evidenced by the Playwright specs, and
+  the cosmolabe golden renders reproduce at 0.000 percent.</td>
+</tr>
+<tr>
+  <td>6: model-layer purity</td>
+  <td class="pass">pass</td>
+  <td>Purity lint passes inside verify. <code>@bessel/panel</code> is added
+  to the view-layer exemption set deliberately (it is the M-0007 React
+  surface, the same class as <code>ui</code>); the required audit set
+  (cspice-wasm, frames, compute, cosmolabe core) is unchanged and clean.</td>
+</tr>
+<tr>
+  <td>7: kernels never committed</td>
+  <td class="pass">pass</td>
+  <td>No kernel-extension files in <code>git diff --name-only
+  main...HEAD</code>; the embed host fetches the same fixture kernels by URL
+  at runtime.</td>
+</tr>
+<tr>
+  <td>9: SPICE kilometers at the contracts</td>
+  <td class="pass">pass</td>
+  <td>The substrate protocol carries AnalysisProduct unchanged (km, radians,
+  ET seconds per M-0004); the panel's one conversion (body-fixed km
+  positions to planetocentric lon/lat radians for the 2D map) happens in
+  <code>mappers.ts</code> at the render boundary and is documented
+  there.</td>
+</tr>
+<tr>
+  <td>10: no em or en dashes</td>
+  <td class="pass">pass</td>
+  <td>Dash sweep over every file in the session diff: clean.</td>
+</tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>review-on-return run; register and brief refreshed</td>
+  <td class="pass">pass</td>
+  <td>Script run 2026-07-11: the flagged set is unchanged (M-0001, M-0003,
+  M-0005, M-0007, M-0008) and the commits in Aaron-owned paths remain the
+  Session 4 pair. The brief gains the Session 7 paragraph, the ledger
+  updates, and the temp-wiring refresh.</td>
+</tr>
+<tr>
+  <td>verify-spec report committed</td>
+  <td class="pass">pass</td>
+  <td>This file, <code>docs/validation/reports/session-7.html</code>.</td>
+</tr>
+<tr>
+  <td>Next goal drafted</td>
+  <td class="pass">pass</td>
+  <td><code>docs/goals/SESSION-8-MMGIS-EMBED.goal.md</code>: the host-panel
+  contract and the MMGIS embed behind a flag (the W4 item needing no
+  hardware), with the explicit rule that the device-truth session preempts
+  it the moment hardware is in hand.</td>
+</tr>
+</table>
