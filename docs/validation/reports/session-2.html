@@ -27,7 +27,12 @@ artifact, not by trusting prose.</p>
 <p><strong>Verdict:</strong> every Verified-by assertion is met, including CI:
 the <code>verify</code> check on PR #2 passed (run 29140300072). No
 cosmolabe-heritage source was changed: the session diff under
-<code>cosmolabe/</code> is empty.</p>
+<code>cosmolabe/</code> is empty. Three pre-merge amendments were applied after
+the first green run and re-verified: the deliberate divergence from the
+heritage goldens is stated explicitly in ENVIRONMENT.md and the re-entry brief,
+<code>baseline.mjs compare</code> asserts the pinned node version, and
+pre-merge baseline immutability is mechanical (pinned tree hash, gated in
+verify).</p>
 <p><strong>Residual risk and honest carryover.</strong> The five bake-off
 measurements land at honest scope: jitter and purity (the two decision-critical
 measurements) are measured; state and orientation error versus SPICE truth is
@@ -49,7 +54,14 @@ not byte-stable run to run (sub-threshold antialiasing noise), so the
 reproduction claim for renders is pixelmatch-gated and says so in
 ENVIRONMENT.md; the fingerprint baselines are byte-for-byte. Byte-for-byte
 reproduction requires the exact node version recorded in ENVIRONMENT.md
-(v22.23.1); the tools assert the TZ pin but not the node version. Two findings
+(v22.23.1); <code>baseline.mjs compare</code> now asserts it alongside the TZ
+pin (observed failing clearly under v26.3.0, passing under v22.23.1), while
+the jitter and state-error runners still assert only TZ (their tables proved
+byte-stable under the pinned node; tighten if that ever wobbles). Pre-merge
+immutability is no longer only a stated rule: the directory's git tree hash is
+pinned in <code>tests/golden/PRE-MERGE-TREE</code> and
+<code>verify:goldens</code> fails the gate on committed drift or any
+uncommitted change under the directory. Two findings
 in Aaron's paths are recorded and untouched: the committed cassini-soi visual
 goldens presuppose the author's full multiyear kernel set and do not reproduce
 from the repository as it stands, and the Session 1B fetch manifest missed
@@ -75,7 +87,11 @@ six files. <code>baseline.mjs compare</code> reports
 finding), node v22.23.1, npm 10.9.8, pnpm 9.15.0, macOS 15.6 darwin-arm64,
 Playwright 1.60.0, Chromium 148.0.7778.96, SwiftShader, viewport, thresholds,
 settle; states the Session 3 shift lands only as a deliberate, reviewed
-re-baseline in a sibling directory, never a silent one or an edit in place.</td></tr>
+re-baseline in a sibling directory, never a silent one or an edit in place;
+and states explicitly that the cassini-soi baselines are rendered from the
+fetchable kernel set and deliberately differ from the heritage goldens (which
+presuppose the author's full kernel set), the baselines being the reproducible
+truth and the goldens a recorded finding, neither a regression of the other.</td></tr>
 
 <tr><td>A <code>/baseline</code> compare shows the captured renders reproduce</td><td class="pass">PASS</td>
 <td>Re-run fresh during this cross-check:
@@ -84,7 +100,9 @@ recaptured both families to a temp dir and reported fingerprints byte-identical,
 <code>cassini-soi--Ring_Plane_View.png (0.000% diff)</code>,
 <code>cassini-soi--SOI_2004-07-01_.png (0.000% diff)</code>,
 <code>earth-moon.png (0.000% diff, byte-identical)</code>, checksums verified,
-exit "captured baselines reproduce".</td></tr>
+exit "captured baselines reproduce". Compare also asserts the pinned
+environment: under node v26.3.0 it refuses with a clear message naming the
+pinned v22.23.1, and passes under the pinned version.</td></tr>
 
 <tr><td>Purity lint fails on a planted DOM import in each core, passes once removed</td><td class="pass">PASS</td>
 <td>Two independent drills observed. Drill 1: <code>import 'react'</code> plus
@@ -97,7 +115,7 @@ violations, exit 1. After removal both times:
 
 <tr><td>Purity lint wired into <code>pnpm verify</code></td><td class="pass">PASS</td>
 <td><code>verify</code> chain is <code>fetch-kernels &amp;&amp; verify:purity
-&amp;&amp; verify:bessel &amp;&amp; verify:cosmolabe</code>
+&amp;&amp; verify:goldens &amp;&amp; verify:bessel &amp;&amp; verify:cosmolabe</code>
 (root <code>package.json</code>); a violation exits 1 and fails the chain. The
 full gate ran green with the stage in place.</td></tr>
 
@@ -124,13 +142,18 @@ purity (0 violations versus 5 DOM couplings in bessel scene via
 <td>Full chain exit 0 under pinned pnpm 9.15.0 and node 22: fetch-kernels,
 purity lint, bessel gate through all seven size budgets (web shell 284.31 kB of
 345 kB, CSPICE WASM 360.53 kB of 4 MB), cosmolabe build plus
-<code>Test Files 37 passed, Tests 312 passed | 1 skipped</code>.</td></tr>
+<code>Test Files 37 passed, Tests 312 passed | 1 skipped</code>. Re-run after
+the pre-merge amendments with both new stages in the chain: purity clean,
+<code>golden-immutability: matches the pinned tree ae11b53b2e15</code>, bessel
+237 test files, cosmolabe 37, exit 0.</td></tr>
 
 <tr><td>Root <code>pnpm verify</code> green in CI</td><td class="pass">PASS</td>
 <td>The <code>verify</code> check on PR #2 passed in 2m5s
 (<code>actions/runs/29140300072</code>), running the identical
 <code>pnpm verify</code> including the new purity stage; the kernel cache key
-rolled correctly with the manifest change.</td></tr>
+rolled correctly with the manifest change. Later pushes (the report update and
+the pre-merge amendments) rerun the identical gate; the check status on the PR
+tip is authoritative and was observed green after each push.</td></tr>
 </table>
 
 <h2>Exit deliverables</h2>
@@ -177,7 +200,11 @@ root-owned (<code>scripts/fetch-kernels</code>).</td></tr>
 <tr><td>5: golden-image discipline</td><td class="pass">PASS</td>
 <td>No visual change; the immutable baseline directory now exists with the
 compare tool green, and the <code>/baseline</code> command documents that a
-golden shift without a reviewed diff is a gate failure.</td></tr>
+golden shift without a reviewed diff is a gate failure. Immutability is
+mechanical: the directory's tree hash is pinned in
+<code>tests/golden/PRE-MERGE-TREE</code> and <code>verify:goldens</code> fails
+the gate on drift; observed failing on an uncommitted edit (naming the file)
+and on a pin mismatch (showing both hashes), passing when restored.</td></tr>
 
 <tr><td>6: model-layer purity lint-enforced</td><td class="pass">PASS</td>
 <td>Enforced in the gate for 23 directories across both cores; clean; drills
