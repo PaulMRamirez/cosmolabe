@@ -1,0 +1,212 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 6 (the grammar demo and the validation page)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 6</h1>
+<p>The grammar demo and the validation page: the four product kinds live in
+the app from streamed JobHandle jobs, M-0008 ratified provisional with the
+demo as evidence, and the public validation page assembled and armed for
+deploy. Adversarial cross-check of
+<code>docs/goals/SESSION-6-GRAMMAR-DEMO.goal.md</code> against observed
+evidence, binding ADRs M-0008 (and M-0004 for the jobs, M-0007's Pages
+posture). Generated 2026-07-11 on branch <code>session-6</code>. Every row
+was reproduced during this cross-check by running the command or reading the
+artifact, not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence except two that structurally require the merge or the PR: CI
+(pending the PR run, amended when observed, per precedent) and the live
+publication of the real validation page (the OIDC deploy path is verified
+end to end from main with the placeholder, the environment gate correctly
+refused a branch deploy, and the real page publishes on merge via the
+armed push trigger; recorded pending-merge below). The demo itself is
+observed, not claimed: the Playwright spec drives all four jobs against the
+built app and passes in 6.4 seconds.</p>
+<p><strong>Residual risk and honest carryover.</strong> First, the demo's
+ground track drapes as a body-fixed snapshot rotated once at the demo epoch,
+not a time-evolving drape; the panel session inherits the live version.
+Second, the demo worker is demo-owned: the generalized job substrate and a
+conformance test pinning worker-hosted cancellation are Session 7's first
+step (the ledger's executioner), since the macrotask-yield fix landed where
+the demo broke but the property is only pinned in-process today. Third, the
+lazy-analysis size cap moved 101 to 104 KB and the compute worker got its own
+36 KB budget; both deliberate, both named here so the growth is reviewable.
+Fourth, the field's color ramp is the existing viridis overlay, not yet the
+named color-strategy picker M-0008 specifies for the colorbar; that is
+follow-on UI, recorded as not done. Fifth, three stale Playwright artifacts
+from the debugging iterations sit under e2e/test-results, untracked and
+gitignored.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>Demo renders both products from live jobs with streamed materialization observed</td>
+  <td class="pass">pass</td>
+  <td>Observed via the Playwright spec (<code>e2e/tests/grammar.spec.ts</code>)
+  against the built app: exit 0 in 6.4 s. All four kinds run live: the series
+  card streams at least four chunk partials before done and the strip chart
+  renders; the access card ends done with the CASSINI lane visible and the
+  SUN lane honestly empty; the ground track card reports its draped vertices;
+  the 288-cell field resolves 288 of 288 on the full run. Partial counts are
+  asserted from per-card <code>data-partials</code> attributes, not
+  eyeballed. Three earlier spec failures were real and fixed: a stale
+  cosmolabe preview squatting the e2e port, a cancel race against a
+  too-fast field (densified to 288 cells), and the macrotask starvation
+  below.</td>
+</tr>
+<tr>
+  <td>Cancellation from the tray chip works</td>
+  <td class="pass">pass</td>
+  <td>Observed in the same run: cancel clicked mid-sweep lands the field card
+  at <code>data-status="cancelled"</code>, cooperatively (the worker and env
+  survive; the subsequent full run completes). The demo surfaced a genuine
+  protocol defect first: engines' awaits are microtasks, so a worker-hosted
+  job ran as one uninterruptible chain and the queued cancel message starved.
+  The coverage sweep now yields a macrotask per cell and the job runner per
+  progress step (the eval-series interpreter's documented pattern,
+  generalized), and the fix is what the observed cancel exercises.</td>
+</tr>
+<tr>
+  <td>Provenance popover shows the real kernel set hash matching the committed seam tables</td>
+  <td class="pass">pass</td>
+  <td>Observed: the spec asserts the provenance popover's hash prefix equals
+  the panel's kernel-hash chip, which is the compute worker's
+  <code>frames.kernels().setHash</code> over its furnished pool (the boot
+  fixtures plus the published Walker SPKs). The hash source is the same
+  sha256-of-sorted-hashes the seam tables commit; the popover also carries
+  engine@version, frame, correction, timestamp, and job id, the exact M-0004
+  field list.</td>
+</tr>
+<tr>
+  <td>pnpm verify green locally</td>
+  <td class="pass">pass</td>
+  <td>Full run at HEAD: exit 0. purity-lint clean (229 files, 26
+  directories); bessel gate green including the four new compute emitter and
+  demo test files (1481 tests, 246 files at last full count) and the updated
+  size budgets; cosmolabe 312 tests; strict seam green.</td>
+</tr>
+<tr>
+  <td>pnpm verify green in CI</td>
+  <td class="pend">pending</td>
+  <td>CI runs on the PR; the branch had not been pushed at report time.
+  Amended when observed, per precedent.</td>
+</tr>
+<tr>
+  <td>Seam harness still green in strict mode</td>
+  <td class="pass">pass</td>
+  <td>Inside the verify run: call-parity GREEN on GS-1 through GS-4, every
+  pipeline row within tripwires.</td>
+</tr>
+<tr>
+  <td>Sibling baseline compare green</td>
+  <td class="pass">pass</td>
+  <td><code>BASELINE_DIR=tests/golden/session-4-repoint baseline.mjs
+  compare</code> under pinned node v22.23.1: exit 0. The register confirms
+  zero new commits in Aaron-owned paths this session.</td>
+</tr>
+<tr>
+  <td>Pages deploy publishes the validation page with the four tables readable</td>
+  <td class="pend">pending merge</td>
+  <td>The mechanism is verified end to end: Pages enabled with the workflow
+  build type, a dispatch from main built and deployed through OIDC (live 200
+  at paulmramirez.github.io/cosmolabe with the stub placeholder, since main
+  predates the page), the environment protection correctly refused the
+  branch-preview deploy (deploys are main-only, as production posture wants),
+  and pages.yml now triggers on pushes to docs/validation on main. The real
+  page (committed <code>docs/validation/index.html</code>, generated
+  deterministically from the four tables with gates and reproduction
+  commands) publishes on this PR's merge; this row is amended after that is
+  observed.</td>
+</tr>
+</table>
+
+<h2>Step assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>Series and geometry emitters completed per the carryover ledger</td>
+  <td class="pass">pass</td>
+  <td>seriesJob (eval-series chunked, provider frames must agree with the
+  frame of record, final bit-identical to the interpreter driven directly)
+  and groundTrackJob (sub-point polyline, every vertex on the body ellipsoid,
+  first vertex bit-identical to direct subpnt), both cancellable, both added
+  to the API snapshot additively in the same commit, per the stability
+  policy. ComputeEnv gained publishSpk so synthetic Walker ephemerides enter
+  the provenance kernel set (provenance that omitted synthetic inputs would
+  lie); the snapshot pin covers it.</td>
+</tr>
+<tr>
+  <td>M-0008 ratified provisional with the demo as evidence</td>
+  <td class="pass">pass</td>
+  <td>Status line moved to Accepted (provisional, review-on-return) with the
+  Session 6 evidence addendum citing the observed run; Review-on-return stays
+  yes and the register still lists it for Aaron's live walkthrough.</td>
+</tr>
+<tr>
+  <td>Demo host chose the path of least heritage disturbance</td>
+  <td class="pass">pass</td>
+  <td>Everything lives in the bessel web app (a seventh lazy analyze tab, a
+  dedicated compute worker mirroring the coverage worker pattern);
+  <code>git diff main -- cosmolabe/</code> is empty.</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>1: CSPICE only under the frames tier</td><td class="pass">pass</td>
+  <td>The demo consumes @bessel/compute; its worker builds a ComputeEnv, and
+  the app's only cspice-wasm touch is the wasm asset URL handed to it.</td></tr>
+<tr><td>2: no cosmolabe-heritage changes</td><td class="pass">pass</td>
+  <td>Zero files under cosmolabe/ in the session diff; register
+  unchanged.</td></tr>
+<tr><td>4: authority host-only</td><td class="pass">pass</td>
+  <td>The demo displays authority from provenance; nothing sets it (the
+  runner's exploratory stamp is the only producer, unchanged).</td></tr>
+<tr><td>6: model-layer purity</td><td class="pass">pass</td>
+  <td>purity-lint clean; the new compute emitters carry no DOM; the panel
+  and worker live in the exempt app surface.</td></tr>
+<tr><td>7: kernels never committed</td><td class="pass">pass</td>
+  <td>No kernel files in the diff; the demo worker fetches the same bundled
+  fixture URLs the app boots from and generates the Walker SPKs in
+  memory.</td></tr>
+<tr><td>9: SPICE units at the contracts</td><td class="pass">pass</td>
+  <td>Products remain km and ET seconds; the panel's mappers convert only at
+  the scene boundary (documented normalize to the overlay's unit fom).</td></tr>
+<tr><td>10: dash sweep on new prose</td><td class="pass">pass</td>
+  <td>Zero em or en dashes in the added lines of the session diff.</td></tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>Register and brief refreshed</td><td class="pass">pass</td>
+  <td>Register re-run (flagged set unchanged, M-0008 still listed for the
+  walkthrough); the brief carries the Session 6 paragraph and the ledger
+  updates: geometry and series emission closed as executed, the worker
+  substrate rescheduled into the drafted Session 7 goal with the demo's
+  early cancellation fix noted.</td></tr>
+<tr><td>verify-spec run and report committed</td><td class="pass">pass</td>
+  <td>This report, docs/validation/reports/session-6.html.</td></tr>
+<tr><td>Next goal file drafted</td><td class="pass">pass</td>
+  <td>docs/goals/SESSION-7-PANEL.goal.md: /gate on W3, the worker substrate
+  with pinned worker-hosted cancellation, panel mount() with fallback
+  compute, the twice-carried profiles stretch, and the device-dependent W4
+  items named for their own session.</td></tr>
+</table>
