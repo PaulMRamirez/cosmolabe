@@ -24,11 +24,13 @@ import {
 } from '@bessel/compute';
 import cspiceWasmUrl from 'cspice-wasm/wasm/cspice.wasm?url';
 import { KERNEL_ORDER, KERNEL_URLS } from '../kernels.ts';
+import { CENTER_GM } from './center-mu.ts';
 
 // ── demo fixture constants (the GS-2 era carried by the boot kernels) ────────
 
 const EPOCH = '2004-07-01T01:00:00';
 const HOUR = 3600;
+const DAY = 86400;
 const GS4_PLANES = 6;
 const GS4_BODY_BASE = -975000;
 const GS4_SMA_KM = 6928.137;
@@ -291,6 +293,24 @@ function jobSpec(kind: GrammarJobKind, et0: number): JobSpec {
           correction: 'NONE',
         },
       };
+    case 'porkchop':
+      // The P1 porkchop inspector: the canonical Earth to Mars barycenter
+      // window about the Sun, kept inside the bundled inner-system fixture
+      // SPK (the mission-design panel's fixture-safe defaults), mu explicit
+      // from the shared constants table.
+      return {
+        kind: 'porkchop',
+        request: {
+          departureBody: 'EARTH',
+          arrivalBody: 'MARS BARYCENTER',
+          centerBody: 'SUN',
+          frame: 'J2000',
+          correction: 'NONE',
+          mu: CENTER_GM['SUN']!,
+          departure: { start: et0, end: et0 + 30 * DAY, count: 12 },
+          tof: { start: 90 * DAY, end: 150 * DAY, count: 10 },
+        },
+      };
   }
 }
 
@@ -332,6 +352,11 @@ async function applyProduct(
         fieldCellsTotal: f.values.length,
       },
     }));
+  } else if (kind === 'porkchop' && p.kind === 'field' && p.field.domain === 'grid') {
+    // The grid domain renders as a flat heatmap in the card (M-0004
+    // amendment 1), not a scene drape: keep the whole product so the card
+    // materializes column by column from the streamed partials.
+    store.setState((s) => ({ grammar: { ...s.grammar, porkchopProduct: product } }));
   }
 }
 
