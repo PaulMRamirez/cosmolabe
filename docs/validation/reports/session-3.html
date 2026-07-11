@@ -36,16 +36,33 @@ J2000 obliquity constant in heritage <code>kinematics.ts</code> (rotating the
 SPICE truth by the constant difference collapses the residual to about
 0.1 mm). Per the goal, pipeline green gates the re-point, not this session.</p>
 <p><strong>Residual risk and honest carryover.</strong> First, the obliquity
-finding is recorded, not fixed: the GS-1 pipeline row stays red until the
-Session 4 re-point (or a standalone Class B baseline-diffed fix), and the
-re-point cannot merge over it. Second, the frames tier is deliberately
-cache-free, so pipeline mode currently measures cosmolabe's caching against
-direct CSPICE; when frames grows caching, the harness must re-measure. Third,
-FrameChain inspection pivots through J2000 only; a deeper kernel-defined walk
-needs frinfo_c, which the WASM export allowlist does not yet carry (recorded
-in the contract doc comment). Fourth, GS-1 carries no pointing row (the cruise
-fixture has no rotating oracle body); pointing is exercised on GS-2 and the
-table says so.</p>
+finding is recorded, not fixed: the GS-1 pipeline row stays red until its fix
+lands, and the re-point cannot merge over it. Second, the frames tier is
+deliberately cache-free, so pipeline mode currently measures cosmolabe's
+caching against direct CSPICE; when frames grows caching, the harness must
+re-measure. Third, FrameChain inspection pivots through J2000 only; a deeper
+kernel-defined walk needs frinfo_c, which the WASM export allowlist does not
+yet carry (recorded in the contract doc comment). Fourth, GS-1 carries no
+pointing row (the cruise fixture has no rotating oracle body); pointing is
+exercised on GS-2 and the table says so.</p>
+<p><strong>Pre-merge amendments (2026-07-10, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge, each closing one carryover
+item above. The Session 4 goal now sequences the obliquity fix as its own
+Class B commit before any re-point work, baseline-diffed, with the seam
+pipeline table attached before and after (GS-1 dropping from about 95 m to
+sub-millimeter), the re-entry brief finding re-tagged accordingly, and the
+re-point commits following separately behind the then-green strict pipeline.
+M-0002 gained one operational sentence in Consequences making the cache
+re-measurement duty explicit: any caching layer later added to frames requires
+pipeline-mode re-measurement before merge; a clarification, not a reopening,
+and Review-on-return stays no. And the GS-3 chain inspection question is
+decided in the Session 4 goal: the J2000 pivot suffices for GS-3 (the site
+frame is a fixture-authored TK frame with one constant hop over the moon's
+PCK frame, so the pivot isolates any disagreement to a leg whose pieces each
+carry an independent check), and extending the WASM allowlist with frinfo_c
+and siblings remains the recorded trigger if a kernel-defined chain ever needs
+walking below its J2000 legs. <code>pnpm verify</code> was re-run green after
+the amendments.</p>
 </div>
 
 <h2>Verified-by assertions</h2>
