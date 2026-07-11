@@ -55,6 +55,25 @@ user-facing command waits for a real batch consumer rather than shipping
 as dead surface. Fifth, the device items remain hardware-blocked; the W4
 gate assessment is Session 10's opening move, with the window expected to
 hold open on those items alone.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge, re-verified with
+<code>pnpm verify</code>. First, the stability discipline extends to
+@bessel/interop as a publishing package: the index doc block states the
+policy (schema v0, additive only; product-schema-typed surfaces governed
+by M-0004, message shapes and format functions by the package policy) and
+<code>api-surface.test.ts</code> pins it with the @bessel/compute
+mechanism verbatim (Exact mirrors of every exported message shape, keyof
+pins on the options types, and the sorted runtime export list). Second,
+the publish implication of the dependency change is ledgered: interop
+types against @bessel/compute, which is not on the publish list, so the
+npm 2FA publish sitting (M-0005) inherits a dependency-shape decision
+(publish compute too, extract the product schema types into a small
+published package, or re-export), executioner the publish sitting. Third,
+the allowlist-deferral sweep: CK binary attitude IO (ckopn, ckw03, ckcls
+unbound; trigger the first consumer needing binary attitude interchange)
+and Session 3's frinfo_c chain-inspection deferral (trigger a
+kernel-defined frame walk the J2000 pivot cannot serve) move from code
+comments into the ledger as need-based entries the /gate read covers.</p>
 </div>
 
 <h2>Verified-by assertions</h2>
