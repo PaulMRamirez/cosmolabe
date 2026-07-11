@@ -85,6 +85,14 @@ $VK/lro/lro_frames_2014049_v01.tf|76389ed6184e7bb4b7bf45cb123db19b3d0f1e052446ab
 $VK/lro/lrorg_2024350_2025074_v01.bsp|69f6ac330a26aa52f0b4bebadff1c865f6b8bab522aee58b157d35d74feb027f|$LROPDS/spk/lrorg_2024350_2025074_v01.bsp|-|0|test
 $VK/cassini/040629AP_SCPSE_04179_04185.bsp|281ecea43ba77317830815d2b4647b56625b13aef1c6635bf6de5fb7f8dab901|$CAS/spk/040629AP_SCPSE_04179_04185.bsp|apps/viewer/test-catalogs/kernels/cassini/040629AP_SCPSE_04179_04185.bsp|1|demo
 $VK/cassini/04183_04185ra.bc|701f0d46c9d0864d8bbb0e64d1a994f599e0261dc7b103f3ebb967c0fb4d2c90|$CAS/ck/04183_04185ra.bc|apps/viewer/test-catalogs/kernels/cassini/04183_04185ra.bc|1|demo
+$VK/cassini/cas00172.tsc|9aebd8d2783d06c12c33d2c5794a04a7bcde26c95efd4fee974acd9b356442f8|$CAS/sclk/cas00172.tsc|apps/viewer/test-catalogs/kernels/cassini/cas00172.tsc|0|demo
+$VK/cassini/cas_v43.tf|09b1f6f27a74d3cc64b28ef91fcea02bed78fe63c93035b8434a6b67e5224b5a|$CAS/fk/cas_v43.tf|apps/viewer/test-catalogs/kernels/cassini/cas_v43.tf|0|demo
+$VK/cassini/cas_caps_v03.ti|1cbf739c2f672552e20db4934f15e190e310224e48af1ea7aa4cae8c5a5d3945|$CAS/ik/cas_caps_v03.ti|apps/viewer/test-catalogs/kernels/cassini/cas_caps_v03.ti|0|demo
+$VK/cassini/cas_cirs_v10.ti|aa6e0db626f53ccf9afea4327f539b3441d7c60a2035473d1b5646cbd3a8c717|$CAS/ik/cas_cirs_v10.ti|apps/viewer/test-catalogs/kernels/cassini/cas_cirs_v10.ti|0|demo
+$VK/cassini/cas_iss_v10.ti|518c50a1c837f525e10ee71a97c9971ba419850ac05fcaa2df99cf3cddda5c68|$CAS/ik/cas_iss_v10.ti|apps/viewer/test-catalogs/kernels/cassini/cas_iss_v10.ti|0|demo
+$VK/cassini/cas_radar_v11.ti|edb6f55eb4fad81e5ac03b1c142e3042d35c87cb704a0a479ca6d589aca56285|$CAS/ik/cas_radar_v11.ti|apps/viewer/test-catalogs/kernels/cassini/cas_radar_v11.ti|0|demo
+$VK/cassini/cas_uvis_v07.ti|09f365bf45179a05e0a4420bc5ac947d7c7cf4d7dff3a85c112c797a51b96d95|$CAS/ik/cas_uvis_v07.ti|apps/viewer/test-catalogs/kernels/cassini/cas_uvis_v07.ti|0|demo
+$VK/cassini/cas_vims_v06.ti|c1b55813672e7a23696d6a4ae2a528943132c4ca489b6e0c4cba64a7c505078c|$CAS/ik/cas_vims_v06.ti|apps/viewer/test-catalogs/kernels/cassini/cas_vims_v06.ti|0|demo
 $VK/europa-clipper/ref_trj_scpse.bsp|7532ad18f7f675114d98312fb4585c386b8db041efd271e89cc701043fcd480a|$CLIPPER/spk/ref_trj_241014_340903_21F31_MEGA_L241014_A300411_LP05_V7_scpse.bsp|apps/viewer/test-catalogs/kernels/europa-clipper/ref_trj_scpse.bsp|1|demo
 $VK/msl/mar099s.bsp|997dc93ba640e476da7a494d2237dcdeb145e528db37be8ccee588c615e4e1ff|$GEN/spk/satellites/mar099s.bsp|apps/viewer/test-catalogs/kernels/msl/mar099s.bsp|1|demo
 $VK/msl/msl_ls_ops120808_iau2000_v1.bsp|0dc0443caac69d0550b6233346fa4c505e1be378354d2bb676e1a32668f1f250|$MSL/spk/msl_ls_ops120808_iau2000_v1.bsp|apps/viewer/test-catalogs/kernels/msl/msl_ls_ops120808_iau2000_v1.bsp|1|demo
