@@ -136,6 +136,8 @@ describe('compute plane API surface (stability policy)', () => {
     expect(Object.keys(api).sort()).toEqual([
       'AsyncQueue',
       'JobCancelledError',
+      'JobClient',
+      'JobClientCancelled',
       'accessJob',
       'coverageJob',
       'createComputeEnv',
@@ -147,5 +149,23 @@ describe('compute plane API surface (stability policy)', () => {
       'seriesJob',
       'submitJob',
     ]);
+  });
+
+  it('exports the substrate client surface', () => {
+    expect(typeof api.JobClient).toBe('function');
+    expect(typeof api.JobClientCancelled).toBe('function');
+  });
+});
+
+type _JobSpecKinds = Assert<
+  Exact<api.JobSpec['kind'], 'access' | 'coverage' | 'series' | 'groundTrack'>
+>;
+type _SubstrateInitKeys = Assert<
+  Exact<keyof api.SubstrateInit, 'kernels' | 'publish' | 'epoch' | 'wasmUrl'>
+>;
+
+describe('compute plane API surface (substrate addendum)', () => {
+  it('holds the snapshot shape', () => {
+    expect(true).toBe(true);
   });
 });

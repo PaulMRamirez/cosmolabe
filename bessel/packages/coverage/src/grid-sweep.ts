@@ -114,6 +114,9 @@ export class GridSweepError extends Error {
   }
 }
 
+/** Wall-clock budget between event-loop yields during a sweep (ms). */
+const YIELD_BUDGET_MS = 12;
+
 /** Center coordinate of cell index `k` of `count` evenly spaced across [min,max]. */
 function cellCenter(min: number, max: number, count: number, k: number): number {
   if (count === 1) return (min + max) / 2;
@@ -199,6 +202,7 @@ export async function sweepCoverageGrid(
   const cells: CoverageCell[] = [];
   const total = g.latCount * g.lonCount;
   let done = 0;
+  let lastYield = Date.now();
 
   for (let r = 0; r < g.latCount; r++) {
     const latRad = cellCenter(g.latMin, g.latMax, g.latCount, r);
@@ -226,11 +230,17 @@ export async function sweepCoverageGrid(
       done++;
       req.onCell?.(cell, done, total);
       req.onProgress?.(done / total);
-      // Yield a macrotask between cells: the SPICE calls above resolve as
-      // microtasks, so without this a worker-hosted sweep runs as one
+      // Yield a macrotask on a time budget: the SPICE calls above resolve as
+      // microtasks, so without yielding a worker-hosted sweep runs as one
       // uninterruptible chain and a queued cancel message is never delivered
       // (the eval-series interpreter yields for exactly the same reason).
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      // Budgeted rather than per-cell so a 50000-cell grid pays tens of
+      // timer round trips, not 50000, while cancellation latency stays
+      // bounded by the budget.
+      if (Date.now() - lastYield >= YIELD_BUDGET_MS) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        lastYield = Date.now();
+      }
     }
   }
   return { grid: g, cells, areaWeightedPercentCoverage: areaWeightedPercentCoverage(cells) };

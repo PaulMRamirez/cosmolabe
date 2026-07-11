@@ -1,7 +1,6 @@
 // A small SVG progress ring for job tray chips (M-0008): stroke-dashoffset
-// over a circle, percent-driven, with an idle/complete quiet state. The
-// design system has no circular progress primitive yet; if a second consumer
-// appears, promote this into selene-design.
+// over a circle, percent-driven, with an idle/complete quiet state. Promoted
+// from the app when the panel became its second consumer (Session 7).
 
 export interface ProgressRingProps {
   /** Percent complete in [0, 100]. */

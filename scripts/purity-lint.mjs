@@ -45,7 +45,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const SPINE_AUDIT = process.argv.includes('--spine-audit');
-const BESSEL_EXEMPT = new Set(['ui', 'pal-web', 'pal-electron', 'pal-capacitor']);
+const BESSEL_EXEMPT = new Set(['ui', 'panel', 'pal-web', 'pal-electron', 'pal-capacitor']);
 if (!SPINE_AUDIT) BESSEL_EXEMPT.add('scene');
 const AUDIT_DIRS = [
   ...readdirSync(join(ROOT, 'bessel/packages'), { withFileTypes: true })

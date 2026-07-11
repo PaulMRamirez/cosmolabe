@@ -12,7 +12,7 @@ describe('GrammarPanel', () => {
   it('renders the four product-kind cards with run controls and testids', () => {
     const store = createStore<AppState>(initialAppState);
     const html = renderToStaticMarkup(<GrammarPanel engine={null} store={store} />);
-    for (const kind of ['gs2-access', 'gs2-series', 'gs2-track', 'gs4-field']) {
+    for (const kind of ['gs2-access', 'gs2-series', 'gs2-track', 'gs4-field', 'gs4-access']) {
       expect(html).toContain(`grammar-card-${kind}`);
       expect(html).toContain(`grammar-run-${kind}`);
     }
@@ -25,7 +25,7 @@ describe('GrammarPanel', () => {
       ...initialAppState,
       grammar: {
         ...initialAppState.grammar,
-        intervals: { sets: [{ label: 'CASSINI', intervals: [[0, 10]] }], span: [0, 100] },
+        intervals: { 'gs2-access': { sets: [{ label: 'CASSINI', intervals: [[0, 10]] }], span: [0, 100] } },
         series: { name: 'range', unit: 'km', et: Float64Array.from([0, 1]), values: Float64Array.from([1, 2]) },
         trackPoints: 42,
         fieldCellsResolved: 12,

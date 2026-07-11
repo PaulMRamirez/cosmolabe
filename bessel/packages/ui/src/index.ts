@@ -87,3 +87,4 @@ export {
   type BookmarkItem,
 } from './BookmarksPanel.tsx';
 export { ScriptConsole, type ScriptConsoleProps } from './ScriptConsole.tsx';
+export { ProgressRing, type ProgressRingProps } from './ProgressRing.tsx';
