@@ -1,0 +1,8 @@
+{
+  "name": "cosmolabe",
+  "version": "0.0.0",
+  "description": "Name reserved for Cosmolabe: a browser-native mission visualization and analysis workbench (the Bessel + Cosmolabe merge). First real release will be 0.1.0.",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "https://github.com/PaulMRamirez/cosmolabe" },
+  "keywords": ["spice", "astrodynamics", "visualization", "mission-operations"]
+}

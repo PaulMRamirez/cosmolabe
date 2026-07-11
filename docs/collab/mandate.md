@@ -1,0 +1,3 @@
+# Working agreement, updated 2026-07-10
+
+Cosmolabe is public and is incorporated by history-preserving subtree merge (no squash); the imported SHA is tagged `cosmolabe-pre-merge` and Aaron's repository is added as the `cosmolabe-upstream` remote. His repo remains the cosmolabe of record and is not modified during his leave. Per Aaron's message of 2026-07-10: no formal delegation paperwork; he will review the git history and the work breakdown on his return, before the true merge and the move of the codebase to its final destination. Decision classes and `review-on-return` tags continue, serving as the index for that review; there are no standing communications during the leave.

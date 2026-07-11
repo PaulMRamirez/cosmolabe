@@ -1,0 +1,8 @@
+{
+  "name": "besselian",
+  "version": "0.0.0",
+  "description": "Name reserved by the Cosmolabe project. Held for Besselian-elements tooling (eclipse and occultation machinery) within the Bessel compute layer.",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "https://github.com/PaulMRamirez/cosmolabe" },
+  "keywords": ["besselian-elements", "eclipse", "occultation", "astrodynamics"]
+}

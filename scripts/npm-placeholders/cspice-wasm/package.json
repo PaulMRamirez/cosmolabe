@@ -1,0 +1,8 @@
+{
+  "name": "cspice-wasm",
+  "version": "0.0.0",
+  "description": "Name reserved for cspice-wasm: NAIF CSPICE compiled to WebAssembly with a typed wrapper, worker pool, and batch API. Part of the Cosmolabe project; first real release will be 0.1.0.",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "https://github.com/PaulMRamirez/cosmolabe" },
+  "keywords": ["spice", "cspice", "webassembly", "wasm", "ephemeris", "naif"]
+}
