@@ -327,6 +327,9 @@ importers:
       '@bessel/coverage':
         specifier: workspace:*
         version: link:../coverage
+      '@bessel/mission':
+        specifier: workspace:*
+        version: link:../mission
       '@bessel/timeline':
         specifier: workspace:*
         version: link:../timeline

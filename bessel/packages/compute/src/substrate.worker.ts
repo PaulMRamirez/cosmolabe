@@ -10,6 +10,7 @@ import {
   coverageJob,
   createComputeEnv,
   groundTrackJob,
+  porkchopJob,
   seriesJob,
   submitJob,
   JobCancelledError,
@@ -34,6 +35,8 @@ function buildJob(spec: JobSpec): EngineJob {
       return coverageJob(spec.request);
     case 'series':
       return seriesJob(spec.request);
+    case 'porkchop':
+      return porkchopJob(spec.request);
     case 'groundTrack':
       return groundTrackJob(spec.request);
   }

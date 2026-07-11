@@ -6,7 +6,7 @@
 // PorkchopFailure. CANCELLATION is by the main thread terminating the worker (worker.terminate());
 // there is no cooperative cancel message, the worker simply stops. This mirrors screening.worker.ts.
 
-import { sweepPorkchop } from './engine/porkchop.ts';
+import { sweepPorkchop } from '@bessel/mission';
 import { validatePorkchopRequest, type PorkchopMessage, type PorkchopRequest } from './porkchop-protocol.ts';
 
 const ctx = self as unknown as {

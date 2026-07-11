@@ -4,7 +4,7 @@
 // color legend. No heavy chart library: each grid node is one rect colored on the delta-v scale.
 // Presentational; reads the PorkchopResult the maneuver-design op publishes.
 
-import type { PorkchopResult } from '../engine/porkchop.ts';
+import type { PorkchopResult } from '@bessel/mission';
 
 export interface PorkchopPlotProps {
   readonly result: PorkchopResult;

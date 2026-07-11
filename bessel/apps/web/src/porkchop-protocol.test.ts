@@ -11,7 +11,7 @@ import {
   type PorkchopRequest,
   type PorkchopResultMessage,
 } from './porkchop-protocol.ts';
-import type { SampledState, PorkchopResult } from './engine/porkchop.ts';
+import type { SampledState, PorkchopResult } from '@bessel/mission';
 
 const state: SampledState = { position: { x: 1, y: 0, z: 0 }, velocity: { x: 0, y: 1, z: 0 } };
 

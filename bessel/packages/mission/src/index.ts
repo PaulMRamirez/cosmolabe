@@ -5,6 +5,17 @@
 
 export { lambert, type LambertSolution, type Vec3 } from './lambert.ts';
 export {
+  linspace,
+  solvePorkchopColumn,
+  sweepPorkchop,
+  type PorkchopBest,
+  type PorkchopGrid,
+  type PorkchopNode,
+  type PorkchopResult,
+  type SampledState,
+  type SweepOptions,
+} from './porkchop.ts';
+export {
   frameBasis,
   applyImpulsiveManeuver,
   deltaVMagnitude,

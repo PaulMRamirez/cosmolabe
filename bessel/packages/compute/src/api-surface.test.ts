@@ -34,6 +34,7 @@ interface SnapGeoLayer {
   readonly positions: Float64Array;
 }
 interface SnapScalarField {
+  readonly domain?: 'body';
   readonly name: string;
   readonly unit: string;
   readonly body: string;
@@ -46,11 +47,27 @@ interface SnapScalarField {
   readonly lonCount: number;
   readonly values: Float64Array;
 }
+interface SnapFieldAxis {
+  readonly name: string;
+  readonly unit: string;
+  readonly min: number;
+  readonly max: number;
+  readonly count: number;
+}
+interface SnapGridField {
+  readonly domain: 'grid';
+  readonly name: string;
+  readonly unit: string;
+  readonly x: SnapFieldAxis;
+  readonly y: SnapFieldAxis;
+  readonly values: Float64Array;
+}
+type SnapField = SnapScalarField | SnapGridField;
 type SnapProduct =
   | { kind: 'intervals'; sets: SnapIntervalSet[] }
   | { kind: 'series'; series: SnapTimeSeries[] }
   | { kind: 'geometry'; layers: SnapGeoLayer[] }
-  | { kind: 'field'; field: SnapScalarField };
+  | { kind: 'field'; field: SnapField };
 interface SnapProvenance {
   readonly engine: string;
   readonly version: string;
@@ -87,6 +104,9 @@ type _IntervalSetExact = Assert<Exact<api.IntervalSet, SnapIntervalSet>>;
 type _TimeSeriesExact = Assert<Exact<api.TimeSeries, SnapTimeSeries>>;
 type _GeoLayerExact = Assert<Exact<api.GeoLayer, SnapGeoLayer>>;
 type _ScalarFieldExact = Assert<Exact<api.ScalarField, SnapScalarField>>;
+type _FieldAxisExact = Assert<Exact<api.FieldAxis, SnapFieldAxis>>;
+type _GridFieldExact = Assert<Exact<api.GridField, SnapGridField>>;
+type _FieldExact = Assert<Exact<api.Field, SnapField>>;
 type _UnitMapExact = Assert<Exact<api.UnitMap, Readonly<Record<string, string>>>>;
 type _JobProgressExact = Assert<Exact<api.JobProgress, SnapJobProgress>>;
 type _JobHandleExact = Assert<Exact<api.JobHandle, SnapJobHandle>>;
@@ -130,6 +150,12 @@ type _GroundTrackJobRequestKeys = Assert<
 type _SerializedProductKinds = Assert<
   Exact<api.SerializedProduct['kind'], 'intervals' | 'series' | 'geometry' | 'field'>
 >;
+type _PorkchopJobRequestKeys = Assert<
+  Exact<
+    keyof api.PorkchopJobRequest,
+    'departureBody' | 'arrivalBody' | 'centerBody' | 'frame' | 'correction' | 'mu' | 'departure' | 'tof'
+  >
+>;
 
 describe('compute plane API surface (stability policy)', () => {
   it('exports exactly the committed runtime surface', () => {
@@ -146,6 +172,7 @@ describe('compute plane API surface (stability policy)', () => {
       'encodeAnalysisProduct',
       'encodeF64',
       'groundTrackJob',
+      'porkchopJob',
       'seriesJob',
       'submitJob',
     ]);
@@ -158,7 +185,7 @@ describe('compute plane API surface (stability policy)', () => {
 });
 
 type _JobSpecKinds = Assert<
-  Exact<api.JobSpec['kind'], 'access' | 'coverage' | 'series' | 'groundTrack'>
+  Exact<api.JobSpec['kind'], 'access' | 'coverage' | 'series' | 'groundTrack' | 'porkchop'>
 >;
 type _SubstrateInitKeys = Assert<
   Exact<keyof api.SubstrateInit, 'kernels' | 'publish' | 'epoch' | 'wasmUrl'>

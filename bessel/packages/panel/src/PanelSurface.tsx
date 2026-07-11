@@ -17,7 +17,7 @@ import {
 } from '@bessel/compute';
 import type { HostDataAdapter, PanelJob } from './index.ts';
 import { HostBridge } from './host-bridge.ts';
-import { fieldToCells, layerToLonLat } from './mappers.ts';
+import { fieldCounts, fieldToCells, layerToLonLat } from './mappers.ts';
 
 interface JobState {
   readonly label: string;
@@ -48,19 +48,26 @@ export function ProvenanceChip({ provenance }: { readonly provenance: Provenance
   );
 }
 
-/** A flat heatmap for the field kind: one rect per cell, unresolved dim. */
+/** A flat heatmap for the field kind, domain-agnostic (body drape or
+ *  named-axes grid): one rect per cell, unresolved dim, color normalized to
+ *  the observed finite value range. */
 function FieldMap({ product }: { readonly product: AnalysisProduct }): JSX.Element | null {
   if (product.product.kind !== 'field') return null;
   const field = product.product.field;
+  const { cols, rows } = fieldCounts(field);
   const cells = fieldToCells(field);
+  const finite = cells.map((c) => c.value).filter((v): v is number => v !== null);
+  const lo = finite.length > 0 ? Math.min(...finite) : 0;
+  const hi = finite.length > 0 ? Math.max(...finite) : 1;
+  const span = hi - lo || 1;
   const w = 280;
   const h = 140;
-  const cw = w / field.lonCount;
-  const ch = h / field.latCount;
+  const cw = w / cols;
+  const ch = h / rows;
   return (
     <svg width={w} height={h} role="img" aria-label={`${field.name} field`} data-testid="panel-field-map">
       {cells.map((cell) => {
-        const t = cell.value === null ? 0 : Math.min(1, Math.max(0, cell.value / 100));
+        const t = cell.value === null ? 0 : Math.min(1, Math.max(0, (cell.value - lo) / span));
         const fill =
           cell.value === null ? '#8883' : `hsl(${210 - 170 * t} 80% ${25 + 35 * t}%)`;
         return (
@@ -192,9 +199,14 @@ export function PanelSurface({
         const { et0 } = await client.ready;
         if (compute.publish && et0 !== null) await client.publish(compute.publish(et0));
         // The mounted content's time span, from the job requests themselves,
-        // handed to the host so its cursor control can scale (onSpan).
+        // handed to the host so its cursor control can scale (onSpan). A
+        // porkchop request has no single span field; its time extent is the
+        // departure axis plus the longest time of flight.
         {
-          const spans = compute.jobs.map((j) => j.spec(et0 ?? 0).request.span);
+          const spans = compute.jobs.map((j): readonly [number, number] => {
+            const r = j.spec(et0 ?? 0).request;
+            return 'span' in r ? r.span : [r.departure.start, r.departure.end + r.tof.end];
+          });
           if (spans.length > 0) {
             bridge.emitSpan({
               et0: Math.min(...spans.map((s) => s[0])),

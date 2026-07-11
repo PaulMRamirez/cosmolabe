@@ -21,7 +21,7 @@ import { createStore, type Store } from './create-store.ts';
 // [ux-p2-orbit] Type-only imports (erased at build, no runtime store->engine cycle): the
 // porkchop sweep result the Lambert card publishes, and the editable MCS the builder edits and
 // the "send to MCS" hop appends to, lifted into the store so the two cards share one design.
-import type { PorkchopResult } from '../engine/porkchop.ts';
+import type { PorkchopResult } from '@bessel/mission';
 import type { EditableMcs } from '../engine/mcs-editor.ts';
 import { defaultEditableMcs } from '../engine/mcs-editor.ts';
 

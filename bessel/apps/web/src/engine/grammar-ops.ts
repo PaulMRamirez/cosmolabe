@@ -319,14 +319,17 @@ async function applyProduct(
     const points = layerToScenePoints(p.layers[0], rotation);
     e.scene.setOrbits([{ id: 'grammar-track', anchorBody: 'Saturn', points, color: 0x67e8f9 }]);
     store.setState((s) => ({ grammar: { ...s.grammar, trackPoints: points.length } }));
-  } else if (kind === 'gs4-field' && p.kind === 'field') {
+  } else if (kind === 'gs4-field' && p.kind === 'field' && p.field.domain !== 'grid') {
+    // The scene drape consumes the body-surface domain only (M-0004
+    // amendment 1); grid-domain fields render as flat heatmaps, not drapes.
+    const f = p.field;
     const radii = await e.spice.bodvrd('EARTH', 'RADII');
-    e.scene.setCoverageOverlay(fieldToOverlaySpec(p.field, 'Earth', radii));
+    e.scene.setCoverageOverlay(fieldToOverlaySpec(f, 'Earth', radii));
     store.setState((s) => ({
       grammar: {
         ...s.grammar,
-        fieldCellsResolved: fieldResolvedCells(p.field),
-        fieldCellsTotal: p.field.values.length,
+        fieldCellsResolved: fieldResolvedCells(f),
+        fieldCellsTotal: f.values.length,
       },
     }));
   }
