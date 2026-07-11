@@ -12,7 +12,7 @@
     "install:all": "pnpm -C bessel install --frozen-lockfile && npm --prefix cosmolabe ci",
     "fetch-kernels": "bash scripts/fetch-kernels",
     "verify:bessel": "pnpm -C bessel verify",
-    "verify:cosmolabe": "npm --prefix cosmolabe run build && npm --prefix cosmolabe run test -- --exclude '**/catalog-all-cosmographia.test.ts' --exclude '**/xyzv-parser.test.ts'",
+    "verify:cosmolabe": "npm --prefix cosmolabe run build && TZ=America/Los_Angeles npm --prefix cosmolabe run test -- --exclude '**/catalog-all-cosmographia.test.ts' --exclude '**/xyzv-parser.test.ts'",
     "verify": "pnpm run fetch-kernels && pnpm run verify:bessel && pnpm run verify:cosmolabe"
   }
 }

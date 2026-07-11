@@ -49,12 +49,18 @@ Tests 1430 passed (1430)</code>, <code>build:web</code> ok, all seven size-limit
 budgets under limit; cosmolabe <code>build</code> ok, <code>Test Files 37 passed,
 Tests 312 passed, 1 skipped</code>. Exit 0.</td></tr>
 
-<tr><td>Root <code>pnpm verify</code> green in CI</td><td class="pend">WIRED, PENDING</td>
+<tr><td>Root <code>pnpm verify</code> green in CI</td><td class="pend">GREEN AFTER FIX, RE-RUN PENDING</td>
 <td><code>.github/workflows/ci.yml</code> runs the same <code>pnpm verify</code>
 on pull_request and push to main, with federated installs, <code>lfs: false</code>,
-<code>fetch-depth: 0</code> (so fetch-kernels reaches the tag and the one LFS
-object), concurrency, and pnpm pinned to 9.15.0. Not observable until the PR
-triggers the first run; the local run above exercises the identical script.</td></tr>
+<code>fetch-depth: 0</code>, concurrency, and pnpm pinned to 9.15.0. The first CI
+run caught a real cross-environment defect the local Pacific machine masked:
+<code>golden-fingerprints.test.ts</code> compares against a committed golden whose
+scene epoch <code>2004-07-01T02:48:00</code> is parsed as local time, so a UTC
+runner drifts Earth about 738151 km. Reproduced locally under <code>TZ=UTC</code>
+and fixed by pinning <code>TZ=America/Los_Angeles</code> for the cosmolabe tests
+in the gate (deterministic on any machine, no cosmolabe source touched); the
+cosmolabe suite then passes under a simulated UTC environment. The push re-runs
+CI to confirm.</td></tr>
 
 <tr><td>Fresh clone with <code>GIT_LFS_SKIP_SMUDGE=1</code> plus fetch-kernels
 passes verify (stranger-cloneability without LFS bandwidth)</td><td class="pass">PASS</td>
