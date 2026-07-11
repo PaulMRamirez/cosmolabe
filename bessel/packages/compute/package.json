@@ -1,0 +1,16 @@
+{
+  "name": "@bessel/compute",
+  "description": "The compute plane of ADR M-0004: the JobHandle protocol (streaming partials, cancel), the AnalysisProduct v0 schema (intervals, series, geometry, field) with per-product Provenance sourced from the frames tier's kernel set hash, and the access and coverage engines wired end to end as jobs. Engines emit authority 'exploratory' only (iron rule 4).",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/access": "workspace:*",
+    "@bessel/coverage": "workspace:*",
+    "@bessel/timeline": "workspace:*",
+    "@cosmolabe/frames": "workspace:*",
+    "cspice-wasm": "workspace:*"
+  }
+}

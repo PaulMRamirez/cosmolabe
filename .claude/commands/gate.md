@@ -22,3 +22,10 @@ Steps:
 5. If the next window's goal file does not yet exist or does not absorb the
    carryover, update it now: the gate is not closed until the carryover has a
    home.
+6. Re-read the temporary-wiring inventory in docs/collab/RE-ENTRY-BRIEF.md
+   (the scaffolding-until-restructure section) and re-assert that every item
+   still has a scheduled removal trigger: a goal file, a window, or a named
+   decision point that will execute it. Any scaffolding that has lost its
+   executioner fails the gate summary by name; the fix is to reschedule the
+   removal or decide permanence by ADR, never to let the item drift silently
+   into architecture.

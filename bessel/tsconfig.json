@@ -8,6 +8,7 @@
       "cspice-wasm/worker": ["./packages/cspice-wasm/src/worker.ts"],
       "cspice-wasm/worker-core": ["./packages/cspice-wasm/src/worker-core.ts"],
       "@cosmolabe/frames": ["./packages/frames/src/index.ts"],
+      "@bessel/compute": ["./packages/compute/src/index.ts"],
       "@bessel/spice": ["./packages/spice/src/index.ts"],
       "@bessel/access": ["./packages/access/src/index.ts"],
       "@bessel/propagator": ["./packages/propagator/src/index.ts"],

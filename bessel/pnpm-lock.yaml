@@ -313,6 +313,24 @@ importers:
 
   packages/color: {}
 
+  packages/compute:
+    dependencies:
+      '@bessel/access':
+        specifier: workspace:*
+        version: link:../access
+      '@bessel/coverage':
+        specifier: workspace:*
+        version: link:../coverage
+      '@bessel/timeline':
+        specifier: workspace:*
+        version: link:../timeline
+      '@cosmolabe/frames':
+        specifier: workspace:*
+        version: link:../frames
+      cspice-wasm:
+        specifier: workspace:*
+        version: link:../cspice-wasm
+
   packages/conjunction:
     dependencies:
       '@bessel/propagator':

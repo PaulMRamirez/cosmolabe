@@ -1,0 +1,221 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 5 (the compute plane)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 5</h1>
+<p>The compute plane: the JobHandle protocol, the AnalysisProduct v0 schema,
+and the access and coverage engines wired end to end as jobs over the frames
+tier. Adversarial cross-check of
+<code>docs/goals/SESSION-5-COMPUTE-PLANE.goal.md</code> against observed
+evidence, binding ADRs M-0004 (and M-0002 for the provenance types, M-0008
+for the four-form grammar the kinds serve). Generated 2026-07-11 on branch
+<code>session-5</code>. Every row was reproduced during this cross-check by
+running the command or reading the artifact, not by trusting prose. The W2
+window gate was closed by /gate at session start with the precise timecraftjs
+reading and is recorded in the re-entry brief.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence, CI included (the row below was amended to pass after the PR run was
+observed green). Both engines run as jobs from the conformance driver with
+streamed partials observed in deterministic order and cancellation honored;
+every emitted product carries authority exploratory and a kernel set hash
+equal to an independent frames layer's over the same bytes; the full root
+gate, the strict seam, and the sibling baseline compare are green.</p>
+<p><strong>Residual risk and honest carryover.</strong> First, the schema is
+v0 by design: the geometry and series kinds have payload shapes and unit
+carriage but no engine emitting them yet (the grammar demo of Session 6
+exercises intervals and field first; series arrives with the eval-series
+wiring, geometry with the footprint path). Second, jobs run in-process; the
+worker-hosted job runner (the app's coverage worker pattern generalized) is
+deliberately not built until the panel work needs it, so cancellation today
+is cooperative-only between cells, targets, and yields, never preemptive.
+Third, provenance is stamped once at submit time: a job that furnishes
+kernels mid-run would carry a stale set hash, so ComputeEnv routes furnish
+through the frames layer and no adapter furnishes mid-job; a runtime guard
+is deferred until a host adapter makes mid-job furnishing reachable. Fourth,
+the existing app and SDK call paths (the bespoke coverage worker protocol,
+the SDK's inert AbortSignal) are not yet migrated onto JobHandle; that
+convergence is W3 and later work, recorded here so the three ad hoc patterns
+do not read as intended permanence.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge. The compute surface
+gained its stability policy, stated in the package doc block (schema v0,
+additive only until the packages restructure, breaking changes require an
+M-0004 amendment first) and enforced mechanically by an API-surface snapshot:
+api-surface.test.ts holds committed exact-type mirrors of every schema shape
+plus keyof pins on the protocol interfaces (drift fails pnpm typecheck) and a
+runtime pin of the export list (drift fails the suite). The field payload
+wire encoding is pinned: Float64Array in memory, f64le-base64 in serialized
+form with NaN surviving bit-exactly (the unresolved-cell marker), the JSON
+NaN-nulling hazard demonstrated by test since the CLI file format is a named
+consumer, and encode plus decode round-trip tests covering all four kinds
+including negative zero and NaN positions. And the carryover items above now
+have executioners in writing, in the brief's new carryover ledger read by the
+/gate duty: worker-substrate execution and cancellation hardening land with
+the W4 panel session, geometry and series emission land with the Session 6
+grammar demo whose goal now owns them in its Steps, and ad hoc invocation
+convergence lands at the packages restructure alongside the adapter.
+<code>pnpm verify</code> was re-run green after the amendments.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>Two engines run as jobs with streamed partials and cancellation</td>
+  <td class="pass">pass</td>
+  <td>The conformance suite (7 tests, observed passing in the bessel gate and
+  directly) drives both real engines over the committed SOI fixtures through
+  one ComputeEnv: access streams one lane per target in request order (pct
+  50 then 100 then the final event; the CASSINI lane carries a multi-hour
+  window inside the span, the SUN lane is honestly empty under the 2e5 km
+  range constraint); coverage streams its field row by row (pct 50, 100,
+  final), the first partial showing row one resolved and row two NaN.
+  Cancellation is honored twice: a synthetic job cancelled between yields
+  rejects with JobCancelledError and delivers zero events (a yield completing
+  after cancel is dropped by the runner), and a live coverage sweep cancelled
+  after its first row partial rejects with JobCancelledError via the
+  signal checked between cells.</td>
+</tr>
+<tr>
+  <td>Every product carries authority exploratory and the frames tier's kernel set hash</td>
+  <td class="pass">pass</td>
+  <td>Provenance test: authority is 'exploratory', engine, version, frame,
+  correction, jobId, and a parseable computedAt are present; kernels.setHash
+  equals <code>env.frames.kernels().setHash</code> and equals an
+  independently constructed frames layer's hash over the same fixture bytes,
+  which is the same sha256-of-sorted-hashes source the committed seam tables
+  carry. The loud authority rule is pinned: submitJob refuses a job carrying
+  an authority property with an error naming M-0004 and rule 4. JobHandle
+  and the Product, Provenance, and AnalysisProduct types are transcribed
+  from docs/design/02 section 5 verbatim (field-for-field comparison).</td>
+</tr>
+<tr>
+  <td>pnpm verify green locally with the new package in the purity audit set</td>
+  <td class="pass">pass</td>
+  <td>Full run at HEAD: exit 0. purity-lint clean, now 226 files across 26
+  audited directories, with <code>bessel/packages/compute/src</code> added to
+  REQUIRED_AUDIT so it cannot silently drop out. The bessel gate passed with
+  the compute conformance suite included and the architecture pin moved
+  deliberately to 30 packages, naming @bessel/compute.</td>
+</tr>
+<tr>
+  <td>pnpm verify green in CI</td>
+  <td class="pass">pass</td>
+  <td>Amended after the PR run, per the standing precedent: the
+  <code>verify</code> check on PR #5 concluded success for head commit
+  b494945 (github.com/PaulMRamirez/cosmolabe/actions/runs/29159333944),
+  running the full chain including the compute conformance suite and the
+  strict seam.</td>
+</tr>
+<tr>
+  <td>Seam harness still green in strict mode</td>
+  <td class="pass">pass</td>
+  <td>Inside the same verify run: &quot;call-parity: GREEN on GS-1, GS-2,
+  GS-3, GS-4&quot; and every pipeline row within tripwires, under
+  --strict-pipeline.</td>
+</tr>
+<tr>
+  <td>Sibling baseline compare green (renderer path untouched)</td>
+  <td class="pass">pass</td>
+  <td><code>TZ=America/Los_Angeles BASELINE_DIR=tests/golden/session-4-repoint
+  node scripts/baseline.mjs compare</code> under pinned node v22.23.1: exit
+  0, captured baselines reproduce. Independently, the register shows zero new
+  commits in Aaron-owned paths this session (the Session 4 pair remain the
+  only ones since the pre-merge tag).</td>
+</tr>
+</table>
+
+<h2>Step assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>JobHandle and the schema exactly as typed in docs/design/02 section 5</td>
+  <td class="pass">pass</td>
+  <td>JobHandle { progress: AsyncIterable of { pct, partial? }, result:
+  Promise, cancel() }, the four-kind Product union, Provenance with the exact
+  M-0004 field list, and AnalysisProduct { product, provenance, units } in
+  <code>packages/compute/src/{job,product}.ts</code>, with the v0 payload
+  shapes (IntervalSet, TimeSeries, GeoLayer, ScalarField, UnitMap) documented
+  in SPICE units per iron rule 9.</td>
+</tr>
+<tr>
+  <td>Jobs run over the frames tier with one shared SPICE state</td>
+  <td class="pass">pass</td>
+  <td>createComputeEnv binds spiceEngineOver(bindings) and
+  framesLayerOver(bindings) over one createSpiceBindings instance (the new
+  factory refactors createSpiceEngine rather than duplicating it); furnish
+  routes through the frames layer so the set hash tracks exactly the pool
+  the engines compute with.</td>
+</tr>
+<tr>
+  <td>Engine packages disturbed only additively</td>
+  <td class="pass">pass</td>
+  <td>@bessel/access is untouched. @bessel/coverage gains two optional
+  fields on GridSweepRequest (onCell, signal) and a between-cells
+  cancellation check; existing callers compile and behave unchanged
+  (coverage suite passes). Correction is explicit and required on both job
+  requests; the adapters thread it verbatim.</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>1: CSPICE only under the frames tier</td><td class="pass">pass</td>
+  <td>The compute plane calls engines and the frames layer; its only
+  cspice-wasm touches are the env factory and the shared JobCancelledError.
+  No new CSPICE call sites above the tier.</td></tr>
+<tr><td>2: no cosmolabe-heritage changes</td><td class="pass">pass</td>
+  <td>git diff against main touches bessel/, scripts/purity-lint.mjs, and
+  docs/ only; the register confirms zero new commits in Aaron-owned
+  paths.</td></tr>
+<tr><td>4: authority host-only</td><td class="pass">pass</td>
+  <td>This session implements the enforcement: engines cannot express
+  authority at all, the runner stamps exploratory, the smuggling test pins
+  the loud refusal, and no host door ships until a host adapter exists.</td></tr>
+<tr><td>6: model-layer purity</td><td class="pass">pass</td>
+  <td>purity-lint clean with compute in the required set (fetch,
+  AbortController, and typed arrays only; no DOM globals).</td></tr>
+<tr><td>7: kernels never committed</td><td class="pass">pass</td>
+  <td>No kernel files in the diff; conformance tests read the committed
+  bessel fixtures.</td></tr>
+<tr><td>9: SPICE units at the contracts</td><td class="pass">pass</td>
+  <td>Product payloads are km, km/s, radians, ET seconds; UnitMap names
+  units per column and layer for the render boundary.</td></tr>
+<tr><td>10: dash sweep on new prose</td><td class="pass">pass</td>
+  <td>Zero em or en dashes in the added lines of the session diff.</td></tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>W2 gate closed by /gate with the precise timecraftjs reading</td><td class="pass">pass</td>
+  <td>The brief's window-gates section records the W2 close (commit 61f66c9):
+  three criteria met outright, the timecraftjs criterion met on the runtime
+  state path only with the three residual construction sites named as
+  carryover, the profiles stretch carried to W4.</td></tr>
+<tr><td>Register and brief refreshed</td><td class="pass">pass</td>
+  <td>scripts/review-on-return.sh re-run (flagged ADR set unchanged; no new
+  commits in Aaron paths); the brief gains the Session 5 paragraph.</td></tr>
+<tr><td>verify-spec run and report committed</td><td class="pass">pass</td>
+  <td>This report, docs/validation/reports/session-5.html.</td></tr>
+<tr><td>Next goal file drafted</td><td class="pass">pass</td>
+  <td>docs/goals/SESSION-6-GRAMMAR-DEMO.goal.md: the grammar demo on GS-2 and
+  GS-4, M-0008 ratification with the demo as evidence, and the validation
+  page skeleton deployed via the existing OIDC Pages workflow.</td></tr>
+</table>
