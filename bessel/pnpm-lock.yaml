@@ -345,6 +345,12 @@ importers:
         specifier: workspace:*
         version: link:../timeline
 
+  packages/frames:
+    dependencies:
+      cspice-wasm:
+        specifier: workspace:*
+        version: link:../cspice-wasm
+
   packages/interop: {}
 
   packages/map-projection: {}
