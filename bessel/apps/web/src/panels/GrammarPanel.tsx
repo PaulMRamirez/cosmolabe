@@ -10,12 +10,11 @@
 // BesselEngine.runGrammarJob.
 
 import { Tag, Metric } from '@bessel/selene-design';
-import { IntervalTimeline, TimeSeriesChart } from '@bessel/ui';
+import { IntervalTimeline, ProgressRing, TimeSeriesChart } from '@bessel/ui';
 import type { BesselEngine } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
 import type { GrammarJobKind, GrammarJobView } from '../store/app-state.ts';
 import { Action } from './analysis-shared.tsx';
-import { ProgressRing } from './ProgressRing.tsx';
 
 export interface GrammarPanelProps {
   readonly engine: BesselEngine | null;
