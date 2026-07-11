@@ -70,4 +70,15 @@ test('grammar demo: streamed partials, canonical forms, provenance, cancel', asy
   await page.getByTestId('grammar-run-gs4-field').click();
   await expect(fieldCard).toHaveAttribute('data-status', 'done', { timeout: 240_000 });
   await expect(page.getByTestId('grammar-field-note')).toContainText('288 of 288');
+
+  // Walker site passes (GS-4 lanes, the W3 gate precision absorbed): one lane
+  // per satellite of ground-site visibility windows.
+  await page.getByTestId('grammar-run-gs4-access').click();
+  await expect(page.getByTestId('grammar-card-gs4-access')).toHaveAttribute(
+    'data-status',
+    'done',
+    { timeout: 180_000 },
+  );
+  await expect(page.getByTestId('grammar-lanes-gs4-access')).toBeVisible();
+  await expect(page.getByTestId('grammar-lane--975000')).toBeVisible();
 });

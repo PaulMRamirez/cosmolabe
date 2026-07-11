@@ -52,4 +52,18 @@ export {
   type SerializedScalarField,
   type SerializedTimeSeries,
 } from './serialization.ts';
+export {
+  JobClient,
+  JobClientCancelled,
+  type JobProgressEvent,
+  type JobRun,
+  type SubstrateWorker,
+} from './substrate-client.ts';
+export type {
+  JobSpec,
+  SubstrateInit,
+  SubstrateRequest,
+  SubstrateResponse,
+  WireSpkPublication,
+} from './substrate-protocol.ts';
 export { AsyncQueue } from './queue.ts';

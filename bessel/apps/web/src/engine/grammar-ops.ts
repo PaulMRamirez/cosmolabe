@@ -15,9 +15,15 @@ import type {
   GrammarProvenanceView,
 } from '../store/app-state.ts';
 import type { EngineCore } from './bootstrap.ts';
-import { ComputeCancelled, ComputeClient, type ComputeRun } from '../compute-client.ts';
+import {
+  JobClient,
+  JobClientCancelled,
+  type JobRun,
+  type JobSpec,
+  type WireSpkPublication,
+} from '@bessel/compute';
+import cspiceWasmUrl from 'cspice-wasm/wasm/cspice.wasm?url';
 import { KERNEL_ORDER, KERNEL_URLS } from '../kernels.ts';
-import type { GrammarJobSpec } from '../compute-protocol.ts';
 
 // ── demo fixture constants (the GS-2 era carried by the boot kernels) ────────
 
@@ -30,9 +36,9 @@ const GS4_INC_RAD = (53 * Math.PI) / 180;
 const EARTH_NAIF = 399;
 
 export interface GrammarRef {
-  client: ComputeClient | null;
+  client: JobClient | null;
   et0: number;
-  runs: Map<GrammarJobKind, ComputeRun>;
+  runs: Map<GrammarJobKind, JobRun>;
 }
 
 export function createGrammarRef(): GrammarRef {
@@ -126,7 +132,59 @@ function setJob(store: AppStore, kind: GrammarJobKind, patch: Partial<GrammarJob
   }));
 }
 
-async function ensureClient(store: AppStore, ref: GrammarRef): Promise<ComputeClient> {
+const MU_EARTH = 398600.4418; // km^3/s^2
+
+/** Circular two-body J2000 states for the six-plane Walker set, as wire
+ *  publications for the substrate (provenance-tracked in the worker). */
+export function buildWalkerPublications(et0: number): WireSpkPublication[] {
+  const spanS = 3 * HOUR;
+  const stepS = 60;
+  const n = Math.floor((2 * spanS) / stepS) + 1;
+  const meanMotion = Math.sqrt(MU_EARTH / (GS4_SMA_KM * GS4_SMA_KM * GS4_SMA_KM));
+  const out: WireSpkPublication[] = [];
+  for (let k = 0; k < GS4_PLANES; k++) {
+    const raan = (k * 2 * Math.PI) / GS4_PLANES;
+    const u0 = (k * Math.PI) / 6;
+    const epochs = new Float64Array(n);
+    const states = new Float64Array(n * 6);
+    for (let i = 0; i < n; i++) {
+      const et = et0 - spanS + i * stepS;
+      epochs[i] = et;
+      const u = u0 + meanMotion * (et - et0);
+      const rp = [GS4_SMA_KM * Math.cos(u), GS4_SMA_KM * Math.sin(u), 0];
+      const vp = [
+        -GS4_SMA_KM * meanMotion * Math.sin(u),
+        GS4_SMA_KM * meanMotion * Math.cos(u),
+        0,
+      ];
+      const rot = (v: number[]): [number, number, number] => {
+        const y1 = v[1]! * Math.cos(GS4_INC_RAD) - v[2]! * Math.sin(GS4_INC_RAD);
+        const z1 = v[1]! * Math.sin(GS4_INC_RAD) + v[2]! * Math.cos(GS4_INC_RAD);
+        return [
+          v[0]! * Math.cos(raan) - y1 * Math.sin(raan),
+          v[0]! * Math.sin(raan) + y1 * Math.cos(raan),
+          z1,
+        ];
+      };
+      const r = rot(rp);
+      const v = rot(vp);
+      states.set([r[0], r[1], r[2], v[0], v[1], v[2]], i * 6);
+    }
+    out.push({
+      name: `grammar-walker-${k}.bsp`,
+      body: GS4_BODY_BASE - k,
+      center: EARTH_NAIF,
+      frame: 'J2000',
+      segid: `GRAMMAR_WALKER_${k}`,
+      degree: 7,
+      epochs,
+      states,
+    });
+  }
+  return out;
+}
+
+async function ensureClient(store: AppStore, ref: GrammarRef): Promise<JobClient> {
   if (ref.client) return ref.client;
   const kernels = await Promise.all(
     KERNEL_ORDER.map(async (name) => {
@@ -135,23 +193,20 @@ async function ensureClient(store: AppStore, ref: GrammarRef): Promise<ComputeCl
       return { name, bytes: new Uint8Array(await res.arrayBuffer()) };
     }),
   );
-  const client = new ComputeClient(kernels, EPOCH, {
-    planes: GS4_PLANES,
-    smaKm: GS4_SMA_KM,
-    incRad: GS4_INC_RAD,
-    centerBody: EARTH_NAIF,
-    bodyBase: GS4_BODY_BASE,
-    spanS: 3 * HOUR,
-    stepS: 60,
-  });
-  const { kernelSetHash, et0 } = await client.ready;
+  const worker = new Worker(new URL('../compute.worker.ts', import.meta.url), { type: 'module' });
+  const client = new JobClient(worker, { kernels, epoch: EPOCH, wasmUrl: cspiceWasmUrl });
+  const { et0 } = await client.ready;
+  if (et0 === null) throw new Error('grammar demo: the substrate did not resolve the epoch');
+  // Publish the Walker set post-ready (its epochs need et0) and take the
+  // updated hash: provenance covers the synthetic ephemerides too.
+  const kernelSetHash = await client.publish(buildWalkerPublications(et0));
   ref.client = client;
   ref.et0 = et0;
   store.setState((s) => ({ grammar: { ...s.grammar, kernelSetHash } }));
   return client;
 }
 
-function jobSpec(kind: GrammarJobKind, et0: number): GrammarJobSpec {
+function jobSpec(kind: GrammarJobKind, et0: number): JobSpec {
   switch (kind) {
     case 'gs2-access':
       return {
@@ -190,6 +245,30 @@ function jobSpec(kind: GrammarJobKind, et0: number): GrammarJobSpec {
           chunks: 8,
         },
       };
+    case 'gs4-access':
+      return {
+        kind: 'access',
+        request: {
+          observer: 'EARTH',
+          targets: Array.from({ length: GS4_PLANES }, (_, k) => String(GS4_BODY_BASE - k)),
+          span: [et0, et0 + 2 * HOUR],
+          step: 60,
+          constraints: [
+            {
+              kind: 'azElMask',
+              facility: {
+                body: 'EARTH',
+                bodyFrame: 'IAU_EARTH',
+                lonRad: (-100 * Math.PI) / 180,
+                latRad: (40 * Math.PI) / 180,
+                altKm: 0,
+              },
+              minElevationRad: (10 * Math.PI) / 180,
+            },
+          ],
+          correction: 'NONE',
+        },
+      };
     case 'gs4-field':
       return {
         kind: 'coverage',
@@ -223,11 +302,13 @@ async function applyProduct(
   product: AnalysisProduct,
 ): Promise<void> {
   const p = product.product;
-  if (kind === 'gs2-access' && p.kind === 'intervals') {
+  if ((kind === 'gs2-access' || kind === 'gs4-access') && p.kind === 'intervals') {
+    const span: readonly [number, number] =
+      kind === 'gs2-access' ? [et0, et0 + 4 * HOUR] : [et0, et0 + 2 * HOUR];
     store.setState((s) => ({
       grammar: {
         ...s.grammar,
-        intervals: { sets: p.sets, span: [et0, et0 + 4 * HOUR] },
+        intervals: { ...s.grammar.intervals, [kind]: { sets: p.sets, span } },
       },
     }));
   } else if (kind === 'gs2-series' && p.kind === 'series' && p.series[0]) {
@@ -280,7 +361,7 @@ export async function runGrammarJob(
     await applyProduct(e, store, kind, ref.et0, product);
     setJob(store, kind, { status: 'done', pct: 100, provenance: provenanceView(product) });
   } catch (err) {
-    if (err instanceof ComputeCancelled) {
+    if (err instanceof JobClientCancelled) {
       setJob(store, kind, { status: 'cancelled' });
     } else {
       const status: GrammarJobStatus = { error: err instanceof Error ? err.message : String(err) };

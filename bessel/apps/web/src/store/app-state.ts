@@ -40,7 +40,7 @@ export type AnalyzeTab =
 
 // ── M-0008 grammar demo (Session 6): job views and product views ─────────────
 
-export type GrammarJobKind = 'gs2-access' | 'gs2-series' | 'gs2-track' | 'gs4-field';
+export type GrammarJobKind = 'gs2-access' | 'gs2-series' | 'gs2-track' | 'gs4-field' | 'gs4-access';
 export type GrammarJobStatus = 'idle' | 'running' | 'done' | 'cancelled' | { readonly error: string };
 
 /** The provenance block a legend chip's popover shows, straight from the product. */
@@ -79,7 +79,7 @@ export interface GrammarSeriesView {
 export interface GrammarState {
   readonly kernelSetHash: string | null;
   readonly jobs: Readonly<Record<GrammarJobKind, GrammarJobView>>;
-  readonly intervals: GrammarIntervalsView | null;
+  readonly intervals: Partial<Readonly<Record<GrammarJobKind, GrammarIntervalsView>>>;
   readonly series: GrammarSeriesView | null;
   /** In-scene drape bookkeeping for the legend chips. */
   readonly trackPoints: number;
@@ -96,8 +96,9 @@ export const initialGrammarState: GrammarState = {
     'gs2-series': idleGrammarJob,
     'gs2-track': idleGrammarJob,
     'gs4-field': idleGrammarJob,
+    'gs4-access': idleGrammarJob,
   },
-  intervals: null,
+  intervals: {},
   series: null,
   trackPoints: 0,
   fieldCellsResolved: 0,

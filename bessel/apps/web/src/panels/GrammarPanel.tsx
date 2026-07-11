@@ -27,7 +27,33 @@ const JOBS: readonly { kind: GrammarJobKind; title: string; form: string; scenar
   { kind: 'gs2-series', title: 'Range series', form: 'strip chart', scenario: 'GS-2' },
   { kind: 'gs2-track', title: 'Ground track', form: 'in-scene drape', scenario: 'GS-2' },
   { kind: 'gs4-field', title: 'Walker coverage field', form: 'heatmap drape', scenario: 'GS-4' },
+  { kind: 'gs4-access', title: 'Walker site passes', form: 'timeline lanes', scenario: 'GS-4' },
 ];
+
+/** Timeline lanes for one access card, from the keyed intervals view. */
+function LaneStack({
+  kind,
+  intervals,
+}: {
+  readonly kind: GrammarJobKind;
+  readonly intervals: Partial<Readonly<Record<GrammarJobKind, { sets: readonly { label: string; intervals: readonly (readonly [number, number])[] }[]; span: readonly [number, number] }>>>;
+}): JSX.Element | null {
+  const view = intervals[kind];
+  if (!view) return null;
+  return (
+    <div data-testid={`grammar-lanes-${kind}`}>
+      {view.sets.map((set) => (
+        <IntervalTimeline
+          key={set.label}
+          label={set.label}
+          intervals={set.intervals.map(([a, b]) => [a, b] as [number, number])}
+          span={[view.span[0], view.span[1]]}
+          testId={`grammar-lane-${set.label}`}
+        />
+      ))}
+    </div>
+  );
+}
 
 function statusTone(status: GrammarJobView['status']): 'neutral' | 'cyan' | 'green' | 'amber' | 'red' {
   if (status === 'running') return 'cyan';
@@ -128,19 +154,7 @@ export function GrammarPanel({ engine, store }: GrammarPanelProps): JSX.Element 
       </p>
 
       <JobCard engine={engine} store={store} {...JOBS[0]!}>
-        {grammar.intervals && (
-          <div data-testid="grammar-lanes">
-            {grammar.intervals.sets.map((set) => (
-              <IntervalTimeline
-                key={set.label}
-                label={set.label}
-                intervals={set.intervals.map(([a, b]) => [a, b] as [number, number])}
-                span={[grammar.intervals!.span[0], grammar.intervals!.span[1]]}
-                testId={`grammar-lane-${set.label}`}
-              />
-            ))}
-          </div>
-        )}
+        <LaneStack kind="gs2-access" intervals={grammar.intervals} />
       </JobCard>
 
       <JobCard engine={engine} store={store} {...JOBS[1]!}>
@@ -170,6 +184,10 @@ export function GrammarPanel({ engine, store }: GrammarPanelProps): JSX.Element 
             cells resolved on Earth.
           </p>
         )}
+      </JobCard>
+
+      <JobCard engine={engine} store={store} {...JOBS[4]!}>
+        <LaneStack kind="gs4-access" intervals={grammar.intervals} />
       </JobCard>
     </div>
   );
