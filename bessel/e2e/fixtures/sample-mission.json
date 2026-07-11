@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "name": "Demo Mission",
+  "bodies": [
+    { "id": "saturn", "name": "Saturn" },
+    { "id": "titan", "name": "Titan" },
+    { "id": "enceladus", "name": "Enceladus" }
+  ]
+}

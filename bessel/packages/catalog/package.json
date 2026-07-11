@@ -1,0 +1,21 @@
+{
+  "name": "@bessel/catalog",
+  "description": "Cosmographia and native Bessel catalog parsing, JSON Schema validation, PAL kernel resolution, and the mission plugin registry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./schema/bessel-catalog.schema.json",
+    "./examples/cassini": "./examples/cassini-cosmographia.json"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/pal": "workspace:*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.1"
+  }
+}

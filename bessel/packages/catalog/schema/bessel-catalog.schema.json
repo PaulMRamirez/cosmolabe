@@ -1,0 +1,1034 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bessel.dev/schema/catalog/1.0.json",
+  "title": "Bessel Catalog Manifest",
+  "description": "Single-manifest replacement for Cosmographia's multi-file catalog system. Re-derived from the April 2026 design; reconcile against the validated original before locking.",
+  "type": "object",
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "kernels": {
+      "type": "object",
+      "description": "Kernel resolution. baseUrl is consumed by the PAL KernelSource.",
+      "properties": {
+        "baseUrl": {
+          "type": "string"
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metaKernels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "bodies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/body"
+      }
+    },
+    "spacecraft": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/spacecraft"
+      }
+    },
+    "instruments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/instrument"
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/observation"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A SPICE-resolvable name or NAIF integer id as a string."
+    },
+    "cssColor": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minItems": 3,
+          "maxItems": 4
+        }
+      ]
+    },
+    "duration": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "rate": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Sampling rate in Hz. Presence on an interval marks it discrete; absence marks a continuous swath."
+    },
+    "range": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
+    "interval": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string"
+        },
+        "stop": {
+          "type": "string"
+        },
+        "rate": {
+          "$ref": "#/$defs/rate"
+        }
+      },
+      "required": [
+        "start",
+        "stop"
+      ],
+      "additionalProperties": false
+    },
+    "timeRange": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string"
+        },
+        "stop": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "stop"
+      ],
+      "additionalProperties": false
+    },
+    "quaternion": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "referenceDirection": {
+      "type": "object",
+      "description": "One reference direction of a TwoVector orientation: either a fixed body-frame axis, or a direction toward a target.",
+      "properties": {
+        "axis": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "description": "Explicit axis vector [x, y, z] (need not be unit length)."
+            },
+            {
+              "enum": [
+                "x",
+                "y",
+                "z",
+                "-x",
+                "-y",
+                "-z"
+              ],
+              "description": "A named body-frame axis."
+            }
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/id"
+        },
+        "frame": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "orientation": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "Spice",
+            "Fixed",
+            "TwoVector",
+            "UniformRotation"
+          ]
+        },
+        "frame": {
+          "type": "string"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/quaternion"
+        },
+        "axis": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "UniformRotation spin axis (body frame)."
+        },
+        "ratePerSec": {
+          "type": "number",
+          "description": "UniformRotation spin rate, radians per second."
+        },
+        "epoch": {
+          "type": "string",
+          "description": "UniformRotation reference epoch (UTC); defaults to the mission start."
+        },
+        "primary": {
+          "$ref": "#/$defs/referenceDirection"
+        },
+        "secondary": {
+          "$ref": "#/$defs/referenceDirection"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "trajectory": {
+      "description": "Discriminated union over the trajectory source types. The type const selects the branch and its required parameters.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/trajectorySpice"
+        },
+        {
+          "$ref": "#/$defs/trajectoryKeplerian"
+        },
+        {
+          "$ref": "#/$defs/trajectoryTle"
+        },
+        {
+          "$ref": "#/$defs/trajectoryFixed"
+        },
+        {
+          "$ref": "#/$defs/trajectorySampled"
+        }
+      ]
+    },
+    "trajectorySpice": {
+      "type": "object",
+      "description": "Ephemeris read directly from SPICE (spkpos), the default source.",
+      "properties": {
+        "type": {
+          "const": "Spice"
+        },
+        "target": {
+          "$ref": "#/$defs/id"
+        },
+        "center": {
+          "$ref": "#/$defs/id"
+        },
+        "frame": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "trajectoryKeplerian": {
+      "type": "object",
+      "description": "Two-body Keplerian propagation from classical orbital elements.",
+      "properties": {
+        "type": {
+          "const": "Keplerian"
+        },
+        "elements": {
+          "type": "object",
+          "description": "Classical orbital elements. Angles in radians, a in km, epoch in UTC.",
+          "properties": {
+            "a": {
+              "type": "number",
+              "description": "Semi-major axis, km."
+            },
+            "e": {
+              "type": "number",
+              "description": "Eccentricity."
+            },
+            "i": {
+              "type": "number",
+              "description": "Inclination, radians."
+            },
+            "raan": {
+              "type": "number",
+              "description": "Right ascension of the ascending node, radians."
+            },
+            "argp": {
+              "type": "number",
+              "description": "Argument of periapsis, radians."
+            },
+            "m0": {
+              "type": "number",
+              "description": "Mean anomaly at epoch, radians."
+            },
+            "epoch": {
+              "type": "string",
+              "description": "Element epoch (UTC)."
+            }
+          },
+          "required": [
+            "a",
+            "e",
+            "i",
+            "raan",
+            "argp",
+            "m0",
+            "epoch"
+          ],
+          "additionalProperties": false
+        },
+        "center": {
+          "$ref": "#/$defs/id"
+        },
+        "frame": {
+          "type": "string"
+        },
+        "mu": {
+          "type": "number",
+          "description": "Gravitational parameter of the center, km^3/s^2. Defaults from the center body."
+        }
+      },
+      "required": [
+        "type",
+        "elements"
+      ],
+      "additionalProperties": false
+    },
+    "trajectoryTle": {
+      "type": "object",
+      "description": "Two-line element set, propagated with SGP4.",
+      "properties": {
+        "type": {
+          "const": "Tle"
+        },
+        "line1": {
+          "type": "string"
+        },
+        "line2": {
+          "type": "string"
+        },
+        "center": {
+          "$ref": "#/$defs/id"
+        },
+        "frame": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "line1",
+        "line2"
+      ],
+      "additionalProperties": false
+    },
+    "trajectoryFixed": {
+      "type": "object",
+      "description": "A fixed point in the center frame (km).",
+      "properties": {
+        "type": {
+          "const": "Fixed"
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Position [x, y, z] in km, in the center frame."
+        },
+        "center": {
+          "$ref": "#/$defs/id"
+        },
+        "frame": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    "trajectorySampled": {
+      "type": "object",
+      "description": "Trajectory read from an external sampled state file.",
+      "properties": {
+        "type": {
+          "const": "Sampled"
+        },
+        "source": {
+          "type": "string",
+          "description": "Path or URL of the sampled state file."
+        },
+        "format": {
+          "enum": [
+            "xyz",
+            "oem"
+          ]
+        },
+        "center": {
+          "$ref": "#/$defs/id"
+        },
+        "frame": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "trajectoryPlot": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "$ref": "#/$defs/duration"
+        },
+        "lead": {
+          "$ref": "#/$defs/duration"
+        },
+        "trail": {
+          "$ref": "#/$defs/duration"
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "color": {
+          "$ref": "#/$defs/cssColor"
+        },
+        "fade": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "arc": {
+      "type": "object",
+      "description": "A time-bounded segment binding a trajectory and orientation. Preserved verbatim from Cosmographia as the cleanest part of its data model.",
+      "properties": {
+        "timeRange": {
+          "$ref": "#/$defs/timeRange"
+        },
+        "trajectory": {
+          "$ref": "#/$defs/trajectory"
+        },
+        "orientation": {
+          "$ref": "#/$defs/orientation"
+        }
+      },
+      "required": [
+        "timeRange",
+        "trajectory"
+      ],
+      "additionalProperties": false
+    },
+    "mass": {
+      "description": "Dual form. String matches Cosmographia for round-trip; object is the Bessel-preferred shape.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "unit": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "value",
+            "unit"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "label": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "color": {
+          "$ref": "#/$defs/cssColor"
+        },
+        "show": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "colorByDistance": {
+      "type": "object",
+      "description": "Color-ramp strategy. The strategy enum is a generic, extensible set of named color strategies; add strategies as needed.",
+      "properties": {
+        "strategy": {
+          "enum": [
+            "linear",
+            "log",
+            "histogram-equalize",
+            "percentile-clip",
+            "quantile",
+            "manual-breaks",
+            "diverging",
+            "categorical"
+          ]
+        },
+        "range": {
+          "$ref": "#/$defs/range"
+        },
+        "ramp": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cssColor"
+          }
+        },
+        "units": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "strategy"
+      ],
+      "additionalProperties": false
+    },
+    "geometryMesh": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Mesh"
+        },
+        "source": {
+          "type": "string"
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "meshRotation": {
+          "$ref": "#/$defs/quaternion"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "geometryDSK": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "DSK"
+        },
+        "source": {
+          "type": "string"
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "geometryGlobe": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Globe"
+        },
+        "radii": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "texture": {
+          "type": "string"
+        },
+        "nightTexture": {
+          "type": "string"
+        },
+        "normalMap": {
+          "type": "string"
+        },
+        "atmosphere": {
+          "type": "object",
+          "description": "Deferred: structure not yet formalized. Derive from Cosmographia earth-spice.json. Permissive for now."
+        },
+        "rings": {
+          "$ref": "#/$defs/geometryRings"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "geometryRings": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Rings"
+        },
+        "innerRadius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "outerRadius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "texture": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "geometryParticleSystem": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "ParticleSystem"
+        },
+        "source": {
+          "type": "string"
+        },
+        "particleCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "geometryKeplerianSwarm": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "KeplerianSwarm"
+        },
+        "source": {
+          "type": "string"
+        },
+        "color": {
+          "$ref": "#/$defs/cssColor"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "geometryTimeSwitched": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "TimeSwitched"
+        },
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "timeRange": {
+                "$ref": "#/$defs/timeRange"
+              },
+              "geometry": {
+                "$ref": "#/$defs/geometry"
+              }
+            },
+            "required": [
+              "timeRange",
+              "geometry"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "geometry": {
+      "description": "Discriminated union over the seven Cosmographia geometry types.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/geometryMesh"
+        },
+        {
+          "$ref": "#/$defs/geometryDSK"
+        },
+        {
+          "$ref": "#/$defs/geometryGlobe"
+        },
+        {
+          "$ref": "#/$defs/geometryRings"
+        },
+        {
+          "$ref": "#/$defs/geometryParticleSystem"
+        },
+        {
+          "$ref": "#/$defs/geometryKeplerianSwarm"
+        },
+        {
+          "$ref": "#/$defs/geometryTimeSwitched"
+        }
+      ]
+    },
+    "body": {
+      "type": "object",
+      "description": "A natural body (planet, moon, asteroid, comet).",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "trajectory": {
+          "$ref": "#/$defs/trajectory"
+        },
+        "orientation": {
+          "$ref": "#/$defs/orientation"
+        },
+        "geometry": {
+          "$ref": "#/$defs/geometry"
+        },
+        "mass": {
+          "$ref": "#/$defs/mass"
+        },
+        "trajectoryPlot": {
+          "$ref": "#/$defs/trajectoryPlot"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "spacecraft": {
+      "type": "object",
+      "description": "A spacecraft. Single-arc form (trajectory) and multi-arc form (arcs) are mutually exclusive.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "trajectory": {
+          "$ref": "#/$defs/trajectory"
+        },
+        "arcs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/arc"
+          },
+          "minItems": 1
+        },
+        "orientation": {
+          "$ref": "#/$defs/orientation"
+        },
+        "geometry": {
+          "$ref": "#/$defs/geometry"
+        },
+        "mass": {
+          "$ref": "#/$defs/mass"
+        },
+        "trajectoryPlot": {
+          "$ref": "#/$defs/trajectoryPlot"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "trajectory"
+          ],
+          "not": {
+            "required": [
+              "arcs"
+            ]
+          }
+        },
+        {
+          "required": [
+            "arcs"
+          ],
+          "not": {
+            "required": [
+              "trajectory"
+            ]
+          }
+        }
+      ]
+    },
+    "instrument": {
+      "type": "object",
+      "description": "A sensor. Collapses Cosmographia's per-sensor-per-target file explosion into a targets array.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "parent": {
+          "$ref": "#/$defs/id"
+        },
+        "sensor": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 1
+        },
+        "fov": {
+          "type": "object",
+          "properties": {
+            "shape": {
+              "enum": [
+                "circular",
+                "rectangular",
+                "polygon",
+                "spice"
+              ]
+            },
+            "styles": {
+              "type": "object",
+              "properties": {
+                "default": {
+                  "type": "object",
+                  "description": "Rendering style for an FOV cone or footprint.",
+                  "properties": {
+                    "color": {
+                      "$ref": "#/$defs/cssColor"
+                    },
+                    "opacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "sideDivisions": {
+                      "type": "integer",
+                      "minimum": 2,
+                      "description": "Tessellation of the FOV boundary. Cosmographia crashes at 1, so the floor is 2."
+                    },
+                    "footprint": {
+                      "type": "boolean"
+                    },
+                    "colorByDistance": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "$ref": "#/$defs/colorByDistance"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "default"
+              ],
+              "additionalProperties": {
+                "type": "object",
+                "description": "Rendering style for an FOV cone or footprint.",
+                "properties": {
+                  "color": {
+                    "$ref": "#/$defs/cssColor"
+                  },
+                  "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "sideDivisions": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "description": "Tessellation of the FOV boundary. Cosmographia crashes at 1, so the floor is 2."
+                  },
+                  "footprint": {
+                    "type": "boolean"
+                  },
+                  "colorByDistance": {
+                    "oneOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "$ref": "#/$defs/colorByDistance"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "styles"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "parent",
+        "targets"
+      ],
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "properties": {
+        "instrument": {
+          "$ref": "#/$defs/id"
+        },
+        "target": {
+          "$ref": "#/$defs/id"
+        },
+        "intervals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/interval"
+          },
+          "minItems": 1
+        },
+        "products": {
+          "type": "array",
+          "description": "Image or data products this observation produced, for linking to downstream viewers and archives.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "type": "string"
+              },
+              "href": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "footprintColor": {
+          "$ref": "#/$defs/cssColor"
+        },
+        "colorByDistance": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/colorByDistance"
+            }
+          ]
+        }
+      },
+      "required": [
+        "instrument",
+        "target",
+        "intervals"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

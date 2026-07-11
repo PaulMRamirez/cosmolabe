@@ -1,0 +1,15 @@
+{
+  "name": "@bessel/propagator",
+  "description": "Orbit propagation and TLE/OMM/OEM ingest: two-body, J2/J4 mean-element, SGP4, a DOPRI5 Cowell propagator with dense output, event detection and STM, a force model with full NxN spherical-harmonic gravity, atmospheric drag and solar radiation pressure, an Astrogator-class MCS with a differential corrector, and TEME-to-J2000",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./samplers": "./src/samplers.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/spice": "workspace:*"
+  }
+}

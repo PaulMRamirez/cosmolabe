@@ -1,0 +1,15 @@
+{
+  "name": "@bessel/coverage",
+  "description": "Constellation generation and Figure-of-Merit coverage reduction over access windows",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/access": "workspace:*",
+    "@bessel/spice": "workspace:*",
+    "@bessel/timeline": "workspace:*",
+    "@bessel/propagator": "workspace:*"
+  }
+}

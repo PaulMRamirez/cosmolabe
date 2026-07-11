@@ -1,0 +1,14 @@
+{
+  "name": "@bessel/access",
+  "description": "Visibility and access window analysis (line-of-sight, range, elevation, chain) over SPICE geometry finders",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/spice": "workspace:*",
+    "@bessel/terrain": "workspace:*",
+    "@bessel/timeline": "workspace:*"
+  }
+}

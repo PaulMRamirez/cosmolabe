@@ -1,0 +1,52 @@
+name: deploy
+
+# Build the PWA and publish it to GitHub Pages on every push to main. The Pages
+# project-page build uses the /bessel/ base path (pnpm build:pages); local dev, the
+# gate, and the Electron/Capacitor shells keep the '/' base. CI (ci.yml) runs the
+# verification gate; this workflow only builds and deploys.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The minimum the deploy needs: read the repo, write the Pages artifact, mint the
+# OIDC token deploy-pages verifies.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push supersedes an in-flight one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - uses: actions/configure-pages@v5
+      - name: Build the PWA for Pages (base /bessel/)
+        run: pnpm build:pages
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

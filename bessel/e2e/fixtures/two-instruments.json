@@ -1,0 +1,41 @@
+{
+  "name": "Two-instrument Cassini",
+  "version": "1.0",
+  "bodies": [
+    { "id": "10", "name": "Sun" },
+    {
+      "id": "6",
+      "name": "Saturn",
+      "orientation": { "type": "Spice", "frame": "IAU_SATURN" },
+      "geometry": { "type": "Globe", "radii": [60268.0, 60268.0, 54364.0] }
+    }
+  ],
+  "spacecraft": [
+    {
+      "id": "-82",
+      "name": "Cassini",
+      "arcs": [
+        {
+          "timeRange": { "start": "2004-06-22T00:00:00Z", "stop": "2004-08-22T00:00:00Z" },
+          "trajectory": { "type": "Spice", "center": "6", "frame": "J2000" }
+        }
+      ]
+    }
+  ],
+  "instruments": [
+    {
+      "id": "CASSINI_ISS_WAC",
+      "parent": "-82",
+      "sensor": "-82361",
+      "targets": ["699"],
+      "fov": { "shape": "rectangular", "styles": { "default": { "color": "#33ccff", "footprint": true } } }
+    },
+    {
+      "id": "CASSINI_ISS_NAC",
+      "parent": "-82",
+      "sensor": "-82360",
+      "targets": ["699"],
+      "fov": { "shape": "rectangular", "styles": { "default": { "color": "#ffaa33", "footprint": true } } }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@bessel/spice",
+  "description": "Typed, promise-based CSPICE-WASM engine for ephemeris, frames, and geometry events, in-process or in a Web Worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts",
+    "./worker-core": "./src/worker-core.ts",
+    "./wasm/cspice.mjs": "./wasm/cspice.mjs",
+    "./wasm/cspice.wasm": "./wasm/cspice.wasm"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/pal": "workspace:*"
+  }
+}

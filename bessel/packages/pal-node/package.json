@@ -1,0 +1,13 @@
+{
+  "name": "@bessel/pal-node",
+  "description": "Node platform IO for the headless SDK runner: a directory-backed kernel source and a confined artifact writer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/pal": "workspace:*",
+    "@bessel/pal-electron": "workspace:*"
+  }
+}

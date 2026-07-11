@@ -1,0 +1,2191 @@
+/* Component and shell styles, token-driven. Migrated from the Phase 0 styles.css
+   and extended with the app bar, dock, panels, and the new UI components. */
+
+/* Shell ------------------------------------------------------------------ */
+
+.bessel-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.bessel-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* App bar ---------------------------------------------------------------- */
+
+.bessel-appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.bessel-appbar-brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.bessel-appbar-brand h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.bessel-appbar-subtitle {
+  color: var(--text-1);
+  font-size: 0.9rem;
+}
+
+.bessel-appbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The narrow "More" overflow popover: its menu items (each a popover) stack
+   vertically and open their panels in normal flow, so nothing escapes the phone
+   viewport the way absolutely-positioned top-bar panels would. */
+.bessel-appbar-overflow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: min(80vw, 20rem);
+}
+
+.bessel-appbar-overflow .bessel-popover-trigger {
+  width: 100%;
+  text-align: start;
+}
+
+.bessel-appbar-overflow .bessel-popover-panel {
+  position: static;
+  border: none;
+  padding: var(--space-1) 0 var(--space-2);
+  box-shadow: none;
+  min-width: 0;
+}
+
+/* Dock ------------------------------------------------------------------- */
+
+.bessel-dock {
+  flex: 1;
+  min-height: 0;
+}
+
+.bessel-dock-side {
+  /* react-resizable-panels sets an inline overflow:hidden on the panel; !important
+     restores scrolling so a tall rail (Objects + Selection) does not run off screen. */
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  background: var(--bg-1);
+  border-inline: 1px solid var(--border);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bessel-dock-side::-webkit-scrollbar {
+  width: 9px;
+}
+
+.bessel-dock-side::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.bessel-dock-center {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.bessel-resize-handle {
+  width: 6px;
+  background: var(--border);
+  transition: background 0.12s ease;
+}
+
+.bessel-resize-handle:hover,
+.bessel-resize-handle[data-resize-handle-active] {
+  background: var(--accent);
+}
+
+/* Narrow (B23): the viewport fills the column and the panels slide in from the left
+   as an off-canvas drawer, toggled by a floating button. */
+.bessel-dock-narrow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.bessel-dock-narrow .bessel-dock-center {
+  flex: 1;
+  min-height: 0;
+}
+
+.bessel-drawer-toggle {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  /* Above the drawer (z-index 32) so "Close panels" stays tappable while it is open. */
+  z-index: 33;
+}
+
+.bessel-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 31;
+  background: color-mix(in srgb, var(--bg-0) 55%, transparent);
+}
+
+.bessel-dock-drawer {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: 32;
+  width: min(88%, 22rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-1);
+  border-inline-end: 1px solid var(--border);
+  transform: translateX(-100%);
+  transition: transform 0.18s ease;
+}
+
+.bessel-dock-drawer.is-open {
+  transform: translateX(0);
+}
+
+/* Touch devices (B23): coarse pointers get >=44px hit targets on chrome controls so
+   the controls are comfortably tappable. Gated on the pointer medium, never viewport,
+   so a desktop with a mouse is untouched. */
+@media (pointer: coarse) {
+  .bessel-shell button,
+  .bessel-shell select,
+  .bessel-shell input[type='range'],
+  .bessel-shell input[type='text'],
+  .bessel-shell .bessel-popover-trigger {
+    min-height: 44px;
+  }
+
+  .bessel-shell button,
+  .bessel-shell .bessel-popover-trigger {
+    min-width: 44px;
+  }
+}
+
+/* Viewport stage --------------------------------------------------------- */
+
+.bessel-viewer {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+#viewport {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #05070b;
+}
+
+.bessel-hud {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-2);
+  background: var(--hud-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+}
+
+.bessel-hud-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Residual + tracked-object readouts use the primary ink (AA on the HUD surface);
+   severity is carried by the decorative StatusDot, not by the text color. */
+.bessel-hud-residual {
+  color: var(--text-0);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}
+
+/* The residual readout doubles as the entry point to the telemetry overlay: a bare
+   button that reads as text but is keyboard and pointer operable. */
+.bessel-hud-residual-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.bessel-hud-residual-link:hover,
+.bessel-hud-residual-link:focus-visible {
+  text-decoration: underline;
+}
+
+.bessel-hud-track {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}
+
+.bessel-hud-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+
+/* Bottom bar / timeline -------------------------------------------------- */
+
+.bessel-bottombar {
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+}
+
+.bessel-timeline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
+}
+
+.bessel-timeline input[type='range'] {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* Transport cluster: jump-to-start, step back, play/pause, step forward, jump-to-end. */
+.bessel-transport {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bessel-transport-step {
+  min-width: 2rem;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+/* The scrub input fills its (flex-grown) track wrapper; without this the range input
+   keeps its ~120px intrinsic width and leaves the rest of the track empty. */
+.bessel-scrub-track input[type='range'] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Window context: the loaded start/end epochs at the two ends of the scrub track. */
+.bessel-scrub-bounds {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 0.66rem;
+  /* --text-1 (not --text-2) so the small labels clear the WCAG AA contrast threshold. */
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.bessel-epoch {
+  font-variant-numeric: tabular-nums;
+  /* The current epoch is the bar's primary readout: anchor it with size and weight. */
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--text-0);
+  min-width: 11ch;
+}
+
+/* Form controls ---------------------------------------------------------- */
+
+button,
+select,
+input[type='search'] {
+  background: var(--bg-2);
+  color: var(--text-0);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+input[type='search'] {
+  cursor: text;
+}
+
+button:hover,
+select:hover {
+  border-color: var(--accent);
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+[role='tooltip'] + *,
+.bessel-panel-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button[aria-pressed='true'] {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Panels ----------------------------------------------------------------- */
+
+.bessel-panel {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+}
+
+.bessel-panel-header {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.bessel-panel-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: var(--space-2) var(--space-3);
+  font-weight: 600;
+  text-align: left;
+}
+
+.bessel-panel-caret {
+  color: var(--text-1);
+  font-size: 0.7rem;
+}
+
+.bessel-panel-body {
+  padding: 0 var(--space-3) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The class display above would otherwise override the [hidden] attribute the
+   collapsible PanelContainer sets, so a collapsed panel must re-assert display:none. */
+.bessel-panel-body[hidden] {
+  display: none;
+}
+
+.bessel-panel-title {
+  font-size: 0.9rem;
+  margin: 0 0 var(--space-1);
+}
+
+/* Readouts and settings -------------------------------------------------- */
+
+.bessel-readouts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem var(--space-2);
+  margin: 0;
+}
+
+.bessel-readouts dt {
+  color: var(--text-1);
+}
+
+.bessel-readouts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* State panel: shares the readouts dl grid, with a header row carrying the frame select. */
+.bessel-statevec dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem var(--space-2);
+  margin: 0 0 var(--space-1);
+}
+
+.bessel-statevec dt {
+  color: var(--text-1);
+}
+
+.bessel-statevec dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bessel-statevec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.bessel-statevec-empty {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.bessel-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bessel-settings legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+/* Camera view-mode segmented control ------------------------------------- */
+
+.bessel-view-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-bottom: var(--space-2);
+  background: var(--border);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.bessel-view-modes button {
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.78rem;
+}
+
+.bessel-view-modes button:hover:not([disabled]) {
+  background: var(--bg-1);
+}
+
+.bessel-view-modes button[aria-pressed='true'] {
+  background: var(--accent-bg);
+  color: var(--accent-text);
+}
+
+.bessel-view-modes button[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.bessel-view-modes + .bessel-view-modes {
+  margin-top: calc(-1 * var(--space-1));
+}
+
+/* The camera mode band carries four options; let it wrap rather than overflow. */
+.bessel-view-modes[aria-label='Camera mode'] {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Camera frame selector and the dolly/crane motion band -------------------- */
+
+.bessel-camera-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.bessel-frame-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 0.78rem;
+  color: var(--text-1);
+}
+
+.bessel-frame-select select {
+  flex: 1 1 auto;
+  background: var(--bg-2);
+  color: var(--text-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.78rem;
+}
+
+.bessel-frame-select select[disabled] {
+  opacity: 0.5;
+}
+
+.bessel-camera-frame .bessel-view-modes {
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 0;
+}
+
+/* Object/body rows ------------------------------------------------------- */
+
+.bessel-body-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bessel-body-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding-right: var(--space-1);
+}
+
+.bessel-body-row:hover {
+  background: var(--bg-2);
+}
+
+.bessel-body-row:has(.bessel-body-name[aria-current='true']) {
+  border-left-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.bessel-body-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  margin-left: var(--space-2);
+  background: var(--text-1);
+}
+
+.bessel-body-row[data-kind='spacecraft'] .bessel-body-dot {
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+.bessel-body-row[data-kind='instrument'] .bessel-body-dot {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+}
+
+.bessel-body-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) 0;
+  color: var(--text-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bessel-body-row[data-visible='false'] .bessel-body-name {
+  color: var(--text-1);
+}
+
+.bessel-body-name[aria-pressed='true'] {
+  font-weight: 600;
+}
+
+.bessel-body-center,
+.bessel-body-track,
+.bessel-body-layer,
+.bessel-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  line-height: 0;
+  cursor: pointer;
+}
+
+/* Instrument FOV / footprint sub-toggles on the instrument row: amber while on. */
+.bessel-body-layer[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+/* The per-row controls stay quiet until the row is hovered or they are active. */
+.bessel-body-center,
+.bessel-body-track {
+  opacity: 0;
+  cursor: pointer;
+}
+
+.bessel-body-row:hover .bessel-body-center,
+.bessel-body-center:focus-visible,
+.bessel-body-center[aria-pressed='true'],
+.bessel-body-row:hover .bessel-body-track,
+.bessel-body-track:focus-visible,
+.bessel-body-track[aria-checked='true'] {
+  opacity: 1;
+}
+
+.bessel-body-center[aria-pressed='true'] {
+  /* The pressed glyph reads via the row's accent left-border and fill, not amber
+     text (amber is a fill color; amber text on dark fails AA contrast). */
+  color: var(--text-0);
+}
+
+/* Tracking active: the radar glyph goes amber to read as the live follow state. */
+.bessel-body-track[aria-checked='true'] {
+  color: var(--accent);
+}
+
+.bessel-body-center:hover,
+.bessel-body-track:hover,
+.bessel-eye:hover {
+  color: var(--text-0);
+}
+
+.bessel-eye[aria-checked='false'] {
+  color: var(--border-strong);
+}
+
+/* Timeline scrubber markers --------------------------------------------- */
+
+.bessel-scrub-track {
+  position: relative;
+  flex: 1;
+  min-width: 140px;
+}
+
+.bessel-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bessel-marker {
+  position: absolute;
+  top: -2px;
+  width: 8px;
+  height: 14px;
+  padding: 0;
+  transform: translateX(-50%);
+  background: var(--marker);
+  border: 1px solid var(--marker-border);
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Keyboard help ---------------------------------------------------------- */
+
+.bessel-help {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: var(--space-4) 1.5rem;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+
+.bessel-help dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 0.8rem;
+}
+
+.bessel-help dt,
+.bessel-help dd {
+  margin: 0;
+}
+
+.bessel-help-button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* Canvas overlay clusters and popovers ----------------------------------- */
+
+.bessel-canvas-topright {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.bessel-popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.bessel-popover-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  min-width: 12rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-3);
+  z-index: 30;
+}
+
+/* The pin toggle on a pinnable popover (the Script console): a pinned panel does
+   not auto-dismiss on an outside click. Parked in the top-right of the panel. */
+.bessel-popover-pin {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: var(--space-1);
+  opacity: 0.7;
+}
+
+.bessel-popover-pin[aria-pressed='true'],
+.bessel-popover-pin:hover,
+.bessel-popover-pin:focus-visible {
+  opacity: 1;
+}
+
+.bessel-popover-left {
+  left: 0;
+}
+
+.bessel-popover-right {
+  right: 0;
+}
+
+/* Selection-driven inspector card (floats over the canvas) ---------------- */
+
+/* The selection inspector now docks in the left rail as a "Selection" panel (it was a
+   floating bottom-right card). The close row right-aligns the dismiss control. */
+.bessel-inspector-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: calc(-1 * var(--space-1));
+}
+
+/* The left-rail Tools panel: share + capture (screenshot / record) as one icon row,
+   replacing the top-bar Capture menu and the floating share button. */
+/* View tools as a vertical strip on the canvas, under the status HUD: share,
+   screenshot, record. Replaces the top-bar Capture menu and the floating share. */
+.bessel-canvas-tools {
+  position: absolute;
+  top: 3rem;
+  left: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  z-index: 20;
+}
+
+.bessel-canvas-tools .bessel-capture {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Theme toggle ----------------------------------------------------------- */
+
+.bessel-theme-toggle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+/* Tooltip ---------------------------------------------------------------- */
+
+.bessel-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.bessel-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: var(--bg-2);
+  color: var(--text-0);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+  z-index: 20;
+}
+
+.bessel-tooltip-wrap:hover .bessel-tooltip,
+.bessel-tooltip-wrap:focus-within .bessel-tooltip {
+  opacity: 1;
+}
+
+/* Search box ------------------------------------------------------------- */
+
+.bessel-searchbox-input {
+  width: 100%;
+}
+
+/* Object inspector ------------------------------------------------------- */
+
+.bessel-inspector-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.bessel-inspector-name {
+  font-weight: 600;
+}
+
+.bessel-inspector-kind {
+  color: var(--text-1);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bessel-inspector-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem var(--space-2);
+  margin: 0;
+}
+
+.bessel-inspector-row {
+  display: contents;
+}
+
+.bessel-inspector-row dt {
+  color: var(--text-1);
+}
+
+.bessel-inspector-row dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bessel-inspector-empty {
+  color: var(--text-1);
+  margin: 0;
+}
+
+/* Object labels ---------------------------------------------------------- */
+
+.bessel-label-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bessel-label {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: #e6e9ef;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.9),
+    0 0 6px rgba(0, 0, 0, 0.7);
+  user-select: none;
+}
+
+/* Catalog loader --------------------------------------------------------- */
+
+.bessel-catalog-loader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bessel-catalog-loader.is-dragover {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.bessel-loader-hint {
+  color: var(--text-1);
+  font-size: 0.75rem;
+}
+
+.bessel-loader-status {
+  flex-basis: 100%;
+  color: var(--text-1);
+  font-size: 0.75rem;
+}
+
+.bessel-loader-error {
+  flex-basis: 100%;
+  color: #ff8a8a;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.bessel-loader-error:empty,
+.bessel-loader-status:empty {
+  display: none;
+}
+
+/* The consolidated Analyze dock (right slot): header, tab bar, and the scrolling
+   tab panel. Fills the resizable dock-side column. */
+.bessel-workbench {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.bessel-workbench-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.bessel-workbench-close {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: var(--space-1);
+}
+
+.bessel-workbench-close:hover {
+  color: var(--text-0);
+}
+
+/* The shared close glyph (CloseButton): one dismiss affordance for every surface,
+   so a header X always means CLOSE. A bare, low-emphasis target that brightens on
+   hover/focus; placement (inline vs absolute corner) is left to the host context. */
+.bessel-close-button {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.bessel-close-button:hover,
+.bessel-close-button:focus-visible {
+  color: var(--text-0);
+}
+
+/* Corner variant: pin the close to the top-right of a positioned container. */
+.bessel-close-button--corner {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+}
+
+.bessel-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bessel-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-1);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.8rem;
+}
+
+.bessel-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.85;
+}
+
+.bessel-tab:hover {
+  color: var(--text-0);
+}
+
+.bessel-tab[aria-selected='true'] {
+  color: var(--text-0);
+  border-bottom-color: var(--accent);
+}
+
+.bessel-tabpanel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* Mission-profile presets: a row of accelerator chips above the launcher. Real buttons;
+   the chip whose tab is active reads aria-pressed (an accelerator hint, not a mode). */
+.bessel-mission-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.bessel-mission-preset {
+  padding: 2px var(--space-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-1);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.bessel-mission-preset:hover {
+  color: var(--text-0);
+  background: var(--surface-2, var(--surface-1));
+}
+
+.bessel-mission-preset[aria-pressed='true'] {
+  color: var(--text-0);
+  border-color: var(--accent, var(--text-0));
+}
+
+/* The AnalysisLauncher search at the top of the tabpanel: a single input with a
+   floating result list of intent matches. */
+.bessel-analysis-launcher {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+
+.bessel-launcher-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1, 4px);
+  color: var(--text-0);
+  font-size: 0.85rem;
+}
+
+.bessel-launcher-results {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1, 4px);
+  background: var(--surface-1);
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.bessel-launcher-result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-1);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.85rem;
+}
+
+.bessel-launcher-result:hover {
+  color: var(--text-0);
+  background: var(--surface-2, var(--surface-1));
+}
+
+/* Collapsible, intent-named TaskCards inside the domain tabs: a header toggle button
+   (caret + title + one-line purpose + status chip) over a body shown only when open. */
+.bessel-taskcard-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bessel-taskcard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-1, 4px);
+  background: var(--surface-1);
+}
+
+.bessel-taskcard-header {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.bessel-taskcard-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-0);
+  padding: var(--space-1) var(--space-2);
+}
+
+.bessel-taskcard-caret {
+  color: var(--text-2);
+}
+
+.bessel-taskcard-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-1);
+  margin-right: 2px;
+}
+
+.bessel-taskcard-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.bessel-taskcard-purpose {
+  color: var(--text-1);
+  font-size: 0.75rem;
+  flex: 1;
+}
+
+.bessel-taskcard-status {
+  margin-left: auto;
+}
+
+.bessel-taskcard-body {
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+/* Flatten the collapsible tool sections inside the Analysis tab so they read as
+   section dividers, not nested cards. */
+.bessel-analysis > .bessel-panel {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.bessel-analysis > .bessel-panel:last-of-type {
+  border-bottom: none;
+}
+
+.bessel-analysis > .bessel-panel > .bessel-panel-body {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* The shared analysis context bar at the top of the dock: a sticky, wrapping row of
+   compact labelled inputs that every tab reads by default. */
+.bessel-analysis-context-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.bessel-analysis-context-bar label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-1);
+}
+
+.bessel-context-epoch {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}
+
+.bessel-context-time {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.bessel-context-frame-custom {
+  width: 8rem;
+}
+
+.bessel-shared-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-1);
+}
+
+/* Chart/table toggle + copy + precision control above an analysis result (B18). */
+.bessel-result-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+  font-size: 0.75rem;
+}
+
+.bessel-result-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-1);
+}
+
+/* The compare tray (B21): kept snapshots tabulated per tool. */
+.bessel-compare-tray {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bessel-compare-tools {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.bessel-compare-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+/* A binding chip: the currently bound pass / pass-pair shown as a clearable token, so
+   what a worksheet or slew check is bound to is visible and dismissable inline. */
+.bessel-binding-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-1);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.7rem;
+  color: var(--text-1);
+}
+
+.bessel-binding-chip-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.bessel-binding-chip-clear:hover,
+.bessel-binding-chip-clear:focus-visible {
+  color: var(--text-0);
+}
+
+/* A kept-snapshot chip: a non-interactive label plus a dedicated remove control, so
+   clicking the variant name no longer destroys the snapshot (only the ✕ removes). */
+.bessel-snapshot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-1);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.7rem;
+}
+
+.bessel-snapshot-chip-label {
+  color: var(--text-1);
+}
+
+.bessel-snapshot-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.bessel-snapshot-remove:hover,
+.bessel-snapshot-remove:focus-visible {
+  color: var(--text-0);
+}
+
+/* A located run error under a compute action (B24). Text stays AA (text-1, weight 600)
+   with a red left border, rather than low-contrast red body text. */
+.bessel-run-error {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--red);
+  color: var(--text-1);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Always-mounted telemetry fault alert, centered under the app bar. The wrapper is
+   inert until a fault fires (FaultBanner returns null when nominal). */
+.bessel-fault-chrome {
+  position: absolute;
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  max-width: calc(100% - 4rem);
+}
+
+/* Always-visible live geometry strip (top-right, under the Layers/help cluster). */
+.bessel-live-readout {
+  position: absolute;
+  top: calc(var(--space-2) + 2rem);
+  right: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--hud-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-0);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+  font-size: 0.8rem;
+}
+
+.bessel-live-readout-target {
+  color: var(--text-1);
+}
+
+/* First-run welcome card. The backdrop is pointer-transparent so it never blocks the
+   scene; only the card itself is interactive. */
+.bessel-welcome-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Below an explicitly-opened popover/menu (z-index 30) so those stay interactive,
+     but above the canvas HUD chrome. */
+  z-index: 22;
+  pointer-events: none;
+}
+
+.bessel-welcome {
+  position: relative;
+  pointer-events: auto;
+  max-width: 22rem;
+  padding: var(--space-4);
+  background: var(--panel-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.bessel-welcome-close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.bessel-welcome-close:hover {
+  color: var(--text-0);
+}
+
+.bessel-welcome-title {
+  margin: 0 0 var(--space-2);
+  color: var(--text-0);
+  font-size: 1.1rem;
+}
+
+.bessel-welcome-lede {
+  margin: 0 0 var(--space-3);
+  color: var(--text-1);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.bessel-welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The "don't show again" opt-out under the actions: a quiet, secondary control. */
+.bessel-welcome-dismiss {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  color: var(--text-1);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* The Frame-mode/Lock-frame coupling hint (B9). */
+.bessel-frame-hint {
+  color: var(--text-1);
+  font-size: 0.7rem;
+}
+
+/* Co-located instrument layer toggles in the canvas view-controls (B11). */
+/* Timeline enrichment (B8): visible marker labels, next-event readout, parse error. */
+.bessel-marker-group {
+  display: contents;
+}
+
+.bessel-marker-label {
+  position: absolute;
+  top: 14px;
+  transform: translateX(-50%);
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--text-1);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bessel-next-event {
+  color: var(--text-1);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bessel-goto-epoch {
+  width: 9rem;
+}
+
+.bessel-timeline-error {
+  color: #ff8a8a;
+  font-size: 0.75rem;
+}
+
+/* One-click sample mission chip and the load-from-URL field (B4). */
+.bessel-loader-sample {
+  font-size: 0.8rem;
+}
+
+.bessel-loader-unload {
+  font-size: 0.8rem;
+  flex-basis: 100%;
+}
+
+.bessel-loader-url {
+  display: flex;
+  gap: var(--space-1);
+  flex-basis: 100%;
+}
+
+.bessel-loader-url input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Epoch time-system toggle (B3). */
+/* The epoch readout and its time-system selector read as one unit (the system is no
+   longer a redundant text suffix on the epoch). */
+.bessel-epoch-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bessel-time-system {
+  display: inline-flex;
+  align-items: center;
+}
+
+.bessel-time-system select {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Object-browser legend: selected versus centered (B14). --text-1 matches the panel
+   hints and clears AA on the surface. */
+.bessel-body-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  color: var(--text-1);
+  font-size: 0.75rem;
+}
+
+.bessel-body-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bessel-body-legend-swatch {
+  display: inline-block;
+  width: 1.6rem;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-0);
+}
+
+.bessel-body-legend-glyph {
+  display: inline-flex;
+  width: 1.6rem;
+  justify-content: center;
+  color: var(--text-1);
+  line-height: 0;
+}
+
+/* Share confirmation + selectable fallback (B17). */
+.bessel-share-note {
+  color: var(--text-1);
+  font-size: 0.75rem;
+}
+
+.bessel-share-fallback {
+  width: 14rem;
+  max-width: 40vw;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+/* Per-view copy-link, the import/export toolbar, and a loud import error (B17). */
+.bessel-bookmark-copy {
+  font-size: 0.7rem;
+}
+
+.bessel-bookmark-tools {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.bessel-bookmarks-error {
+  color: #ff8a8a;
+  font-size: 0.75rem;
+  margin: var(--space-1) 0 0;
+}
+
+/* Measurement ------------------------------------------------------------ */
+
+.bessel-measure-pair {
+  color: var(--text-1);
+  font-size: 0.78rem;
+}
+
+.bessel-measure-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  margin-top: 0.1rem;
+}
+
+.bessel-measure-angle {
+  color: var(--text-1);
+  font-size: 0.78rem;
+  margin-top: 0.1rem;
+}
+
+.bessel-measure-empty {
+  color: var(--text-1);
+  margin: 0;
+}
+
+.bessel-measure-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+/* The active Measure-mode toggle reads as engaged via the amber accent. */
+.bessel-measure-mode[aria-pressed='true'] {
+  border-color: var(--amber);
+  color: var(--text-0);
+}
+
+/* Saved views ------------------------------------------------------------ */
+
+.bessel-bookmark-form {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.bessel-bookmark-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.bessel-bookmarks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bessel-bookmark-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bessel-bookmark-apply {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+}
+
+.bessel-bookmark-apply:hover {
+  background: var(--bg-2);
+  border-color: var(--border-strong);
+}
+
+.bessel-bookmark-delete {
+  padding: 0 0.4rem;
+  line-height: 1;
+}
+
+.bessel-bookmarks-empty {
+  color: var(--text-1);
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.bessel-analysis {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 16rem;
+}
+
+/* Analysis charts (Gantt intervals + time series) ----------------------- */
+
+.bessel-gantt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bessel-gantt-track {
+  position: relative;
+  height: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.bessel-gantt-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 1px;
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+.bessel-gantt-meta {
+  color: var(--text-1);
+  font-size: 0.75rem;
+}
+
+.bessel-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bessel-chart-line {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+/* Predicted-versus-actual telemetry overlay (OpenMCT/Yamcs idioms). */
+.bessel-telemetry-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 280px;
+}
+
+.bessel-telemetry-overlay svg {
+  display: block;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bessel-telemetry-fault {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  color: var(--bg-1);
+  background: #f85149;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.bessel-telemetry-readout {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-1);
+}
+
+/* The adopted selene TeleCell/Gauge/Metric tiles set their micro-labels to
+   var(--ink-3) (the muted ink) inline, which falls below WCAG AA at 9px on the
+   tile's --bg-0 surface. Raise the muted ink to --ink-1 within this container only,
+   so the inline var(--ink-3) resolves to a legible value without restyling the
+   design system or shifting the global palette. */
+.bessel-telemetry-tiles {
+  --ink-3: var(--ink-1);
+}
+
+/* Shared parameter controls at the top of the Analysis workbench. */
+.bessel-analysis-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.bessel-analysis-params label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.7rem;
+  color: var(--text-1);
+}
+
+.bessel-analysis-params input {
+  width: 6rem;
+}
+
+/* The data-provider workbench form and report table. */
+.bessel-report-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 18rem;
+}
+
+.bessel-report-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: var(--text-1);
+}
+
+.bessel-report-grid-inputs {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.bessel-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+}
+
+.bessel-report-table th,
+.bessel-report-table td {
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bessel-report-table th {
+  background: var(--bg-2);
+  position: sticky;
+  top: 0;
+}
+
+.bessel-report {
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.bessel-report-meta {
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: var(--text-1);
+}
+
+/* A compact secondary action under an analysis result (CSV export, etc.). */
+.bessel-csv-button {
+  align-self: flex-start;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+}
+
+/* A scalar analysis readout (conjunction, constellation, transfer, FOM). */
+.bessel-analysis-stat {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+/* 2D equirectangular ground-track overlay. */
+.bessel-groundtrack {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bessel-groundtrack-bg {
+  fill: var(--bg-2);
+}
+
+.bessel-groundtrack-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.bessel-groundtrack-line {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.bessel-groundtrack-point {
+  fill: var(--accent);
+}
+
+/* Ground-station overlay markers (Phase 3 selectable projections). */
+.bessel-groundtrack-station {
+  fill: var(--warning, #e0a030);
+  stroke: var(--bg-2);
+  stroke-width: 1;
+}
+
+/* Scripting console ------------------------------------------------------ */
+
+.bessel-script {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 18rem;
+}
+
+.bessel-script-label {
+  font-size: 0.8rem;
+  color: var(--text-1);
+}
+
+.bessel-script-input {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+  font-size: 0.82rem;
+  color: var(--text-0);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+
+.bessel-script-output {
+  margin: 0;
+  max-height: 10rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+  font-size: 0.78rem;
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  min-height: 1.5rem;
+}
+
+/* Save/load named scripts: a name field, save, load menu, delete. */
+.bessel-script-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bessel-script-name {
+  flex: 1 1 6rem;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--text-0);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem var(--space-2);
+}
+
+/* Collapsible verb reference. */
+.bessel-script-ref {
+  font-size: 0.78rem;
+  color: var(--text-1);
+}
+
+/* Saved scripts as a per-row list (Load + per-row remove), consistent with saved
+   views (BookmarksPanel), replacing the former select + gated Delete two-step. */
+.bessel-script-saved-list {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bessel-script-saved-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bessel-script-saved-load {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+}
+
+.bessel-script-saved-delete {
+  padding: 0 0.4rem;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.bessel-script-saved-delete:hover,
+.bessel-script-saved-delete:focus-visible {
+  color: var(--text-0);
+}
+
+.bessel-script-saved-empty {
+  color: var(--text-1);
+  margin: var(--space-1) 0 0;
+  font-size: 0.78rem;
+}
+
+/* Accordion-level expand/collapse-all control, shown only when the card count
+   exceeds the at-most-two-expanded cap (the discoverable escape hatch). */
+.bessel-taskcard-accordion-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-1);
+}
+
+/* Ground-track map: enlarge toggle row and the on-map legend swatches. */
+.bessel-groundtrack-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.bessel-groundtrack-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bessel-groundtrack-legend-line {
+  stroke: var(--data-accent);
+}
+
+.bessel-groundtrack-legend-station {
+  fill: var(--accent);
+}
+
+.bessel-groundtrack-station-label {
+  fill: var(--text-1);
+  font-size: 0.62rem;
+}
+
+.bessel-script-verbs {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.1rem var(--space-2);
+}
+
+.bessel-script-verbs code {
+  color: var(--text-0);
+}
+
+.bessel-script-arity {
+  /* text-1, not text-2: the verb reference is now open by default, so this arity
+     hint is always scanned and must clear AA contrast (text-2 sat at 4.36:1). */
+  color: var(--text-1);
+}
+
+/* Utilities -------------------------------------------------------------- */
+
+.bessel-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The Selene mono/data split: numbers, coordinates, telemetry, IDs, and epochs use
+   JetBrains Mono with slashed-zero + ss02; prose stays Inter Tight. Applied to the
+   app's existing numeric surfaces (which already carry tabular-nums). */
+.bessel-epoch,
+.bessel-readouts dd,
+.bessel-statevec dd,
+.bessel-inspector-row dd,
+.bessel-measure-value,
+.bessel-telemetry-readout,
+.bessel-report-table td {
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}
+
+/* Coverage & Constellation: the metric-aware contour legend and the FOM summary table.
+   The legend color scale mirrors the @bessel/scene viridis overlay ramp (low -> high),
+   kept here as a static gradient so the panel does not build it in JS. */
+.bessel-contour-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+}
+.bessel-legend-scale {
+  display: block;
+  height: 0.6rem;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    rgb(68, 1, 84),
+    rgb(58, 82, 139),
+    rgb(32, 144, 140),
+    rgb(94, 201, 98),
+    rgb(253, 231, 37)
+  );
+}
+.bessel-legend-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.bessel-fom-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.bessel-fom-table th {
+  text-align: left;
+  font-weight: 400;
+  opacity: 0.8;
+}
+.bessel-fom-table td {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-feature-settings: var(--feat-mono);
+}

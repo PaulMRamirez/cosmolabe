@@ -1,0 +1,52 @@
+{
+  "name": "@bessel/web",
+  "description": "Bessel web shell: the Progressive Web App host that injects the Web PAL into the viewer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen:textures": "node scripts/gen-textures.mjs",
+    "predev": "node scripts/gen-textures.mjs",
+    "prebuild": "node scripts/gen-textures.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "@bessel/access": "workspace:*",
+    "@bessel/attitude": "workspace:*",
+    "@bessel/catalog": "workspace:*",
+    "@bessel/color": "workspace:*",
+    "@bessel/conjunction": "workspace:*",
+    "@bessel/coverage": "workspace:*",
+    "@bessel/events": "workspace:*",
+    "@bessel/interop": "workspace:*",
+    "@bessel/map-projection": "workspace:*",
+    "@bessel/mission": "workspace:*",
+    "@bessel/od": "workspace:*",
+    "@bessel/pal": "workspace:*",
+    "@bessel/pal-web": "workspace:*",
+    "@bessel/propagator": "workspace:*",
+    "@bessel/sensors": "workspace:*",
+    "@bessel/rf": "workspace:*",
+    "@bessel/scene": "workspace:*",
+    "@bessel/selene-design": "workspace:*",
+    "@bessel/spice": "workspace:*",
+    "@bessel/state": "workspace:*",
+    "@bessel/terrain": "workspace:*",
+    "@bessel/timeline": "workspace:*",
+    "@bessel/ui": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-resizable-panels": "^2.1.7",
+    "three": "^0.171.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.171.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5",
+    "vite-plugin-pwa": "^0.21.1"
+  }
+}

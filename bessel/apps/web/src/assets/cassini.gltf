@@ -1,0 +1,77 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "bessel make-spacecraft-gltf"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Cassini",
+      "mesh": 0
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Cassini",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0
+          },
+          "indices": 1
+        }
+      ]
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 17,
+      "type": "VEC3",
+      "min": [
+        -0.7,
+        -0.5,
+        -0.7
+      ],
+      "max": [
+        0.7,
+        1.2,
+        0.7
+      ]
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5123,
+      "count": 60,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 204,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 204,
+      "byteLength": 120,
+      "target": 34963
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 324,
+      "uri": "data:application/octet-stream;base64,AAAAvwAAAL8AAAC/AAAAPwAAAL8AAAC/AAAAPwAAAD8AAAC/AAAAvwAAAD8AAAC/AAAAvwAAAL8AAAA/AAAAPwAAAL8AAAA/AAAAPwAAAD8AAAA/AAAAvwAAAD8AAAA/AAAAAJqZmT8AAAAAMzMzPwAAgD8AAAAAAAAAPwAAgD8AAAA/AAAAAAAAgD8zMzM/AAAAvwAAgD8AAAA/MzMzvwAAgD8AAAAAAAAAvwAAgD8AAAC/AAAAAAAAgD8zMzO/AAAAPwAAgD8AAAC/AAABAAIAAAACAAMABAAGAAUABAAHAAYAAAAEAAUAAAAFAAEAAQAFAAYAAQAGAAIAAgAGAAcAAgAHAAMAAwAHAAQAAwAEAAAACAAJAAoACAAKAAsACAALAAwACAAMAA0ACAANAA4ACAAOAA8ACAAPABAACAAQAAkA"
+    }
+  ]
+}

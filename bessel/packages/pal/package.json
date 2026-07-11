@@ -1,0 +1,15 @@
+{
+  "name": "@bessel/pal",
+  "description": "Platform Abstraction Layer interfaces (kernels, filesystem, storage, share, capabilities) injected per shell",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "types": "./src/index.ts",
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}

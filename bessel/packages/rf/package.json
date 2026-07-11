@@ -1,0 +1,10 @@
+{
+  "name": "@bessel/rf",
+  "description": "Pure communications link-budget physics: Friis path loss, antenna gain, BER, link budget, Doppler, and ITU-R atmospheric attenuation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {}
+}

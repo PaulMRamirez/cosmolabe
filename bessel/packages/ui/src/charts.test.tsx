@@ -1,0 +1,208 @@
+// The analysis charting primitives render their data: a Gantt bar per interval and
+// a scaled polyline for a series. (STK_PARITY_SPEC F5.)
+
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, it, expect } from 'vitest';
+import { IntervalTimeline } from './IntervalTimeline.tsx';
+import { TimeSeriesChart } from './TimeSeriesChart.tsx';
+import { GroundTrackMap } from './GroundTrackMap.tsx';
+import { ReportTable, reportToText } from './ReportTable.tsx';
+
+const html = (el: Parameters<typeof renderToStaticMarkup>[0]): string => renderToStaticMarkup(el);
+
+describe('ReportTable precision + reportToText', () => {
+  it('formats cells at the requested significant digits (default 6)', () => {
+    const cols = ['a'];
+    const rows = [[1234.5678]];
+    expect(html(createElement(ReportTable, { columns: cols, rows, precision: 3 }))).toContain('1.23e+3');
+    // Omitting precision preserves the 6-sig-fig default (guards existing callers).
+    expect(html(createElement(ReportTable, { columns: cols, rows }))).toContain('1234.57');
+  });
+
+  it('serializes a report to TSV at the requested precision', () => {
+    expect(reportToText(['et', 'v'], [[0, 1234.5678]], 3)).toBe('et\tv\n0.00\t1.23e+3\n');
+    // Empty rows yield a header-only document.
+    expect(reportToText(['et', 'v'], [], 6)).toBe('et\tv\n');
+  });
+});
+
+describe('IntervalTimeline', () => {
+  it('renders one bar per interval and an interval count', () => {
+    const out = html(
+      createElement(IntervalTimeline, {
+        intervals: [
+          [10, 20],
+          [40, 70],
+        ],
+        span: [0, 100],
+        label: 'Access',
+      }),
+    );
+    expect((out.match(/bessel-gantt-bar/g) ?? []).length).toBe(2);
+    expect(out).toContain('2 intervals');
+    // The first bar starts at 10% and spans 10% of the 0..100 window.
+    expect(out).toContain('left:10%');
+    expect(out).toContain('width:10%');
+  });
+
+  it('handles an empty window', () => {
+    const out = html(createElement(IntervalTimeline, { intervals: [], span: [0, 100] }));
+    expect(out).toContain('0 intervals');
+    expect(out).not.toContain('bessel-gantt-bar');
+  });
+});
+
+describe('TimeSeriesChart', () => {
+  it('renders a polyline with one point per sample', () => {
+    const out = html(
+      createElement(TimeSeriesChart, {
+        et: [0, 1, 2, 3],
+        value: [0, 10, 5, 20],
+      }),
+    );
+    expect(out).toContain('<polyline');
+    const pts = out.match(/points="([^"]+)"/)?.[1] ?? '';
+    expect(pts.trim().split(/\s+/)).toHaveLength(4);
+  });
+
+  it('renders no line for too few points', () => {
+    const out = html(createElement(TimeSeriesChart, { et: [0], value: [1] }));
+    expect(out).not.toContain('<polyline');
+  });
+
+  it('draws a dashed reference line at the threshold when one is given', () => {
+    const out = html(
+      createElement(TimeSeriesChart, {
+        et: [0, 1, 2, 3],
+        value: [2, 7, 5, 12],
+        threshold: 0,
+        testId: 'margin-chart',
+      }),
+    );
+    expect(out).toContain('data-testid="margin-chart-threshold"');
+    expect(out).toContain('stroke-dasharray="4 3"');
+  });
+});
+
+describe('GroundTrackMap', () => {
+  it('draws a single polyline for a continuous track', () => {
+    const out = html(
+      createElement(GroundTrackMap, {
+        lon: [-0.2, 0, 0.2, 0.4],
+        lat: [0.1, 0.2, 0.1, 0],
+      }),
+    );
+    expect((out.match(/bessel-groundtrack-line/g) ?? []).length).toBe(1);
+  });
+
+  it('splits the track where it wraps across the antimeridian', () => {
+    // A jump from +pi-ish to -pi-ish should break the polyline into two segments.
+    const out = html(
+      createElement(GroundTrackMap, {
+        lon: [3.0, 3.1, -3.1, -3.0],
+        lat: [0, 0, 0, 0],
+      }),
+    );
+    expect((out.match(/bessel-groundtrack-line/g) ?? []).length).toBe(2);
+  });
+
+  it('renders a single-point segment (trapped between two wraps) as a dot', () => {
+    // Each sample wraps relative to its neighbour, so every segment holds exactly one
+    // point. These must not be dropped: they render as circles, not polylines.
+    const out = html(
+      createElement(GroundTrackMap, {
+        lon: [3.0, -3.0, 3.0],
+        lat: [0, 0, 0],
+      }),
+    );
+    expect((out.match(/bessel-groundtrack-line/g) ?? []).length).toBe(0);
+    expect((out.match(/bessel-groundtrack-point/g) ?? []).length).toBe(3);
+  });
+
+  it('renders in each selectable projection without throwing', () => {
+    for (const projection of ['equirectangular', 'mercator', 'polar-stereographic'] as const) {
+      const out = html(
+        createElement(GroundTrackMap, { lon: [-0.2, 0, 0.2], lat: [0.1, 0.2, 0.3], projection }),
+      );
+      expect(out).toContain('bessel-groundtrack');
+    }
+  });
+
+  it('drapes a station-overlay marker per visible station', () => {
+    const out = html(
+      createElement(GroundTrackMap, {
+        lon: [0, 0.1],
+        lat: [0, 0.1],
+        stations: [
+          { id: 's1', name: 'Madrid', lonRad: -0.06, latRad: 0.7 },
+          { id: 's2', name: 'Canberra', lonRad: 2.6, latRad: -0.6 },
+        ],
+      }),
+    );
+    expect((out.match(/groundtrack-station-overlay/g) ?? []).length).toBe(2);
+  });
+
+  it('renders an enlarge toggle and a legend key (F28/F29)', () => {
+    const out = html(createElement(GroundTrackMap, { lon: [0, 0.1], lat: [0, 0.1] }));
+    expect(out).toContain('data-testid="groundtrack-enlarge"');
+    expect(out).toContain('Enlarge');
+    expect(out).toContain('data-testid="groundtrack-legend"');
+    expect(out).toContain('Station');
+  });
+
+  it('omits on-map station labels at thumbnail size but renders them when forced (F28)', () => {
+    const stations = [{ id: 's1', name: 'Madrid', lonRad: -0.06, latRad: 0.7 }];
+    const thumb = html(createElement(GroundTrackMap, { lon: [0], lat: [0], stations }));
+    // The <title> fallback survives; the on-map text label is gated off at thumbnail size.
+    expect(thumb).toContain('<title>Madrid</title>');
+    expect(thumb).not.toContain('data-testid="groundtrack-station-label"');
+
+    const labelled = html(
+      createElement(GroundTrackMap, { lon: [0], lat: [0], stations, showLabels: true }),
+    );
+    expect(labelled).toContain('data-testid="groundtrack-station-label"');
+    expect(labelled).toContain('>Madrid</text>');
+  });
+
+  it('clamps a station label inside the map box (F28)', () => {
+    // A station hard against the eastern edge must keep its label x within [0, width].
+    const width = 280;
+    const out = html(
+      createElement(GroundTrackMap, {
+        lon: [0],
+        lat: [0],
+        showLabels: true,
+        width,
+        stations: [{ id: 'e', name: 'Edge', lonRad: Math.PI - 0.001, latRad: 0 }],
+      }),
+    );
+    const x = Number(out.match(/groundtrack-station-label"[^>]*\bx="([\d.]+)"/)?.[1] ?? '-1');
+    expect(x).toBeGreaterThanOrEqual(0);
+    expect(x).toBeLessThanOrEqual(width);
+  });
+});
+
+describe('ReportTable', () => {
+  it('renders headers and rows with a row count', () => {
+    const out = html(
+      createElement(ReportTable, {
+        columns: ['UTC', 'range (km)'],
+        rows: [
+          ['2004-001', 1000],
+          ['2004-002', 2000],
+        ],
+      }),
+    );
+    expect(out).toContain('range (km)');
+    expect((out.match(/<tr>/g) ?? []).length).toBe(3); // header + 2 data rows
+    expect(out).toContain('2 rows');
+  });
+
+  it('truncates a large report to maxRows and notes it', () => {
+    const rows = Array.from({ length: 50 }, (_, i) => [`t${i}`, i]);
+    const out = html(createElement(ReportTable, { columns: ['UTC', 'v'], rows, maxRows: 10 }));
+    expect((out.match(/<tr>/g) ?? []).length).toBe(11); // header + 10 shown
+    expect(out).toContain('showing first 10');
+  });
+});

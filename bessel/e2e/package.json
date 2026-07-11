@@ -1,0 +1,11 @@
+{
+  "name": "@bessel/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.49.1",
+    "electron": "^33.2.1"
+  }
+}

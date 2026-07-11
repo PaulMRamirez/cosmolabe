@@ -1,0 +1,12 @@
+{
+  "name": "@bessel/state",
+  "description": "View model with lossless URL-fragment serialization plus MMGIS, CZML, and telemetry interop adapters",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "devDependencies": {
+    "fast-check": "^3.23.1"
+  }
+}

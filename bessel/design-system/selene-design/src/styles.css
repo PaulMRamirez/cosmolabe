@@ -1,0 +1,8 @@
+/* Selene Ops Design System — global entry point.
+   Consumers link THIS file. It only @imports; no rules inline. */
+
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/elevation.css";

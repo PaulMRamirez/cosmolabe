@@ -1,0 +1,36 @@
+/* Selene Ops — spacing, radii, sizing.
+   4px base grid. Dense by design — most gaps are 6–14px. */
+
+:root {
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 18px;
+  --space-10: 24px;
+
+  /* Radii — tight, technical. Nothing pill-shaped except status dots. */
+  --radius-xs: 2px;   /* tags, mini-bars */
+  --radius-sm: 4px;   /* chips, ticks */
+  --radius-md: 5px;   /* buttons, list rows, cells */
+  --radius-lg: 7px;   /* cards, floating toolbars */
+  --radius-xl: 14px;  /* the Tweaks/overlay panel */
+  --radius-round: 50%;
+
+  /* Fixed chrome dimensions */
+  --rail-left: 280px;     /* layers + asset rail */
+  --rail-right: 340px;    /* inspector */
+  --rail-ops: 440px;      /* live-ops telemetry pane */
+  --bar-top: 52px;        /* top bar height */
+  --timeline-h: 78px;     /* illumination timeline */
+
+  /* Control heights */
+  --control-sm: 26px;
+  --control-md: 32px;
+  --control-lg: 34px;
+  --hit-min: 28px;        /* minimum interactive target in this dense tool */
+}

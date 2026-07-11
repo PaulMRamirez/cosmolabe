@@ -1,0 +1,9 @@
+{
+  "name": "@bessel/color",
+  "description": "Named color strategies mapping a scalar to an RGB ramp, with a strategy registry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts"
+}

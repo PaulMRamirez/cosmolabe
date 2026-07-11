@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "name": "Cassini at Saturn",
+  "spiceKernels": ["naif0012.tls", "de440s-inner-cassini.bsp", "cassini-soi.bsp"],
+  "items": [
+    {
+      "class": "spacecraft",
+      "name": "Cassini",
+      "startTime": "2004-06-22T00:00:00",
+      "endTime": "2004-08-22T00:00:00",
+      "trajectory": {
+        "type": "Spice",
+        "target": "-82",
+        "center": "6",
+        "frame": "J2000"
+      }
+    }
+  ]
+}

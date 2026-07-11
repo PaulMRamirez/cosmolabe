@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bessel.dev/schemas/batch-job-1.json",
+  "title": "Bessel batch job",
+  "description": "A serializable headless automation job for the @bessel/sdk runner. The hand-written validator in validate.ts is the runtime source of truth; this schema is kept in lockstep for editor autocomplete and external tooling.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["besselBatch", "operations", "output"],
+  "properties": {
+    "besselBatch": { "const": "1" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frame": { "type": "string" },
+        "center": { "type": "string" }
+      }
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/entity" }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/operation" }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dir"],
+      "properties": {
+        "dir": { "type": "string" },
+        "onError": { "enum": ["stop", "continue"] }
+      }
+    }
+  },
+  "$defs": {
+    "grid": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "stop", "stepSec"],
+          "properties": {
+            "start": { "type": "string" },
+            "stop": { "type": "string" },
+            "stepSec": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["epochs"],
+          "properties": {
+            "epochs": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "source"],
+      "properties": {
+        "type": { "const": "satellite" },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "target"],
+              "properties": { "kind": { "const": "spk" }, "target": { "type": "string" } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "line1", "line2"],
+              "properties": {
+                "kind": { "const": "tle" },
+                "line1": { "type": "string" },
+                "line2": { "type": "string" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "epoch", "centralBody", "r", "v"],
+              "properties": {
+                "kind": { "const": "state" },
+                "epoch": { "type": "string" },
+                "centralBody": { "type": "number" },
+                "r": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+                "v": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "facility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["body", "bodyFrame", "lonDeg", "latDeg", "altKm", "minElevationDeg"],
+      "properties": {
+        "body": { "type": "string" },
+        "bodyFrame": { "type": "string" },
+        "lonDeg": { "type": "number" },
+        "latDeg": { "type": "number" },
+        "altKm": { "type": "number" },
+        "minElevationDeg": { "type": "number" }
+      }
+    },
+    "radio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eirpDbW", "freqHz", "gOverTDbK", "dataRateBps"],
+      "properties": {
+        "eirpDbW": { "type": "number" },
+        "freqHz": { "type": "number" },
+        "gOverTDbK": { "type": "number" },
+        "dataRateBps": { "type": "number" },
+        "otherLossesDb": { "type": "number" },
+        "requiredEbN0Db": { "type": "number" }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "required": ["op"],
+      "properties": { "op": { "type": "string" } },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["op", "names"],
+          "properties": {
+            "op": { "const": "furnish" },
+            "id": { "type": "string" },
+            "names": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "id", "object", "method", "grid"],
+          "properties": {
+            "op": { "const": "propagate" },
+            "id": { "type": "string" },
+            "object": { "type": "string" },
+            "method": { "enum": ["sgp4", "twobody"] },
+            "grid": { "$ref": "#/$defs/grid" },
+            "frame": { "type": "string" },
+            "center": { "type": "string" },
+            "publishAs": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["naifId"],
+              "properties": { "naifId": { "type": "number" }, "degree": { "type": "number" } }
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "id", "mcs"],
+          "properties": {
+            "op": { "const": "runMcs" },
+            "id": { "type": "string" },
+            "mcs": { "type": "object" },
+            "bodies": { "type": "object" },
+            "center": { "type": "string" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "id", "kind", "observer", "target", "grid"],
+          "properties": {
+            "op": { "const": "analyze" },
+            "id": { "type": "string" },
+            "kind": { "const": "range" },
+            "observer": { "type": "string" },
+            "target": { "type": "string" },
+            "grid": { "$ref": "#/$defs/grid" },
+            "frame": { "type": "string" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "id", "observer", "body", "grid"],
+          "properties": {
+            "op": { "const": "analyzeEclipse" },
+            "id": { "type": "string" },
+            "observer": { "type": "string" },
+            "body": { "type": "string" },
+            "bodyFrame": { "type": "string" },
+            "grid": { "$ref": "#/$defs/grid" },
+            "condition": { "enum": ["umbra", "penumbra", "annular", "sunlit"] }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "id", "observer", "target", "grid"],
+          "properties": {
+            "op": { "const": "analyzeAccess" },
+            "id": { "type": "string" },
+            "observer": { "type": "string" },
+            "target": { "type": "string" },
+            "grid": { "$ref": "#/$defs/grid" },
+            "losBody": { "type": "string" },
+            "losBodyFrame": { "type": "string" },
+            "facility": { "$ref": "#/$defs/facility" },
+            "maxRangeKm": { "type": "number" },
+            "minRangeKm": { "type": "number" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "id", "observer", "target", "grid", "radio"],
+          "properties": {
+            "op": { "const": "analyzeLinkBudget" },
+            "id": { "type": "string" },
+            "observer": { "type": "string" },
+            "target": { "type": "string" },
+            "grid": { "$ref": "#/$defs/grid" },
+            "frame": { "type": "string" },
+            "radio": { "$ref": "#/$defs/radio" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "file"],
+          "properties": {
+            "op": { "const": "loadCatalog" },
+            "id": { "type": "string" },
+            "file": { "type": "string" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "from", "file"],
+          "properties": {
+            "op": { "const": "report" },
+            "id": { "type": "string" },
+            "from": { "type": "array", "items": { "type": "string" } },
+            "file": { "type": "string" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "from", "file"],
+          "properties": {
+            "op": { "const": "exportOem" },
+            "id": { "type": "string" },
+            "from": { "type": "string" },
+            "file": { "type": "string" },
+            "metadata": { "type": "object" }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["op", "from", "file"],
+          "properties": {
+            "op": { "const": "exportCsv" },
+            "id": { "type": "string" },
+            "from": { "type": "string" },
+            "file": { "type": "string" }
+          }
+        }
+      ]
+    }
+  }
+}

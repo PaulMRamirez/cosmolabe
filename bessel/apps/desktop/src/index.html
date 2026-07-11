@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' data: blob:"
+    />
+    <title>Bessel</title>
+    <style>
+      body { margin: 0; background: #0b0e14; color: #e6e9ef; font-family: system-ui, sans-serif; }
+      .desktop-shell { padding: 0.5rem 1rem; }
+      .desktop-shell h1 { font-size: 1.1rem; margin: 0 0 0.3rem; }
+      #viewport { display: block; width: 100%; background: #05070b; border: 1px solid #1c2230; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

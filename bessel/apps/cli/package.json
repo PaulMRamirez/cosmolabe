@@ -1,0 +1,19 @@
+{
+  "name": "@bessel/cli",
+  "description": "The bessel headless batch runner: execute a JSON batch job against a Node PAL",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": { "bessel": "./dist/main.js" },
+  "files": ["dist"],
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@bessel/sdk": "workspace:*",
+    "@bessel/pal-node": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

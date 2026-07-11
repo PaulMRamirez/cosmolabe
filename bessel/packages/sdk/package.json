@@ -1,0 +1,24 @@
+{
+  "name": "@bessel/sdk",
+  "description": "Programmatic automation facade plus a JSON batch-job IR and headless runner over the Bessel compute core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/pal": "workspace:*",
+    "@bessel/spice": "workspace:*",
+    "@bessel/propagator": "workspace:*",
+    "@bessel/interop": "workspace:*",
+    "@bessel/timeline": "workspace:*",
+    "@bessel/events": "workspace:*",
+    "@bessel/access": "workspace:*",
+    "@bessel/rf": "workspace:*",
+    "@bessel/coverage": "workspace:*",
+    "@bessel/catalog": "workspace:*"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "name": "Cassini at Saturn (reference example)",
+  "version": "1.0",
+  "kernels": {
+    "baseUrl": "https://kernels.example/cassini/",
+    "metaKernels": [
+      "cassini_saturn.tm"
+    ]
+  },
+  "bodies": [
+    {
+      "id": "SATURN",
+      "name": "Saturn",
+      "trajectory": {
+        "type": "Spice",
+        "center": "SSB",
+        "frame": "ECLIPJ2000"
+      },
+      "orientation": {
+        "type": "Spice",
+        "frame": "IAU_SATURN"
+      },
+      "mass": {
+        "value": 95.159,
+        "unit": "Mearth"
+      },
+      "geometry": {
+        "type": "Globe",
+        "radii": [
+          60268.0,
+          60268.0,
+          54364.0
+        ],
+        "texture": "saturn.jpg",
+        "rings": {
+          "type": "Rings",
+          "innerRadius": 74500.0,
+          "outerRadius": 140220.0,
+          "texture": "saturn_rings.png"
+        }
+      }
+    }
+  ],
+  "spacecraft": [
+    {
+      "id": "CASSINI",
+      "name": "Cassini",
+      "orientation": {
+        "type": "Spice",
+        "frame": "CASSINI_SC_COORD"
+      },
+      "geometry": {
+        "type": "Mesh",
+        "source": "cassini.glb",
+        "scale": 0.001
+      },
+      "mass": "2523.0 kg",
+      "trajectoryPlot": {
+        "lead": "10 d",
+        "trail": "30 d",
+        "color": "#ffaa33"
+      },
+      "arcs": [
+        {
+          "timeRange": {
+            "start": "1997-10-15T00:00:00Z",
+            "stop": "2004-07-01T00:00:00Z"
+          },
+          "trajectory": {
+            "type": "Spice",
+            "center": "SSB",
+            "frame": "ECLIPJ2000"
+          }
+        },
+        {
+          "timeRange": {
+            "start": "2004-07-01T00:00:00Z",
+            "stop": "2017-09-15T00:00:00Z"
+          },
+          "trajectory": {
+            "type": "Spice",
+            "center": "SATURN",
+            "frame": "ECLIPJ2000"
+          }
+        }
+      ]
+    }
+  ],
+  "instruments": [
+    {
+      "id": "CASSINI_ISS_NAC",
+      "parent": "CASSINI",
+      "sensor": "CASSINI_ISS_NAC",
+      "targets": [
+        "SATURN",
+        "TITAN"
+      ],
+      "fov": {
+        "shape": "rectangular",
+        "styles": {
+          "default": {
+            "color": "#33ccff",
+            "opacity": 0.25,
+            "sideDivisions": 8,
+            "footprint": true,
+            "colorByDistance": null
+          }
+        }
+      }
+    }
+  ],
+  "observations": [
+    {
+      "instrument": "CASSINI_ISS_NAC",
+      "target": "TITAN",
+      "products": [
+        {
+          "id": "N1532784322_1",
+          "type": "image"
+        }
+      ],
+      "footprintColor": "#ffcc00",
+      "colorByDistance": {
+        "strategy": "percentile-clip",
+        "range": {
+          "min": 0.0,
+          "max": 1200000.0
+        },
+        "units": "km"
+      },
+      "intervals": [
+        {
+          "start": "2006-07-22T12:00:00Z",
+          "stop": "2006-07-22T12:30:00Z"
+        },
+        {
+          "start": "2006-07-22T13:00:00Z",
+          "stop": "2006-07-22T13:10:00Z",
+          "rate": 1.0
+        }
+      ]
+    }
+  ]
+}

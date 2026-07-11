@@ -1,0 +1,48 @@
+name: ci
+
+# Mirrors the /goal verification gates so the completion checker, the developer,
+# and CI all run the same vocabulary (SPEC.md Section 8). Single Ubuntu job for
+# speed; platform packaging jobs (macOS signing, Android) come in Phase 5.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Gate (typecheck, lint, test, build:web, size)
+        run: pnpm verify
+
+      - name: Desktop build
+        run: pnpm build:desktop
+
+      - name: Dependency audit (production, high and critical)
+        run: pnpm audit:prod
+
+      - name: Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      # build:desktop ran above, producing apps/desktop/out for the Electron e2e
+      # project. xvfb provides a display for the headless Electron launch on Linux.
+      - name: End to end (web and Electron)
+        run: xvfb-run -a pnpm e2e
+
+      - name: Lighthouse budgets (after Phase 2)
+        if: ${{ hashFiles('lighthouserc.json') != '' }}
+        run: pnpm lhci

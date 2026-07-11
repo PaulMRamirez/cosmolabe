@@ -1,0 +1,10 @@
+{
+  "name": "@bessel/terrain",
+  "description": "Terrain-masked line-of-sight over a DEM height field for terrain-aware access geometry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {}
+}

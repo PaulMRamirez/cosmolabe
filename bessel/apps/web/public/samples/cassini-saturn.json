@@ -1,0 +1,57 @@
+{
+  "name": "Cassini at Saturn (sample mission)",
+  "version": "1.0",
+  "bodies": [
+    { "id": "10", "name": "Sun" },
+    { "id": "1", "name": "Mercury" },
+    { "id": "2", "name": "Venus" },
+    { "id": "399", "name": "Earth" },
+    { "id": "4", "name": "Mars" },
+    { "id": "5", "name": "Jupiter" },
+    {
+      "id": "6",
+      "name": "Saturn",
+      "orientation": { "type": "Spice", "frame": "IAU_SATURN" },
+      "geometry": {
+        "type": "Globe",
+        "radii": [60268.0, 60268.0, 54364.0],
+        "texture": "/samples/textures/saturn.png",
+        "atmosphere": { "innerRadius": 60268.0, "outerRadius": 66000.0 },
+        "rings": {
+          "type": "Rings",
+          "innerRadius": 74500.0,
+          "outerRadius": 140220.0,
+          "texture": "/samples/textures/saturn-rings.png"
+        }
+      }
+    }
+  ],
+  "spacecraft": [
+    {
+      "id": "-82",
+      "name": "Cassini",
+      "orientation": { "type": "UniformRotation", "axis": [0, 1, 0], "ratePerSec": 0.05 },
+      "geometry": { "type": "Mesh", "source": "/samples/cassini.gltf", "scale": 1.0 },
+      "arcs": [
+        {
+          "timeRange": { "start": "2004-06-22T00:00:00Z", "stop": "2004-08-22T00:00:00Z" },
+          "trajectory": { "type": "Spice", "center": "6", "frame": "J2000" }
+        }
+      ]
+    }
+  ],
+  "instruments": [
+    {
+      "id": "CASSINI_ISS_WAC",
+      "parent": "-82",
+      "sensor": "-82361",
+      "targets": ["699"],
+      "fov": {
+        "shape": "rectangular",
+        "styles": {
+          "default": { "color": "#33ccff", "opacity": 0.25, "footprint": true }
+        }
+      }
+    }
+  ]
+}

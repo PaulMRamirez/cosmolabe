@@ -1,0 +1,24 @@
+/* Selene Ops — webfonts (vendored, offline-first).
+   Inter Tight (UI) + JetBrains Mono (telemetry/coordinates), variable weights.
+   Binaries are NOT committed by default — run `pnpm --filter @bessel/selene-design fetch-fonts`
+   to download them into ./fonts/ (see scripts/fetch-fonts.mjs). Until then the stacks below
+   fall back to system-ui / ui-monospace.
+
+   Family names are declared EXACTLY as the tokens reference them ('Inter Tight',
+   'JetBrains Mono') so nothing else needs to change. */
+
+@font-face {
+  font-family: 'Inter Tight';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./fonts/inter-tight-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('./fonts/jetbrains-mono-latin.woff2') format('woff2');
+}

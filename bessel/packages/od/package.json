@@ -1,0 +1,13 @@
+{
+  "name": "@bessel/od",
+  "description": "Orbit determination: a Gauss-Newton batch least-squares estimator and a sequential extended Kalman filter, with analytic range/range-rate/angle measurement models, seeded by the propagator's State Transition Matrix",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@bessel/propagator": "workspace:*",
+    "@bessel/spice": "workspace:*"
+  }
+}

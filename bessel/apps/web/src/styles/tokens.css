@@ -1,0 +1,67 @@
+/* App theme layer. Dark colors come from @bessel/selene-design (the default,
+   dark-only system) via selene-bridge.css. This file owns: the warm-amber LIGHT
+   theme (Selene ships none), and the non-color tokens (radius, spacing, font)
+   that are app layout scale. Imported AFTER the selene styles + bridge, so its
+   non-color :root and its higher-specificity [data-theme='light'] win. */
+
+/* Warm-amber light theme (Bessel-authored). It overrides only the Selene BASE
+   tokens (surfaces, lines, ink, accents, status); the app-name bridges in
+   selene-bridge.css (--text-0 -> var(--ink-0), --accent -> var(--amber), etc.)
+   then cascade to these light values automatically. In light, amber darkens to
+   L~0.58 so it stays legible as an edge/fill. AA-checked. */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-0: oklch(0.96 0.006 75);
+  --bg-1: oklch(0.99 0.004 75);
+  --bg-2: oklch(0.93 0.007 70);
+  --bg-3: oklch(0.88 0.009 70);
+
+  --line: oklch(0.86 0.010 70);
+
+  --ink-0: oklch(0.25 0.012 65);
+  --ink-1: oklch(0.42 0.014 65);
+  --ink-2: oklch(0.52 0.014 65);
+  --ink-3: oklch(0.62 0.012 65);
+
+  --amber: oklch(0.58 0.14 65);
+  --amber-dim: oklch(0.50 0.12 65);
+  --amber-warn: oklch(0.58 0.14 65);
+  --green: oklch(0.55 0.14 145);
+  --red: oklch(0.52 0.19 25);
+  --red-hot: oklch(0.50 0.21 22);
+  --cyan: oklch(0.52 0.11 215);
+
+  --shadow: 0 8px 28px oklch(0.30 0.02 60 / 0.16);
+}
+
+/* Non-color tokens: app layout scale. KEEP these: they override Selene's denser
+   spacing scale (imported by selene styles.css), so the app layout is unchanged.
+   --font points at Inter Tight (Selene UI face) with a system fallback. */
+:root {
+  color-scheme: dark;
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --font: var(--font-ui, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: var(--font);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

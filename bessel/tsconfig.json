@@ -1,0 +1,52 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@bessel/spice": ["./packages/spice/src/index.ts"],
+      "@bessel/access": ["./packages/access/src/index.ts"],
+      "@bessel/propagator": ["./packages/propagator/src/index.ts"],
+      "@bessel/od": ["./packages/od/src/index.ts"],
+      "@bessel/events": ["./packages/events/src/index.ts"],
+      "@bessel/rf": ["./packages/rf/src/index.ts"],
+      "@bessel/coverage": ["./packages/coverage/src/index.ts"],
+      "@bessel/conjunction": ["./packages/conjunction/src/index.ts"],
+      "@bessel/attitude": ["./packages/attitude/src/index.ts"],
+      "@bessel/mission": ["./packages/mission/src/index.ts"],
+      "@bessel/map-projection": ["./packages/map-projection/src/index.ts"],
+      "@bessel/interop": ["./packages/interop/src/index.ts"],
+      "@bessel/analysis": ["./packages/analysis/src/index.ts"],
+      "@bessel/sensors": ["./packages/sensors/src/index.ts"],
+      "@bessel/terrain": ["./packages/terrain/src/index.ts"],
+      "@bessel/catalog": ["./packages/catalog/src/index.ts"],
+      "@bessel/sdk": ["./packages/sdk/src/index.ts"],
+      "@bessel/selene-design": ["./design-system/selene-design/src/index.ts"],
+      "@bessel/scene": ["./packages/scene/src/index.ts"],
+      "@bessel/timeline": ["./packages/timeline/src/index.ts"],
+      "@bessel/state": ["./packages/state/src/index.ts"],
+      "@bessel/color": ["./packages/color/src/index.ts"],
+      "@bessel/pal": ["./packages/pal/src/index.ts"],
+      "@bessel/pal-web": ["./packages/pal-web/src/index.ts"],
+      "@bessel/pal-capacitor": ["./packages/pal-capacitor/src/index.ts"],
+      "@bessel/pal-electron": ["./packages/pal-electron/src/index.ts"],
+      "@bessel/pal-node": ["./packages/pal-node/src/index.ts"],
+      "@bessel/ui": ["./packages/ui/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src",
+    "design-system/*/src",
+    "apps/*/src",
+    "apps/*/electron",
+    "apps/web/vite.config.ts",
+    "e2e"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/out",
+    "vendor",
+    "packages/spice/wasm"
+  ]
+}

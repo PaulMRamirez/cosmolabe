@@ -1,0 +1,49 @@
+{
+  "name": "@bessel/selene-design",
+  "version": "0.1.0",
+  "description": "Selene Ops design system — warm regolith-gray dark UI tokens + React components for lunar mission GIS surfaces.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles.css": "./src/styles.css",
+    "./tokens": "./src/tokens.ts",
+    "./tokens/*": "./src/tokens/*"
+  },
+  "files": [
+    "dist",
+    "src/styles.css",
+    "src/tokens"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "fetch-fonts": "node scripts/fetch-fonts.mjs",
+    "prepublishOnly": "pnpm run fetch-fonts && pnpm run build"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "tsup": "^8",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "lucide-react": "^1.21.0"
+  }
+}

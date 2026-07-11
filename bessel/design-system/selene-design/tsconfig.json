@@ -1,0 +1,19 @@
+{
+  "//": "Prefer extending your repo's base, e.g. \"extends\": \"../../tsconfig.base.json\". This standalone config mirrors your strict gate (strict + noUncheckedIndexedAccess) so the package type-checks on its own.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

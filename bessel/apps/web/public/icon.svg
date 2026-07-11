@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Bessel">
+  <rect width="512" height="512" rx="96" fill="#0b0e14" />
+  <circle cx="256" cy="256" r="64" fill="#ffd27f" />
+  <g fill="none" stroke="#5b8cff" stroke-width="8">
+    <ellipse cx="256" cy="256" rx="150" ry="60" transform="rotate(-20 256 256)" />
+    <ellipse cx="256" cy="256" rx="200" ry="86" transform="rotate(-20 256 256)" />
+  </g>
+  <circle cx="402" cy="190" r="14" fill="#e6e9ef" />
+</svg>

@@ -1,0 +1,48 @@
+/* Selene Ops — typography.
+   Inter Tight for UI; JetBrains Mono for any number, coordinate, ID, or telemetry
+   value. The mono/data split is the core typographic rule of the system. */
+
+:root {
+  --font-ui: 'Inter Tight', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* OpenType: Inter Tight ss01/cv11 for tighter, more technical glyphs;
+     JetBrains ss02 + slashed zero for telemetry legibility. */
+  --feat-ui: 'ss01', 'cv11';
+  --feat-mono: 'ss02', 'zero';
+
+  /* Type scale (px). Dense ops tool — base is 13. */
+  --text-2xs: 9.5px;   /* micro labels, legend */
+  --text-xs: 10.5px;   /* mono captions, coordinates */
+  --text-sm: 11.5px;   /* secondary UI, list items */
+  --text-base: 13px;   /* body / default */
+  --text-md: 15px;     /* emphasised value */
+  --text-lg: 17px;     /* panel heading */
+  --text-xl: 18px;     /* target title */
+  --text-2xl: 24px;    /* screen-level numerics */
+
+  /* Weights */
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Tracking — labels are spaced out, data is not */
+  --track-label: 0.12em;   /* uppercase section labels */
+  --track-tag: 0.08em;     /* tags, small caps */
+  --track-tight: -0.01em;  /* large display headings */
+  --track-normal: 0;
+}
+
+/* Convenience classes consumers can apply directly. */
+.so-mono { font-family: var(--font-mono); font-feature-settings: var(--feat-mono); }
+.so-num  { font-variant-numeric: tabular-nums; }
+.so-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--text-label);
+  font-weight: var(--weight-medium);
+}

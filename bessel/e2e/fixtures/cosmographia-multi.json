@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "name": "Cosmographia Multi Import",
+  "items": [
+    {
+      "class": "planet",
+      "name": "Saturn",
+      "id": "6",
+      "geometry": {
+        "type": "Globe",
+        "radii": [60268.0, 60268.0, 54364.0],
+        "rings": { "type": "Rings", "innerRadius": 74500.0, "outerRadius": 140220.0 }
+      }
+    },
+    {
+      "class": "planet",
+      "name": "Jupiter",
+      "id": "5",
+      "geometry": { "type": "Globe", "radii": [71492.0, 71492.0, 66854.0] }
+    },
+    {
+      "class": "spacecraft",
+      "name": "Probe",
+      "id": "-82",
+      "startTime": "2004-06-22T00:00:00Z",
+      "endTime": "2004-08-22T00:00:00Z",
+      "trajectory": { "type": "Spice", "target": "-82", "center": "6", "frame": "J2000" },
+      "rotationModel": { "type": "UniformRotation", "axis": [0, 1, 0], "ratePerSec": 0.05 }
+    },
+    {
+      "class": "sensor",
+      "id": "Probe-Imager",
+      "name": "Probe-Imager",
+      "parent": "Probe",
+      "sensor": "PROBE_CAMERA",
+      "target": "Saturn"
+    },
+    {
+      "class": "observation",
+      "instrument": "Probe-Imager",
+      "target": "Saturn",
+      "intervals": [{ "start": "2004-07-01T00:00:00Z", "stop": "2004-07-01T01:00:00Z" }],
+      "footprintColor": "#ff33cc"
+    }
+  ]
+}

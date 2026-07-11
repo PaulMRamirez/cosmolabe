@@ -1,0 +1,27 @@
+/* Selene Ops — elevation, glass, glow.
+   This is a flat, dark tool. "Elevation" is conveyed by surface lightness and
+   hairline borders, not drop shadows. Floating overlays use backdrop blur over a
+   translucent near-black. Glows are reserved for the amber playhead and live status. */
+
+:root {
+  /* Backdrop glass — used by map toolbars, legend, Tweaks panel */
+  --glass-bg: oklch(0.14 0.008 60 / 0.82);
+  --glass-blur: blur(8px);
+  --glass-border: 0.5px solid var(--line-soft);
+
+  /* The only "shadow" — a soft amber glow on the active illumination playhead */
+  --glow-amber: 0 0 12px oklch(0.80 0.15 70 / 0.8);
+  --glow-amber-soft: 0 0 8px oklch(0.80 0.15 70 / 0.5);
+
+  /* Status-dot halo (ring, not blur) */
+  --halo-nominal: 0 0 0 3px oklch(0.78 0.14 145 / 0.15);
+  --halo-caution: 0 0 0 3px oklch(0.80 0.15 70 / 0.15);
+  --halo-critical: 0 0 0 3px oklch(0.72 0.22 22 / 0.15);
+
+  /* Panel overlay (Tweaks-style) — the one place a real drop shadow appears */
+  --shadow-overlay: 0 12px 40px oklch(0 0 0 / 0.45);
+
+  /* Standard transition */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 140ms;
+}

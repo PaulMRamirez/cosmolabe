@@ -1,0 +1,48 @@
+/* selene-bridge.css
+   Re-points Bessel's existing app token names at @bessel/selene-design tokens so
+   the app's components.css inherits the Selene (warm regolith, amber) palette with
+   no component edits. Selene is dark-only and authoritative for dark; the
+   warm-amber LIGHT theme lives in tokens.css under [data-theme='light'].
+
+   Imported AFTER @bessel/selene-design/styles.css (which defines --bg-0..3,
+   --ink-*, --amber*, --line, --green/--red/--cyan, --font-ui/--font-mono) and
+   BEFORE tokens.css. The shared surface tokens (--bg-0..2) come straight from
+   selene, so they are NOT redeclared here (a self-referencing var() would be an
+   invalid cycle). Only the app-only names are bridged. No em dashes. */
+
+:root,
+[data-theme='dark'] {
+  /* Translucent chrome (Selene has no alpha-surface token; synthesize from surfaces). */
+  --panel-bg: color-mix(in oklch, var(--bg-1) 92%, transparent);
+  --hud-bg: color-mix(in oklch, var(--bg-0) 72%, transparent);
+
+  /* Lines. */
+  --border: var(--line);
+  --border-strong: var(--bg-3);
+
+  /* Ink. --text-2 was consumed by components.css but never defined; bridge it. */
+  --text-0: var(--ink-0);
+  --text-1: var(--ink-1);
+  --text-2: var(--ink-2);
+
+  /* Accent. Amber is the selection EDGE (border/outline), not a fill behind text.
+     The active/selected fill is a subtle warm-tinted surface that holds light ink
+     (matching the app's original dark-fill + light-text contrast), so amber text
+     on a bright amber fill (an AA failure) never occurs. */
+  --accent: var(--amber);
+  --accent-bg: color-mix(in oklch, var(--amber) 18%, var(--bg-2));
+  --accent-text: var(--ink-0);
+
+  /* Timeline markers. */
+  --marker: var(--amber);
+  --marker-border: var(--amber-dim);
+
+  /* Overlay shadow (Selene is flat + hairline; shadow only for floating panels). */
+  --shadow: 0 8px 28px oklch(0 0 0 / 0.45);
+
+  /* Opt-in status/data tokens so components reference the system, not raw colors. */
+  --status-nominal: var(--green);
+  --status-caution: var(--amber-warn);
+  --status-fault: var(--red);
+  --data-accent: var(--cyan);
+}

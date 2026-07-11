@@ -1,0 +1,108 @@
+{
+  "version": "1.0",
+  "name": "Cosmographia Multi Import",
+  "spiceKernels": ["spk/sat.bsp", "lsk/naif.tls"],
+  "items": [
+    {
+      "class": "planet",
+      "name": "Saturn",
+      "id": "6",
+      "label": { "text": "Saturn", "color": "#f0e0c0", "show": true },
+      "mass": "5.683e26 kg",
+      "geometry": {
+        "type": "Globe",
+        "radii": [60268.0, 60268.0, 54364.0],
+        "baseMap": "textures/saturn.jpg",
+        "rings": { "type": "Rings", "innerRadius": 74500.0, "outerRadius": 140220.0 }
+      },
+      "rotationModel": { "type": "Spice", "frame": "IAU_SATURN" }
+    },
+    {
+      "class": "moon",
+      "name": "Titan",
+      "id": "606",
+      "trajectory": {
+        "type": "Keplerian",
+        "elements": {
+          "semiMajorAxis": 1221870.0,
+          "eccentricity": 0.0288,
+          "inclination": 0.0048,
+          "ascendingNode": 0.4,
+          "argumentOfPeriapsis": 0.3,
+          "meanAnomaly": 1.2,
+          "epoch": "2004-06-22T00:00:00Z"
+        },
+        "center": "6",
+        "frame": "J2000"
+      },
+      "geometry": { "type": "Mesh", "source": "models/titan.obj", "scale": 1.5 },
+      "rotationModel": {
+        "type": "TwoVector",
+        "primary": { "axis": "z", "target": "6" },
+        "secondary": { "axis": [1, 0, 0], "target": "Sun" }
+      }
+    },
+    {
+      "class": "asteroid",
+      "name": "Landmark",
+      "id": "LANDMARK-1",
+      "trajectory": { "type": "FixedPoint", "position": [1000.0, 2000.0, 3000.0], "center": "6", "frame": "J2000" }
+    },
+    {
+      "class": "comet",
+      "name": "Swarm",
+      "id": "SWARM-1",
+      "trajectory": { "type": "InterpolatedStates", "source": "states/swarm.xyz", "format": "xyz", "center": "6" },
+      "geometry": { "type": "KeplerianSwarm", "source": "swarm.json", "color": "#88aaff" }
+    },
+    {
+      "class": "spacecraft",
+      "name": "Orbiter",
+      "id": "-82",
+      "startTime": "2004-06-22T00:00:00Z",
+      "endTime": "2004-08-22T00:00:00Z",
+      "trajectory": { "type": "Spice", "target": "-82", "center": "6", "frame": "J2000" },
+      "rotationModel": { "type": "UniformRotation", "axis": [0, 1, 0], "ratePerSec": 0.05 },
+      "label": { "text": "Cassini", "show": true },
+      "trajectoryPlot": { "lead": 0, "trail": "30 d", "color": "#33ccff", "sampleCount": 200, "fade": 0.5 },
+      "mass": { "value": 2150, "unit": "kg" }
+    },
+    {
+      "class": "spacecraft",
+      "name": "TleSat",
+      "id": "-99",
+      "startTime": "2004-06-22T00:00:00Z",
+      "endTime": "2004-06-23T00:00:00Z",
+      "trajectory": {
+        "type": "TLE",
+        "line1": "1 25544U 98067A   04174.00000000  .00000000  00000-0  00000-0 0  9990",
+        "line2": "2 25544  51.6000 000.0000 0001000 000.0000 000.0000 15.50000000000000",
+        "center": "399"
+      },
+      "rotationModel": { "type": "Fixed", "quaternion": [0, 0, 0, 1] }
+    },
+    {
+      "class": "sensor",
+      "id": "Orbiter-Imager",
+      "name": "Orbiter-Imager",
+      "parent": "Orbiter",
+      "sensor": "ORBITER_CAMERA",
+      "target": "Titan"
+    },
+    {
+      "class": "sensor",
+      "id": "Orbiter-Imager",
+      "name": "Orbiter-Imager",
+      "parent": "Orbiter",
+      "sensor": "ORBITER_CAMERA",
+      "target": "Landmark"
+    },
+    {
+      "class": "observation",
+      "instrument": "Orbiter-Imager",
+      "target": "Titan",
+      "intervals": [{ "start": "2004-07-01T00:00:00Z", "stop": "2004-07-01T01:00:00Z" }],
+      "footprintColor": "#ff33cc"
+    }
+  ]
+}
