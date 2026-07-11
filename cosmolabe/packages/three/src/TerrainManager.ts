@@ -1,0 +1,1321 @@
+import * as THREE from 'three';
+import { TilesRenderer } from '3d-tiles-renderer/three';
+import { injectShadowIntoShader, type ShadowUniforms } from './EclipseShadow.js';
+import { injectAerialPerspectiveIntoShader, type AerialPerspectiveUniforms } from './AerialPerspective.js';
+import { isMesh, isMeshBasicMaterial } from './internal/three-typeguards.js';
+import { QuantizedMeshPlugin, ImageOverlayPlugin, XYZTilesOverlay, WMSTilesOverlay, WMTSTilesOverlay, TMSTilesOverlay, TilesFadePlugin, DebugTilesPlugin, XYZTilesPlugin, WMTSTilesPlugin, WMTSCapabilitiesLoader, CesiumIonAuthPlugin, type WMTSCapabilitiesResult } from '3d-tiles-renderer/three/plugins';
+
+export interface TerrainImageryConfig {
+  /** Imagery source type. Default 'xyz'.
+   *
+   *  - `'xyz'`, `'tms'`, `'wms'`, `'wmts'`: standard tile sources assuming
+   *    a 2^z × (2^z or 2^(z-1)) tile-count progression per level.
+   *  - `'wmts-capabilities'`: discovers tile grid + projection from the
+   *    service's `WMTSCapabilities.xml`. Required for services with
+   *    non-standard tile grids (e.g. NASA GIBS' EPSG:4326 endpoint uses
+   *    2/3/5/10/20/40/80/160/320 columns per level). `url` is the
+   *    GetCapabilities URL; `layer` + `tileMatrixSet` pick which layer
+   *    and which matrix set inside the capabilities document. */
+  type?: 'xyz' | 'wms' | 'wmts' | 'tms' | 'wmts-capabilities';
+  /** Tile URL template (XYZ: {x},{y},{z} placeholders; WMS/TMS: base URL).
+   *  For `'wmts-capabilities'`: URL of the GetCapabilities XML document. */
+  url: string;
+  /** Max zoom level available. Default 8. */
+  levels?: number;
+  /** Tile pixel dimension. Default 256. */
+  dimension?: number;
+  /** Projection identifier. Default 'EPSG:4326'.
+   *
+   *  Applies to `type: 'xyz'` overlays. For `'wmts'`, projection is read from
+   *  the GetCapabilities `tileMatrixSet.supportedCRS` and this field is ignored
+   *  (the upstream `WMTSImageSource` does not accept an override). For `'wms'`,
+   *  use the separate `crs` field. */
+  projection?: string;
+  /** WMS layer name (required for `type: 'wms'`). For `'wmts-capabilities'`:
+   *  layer identifier in the capabilities document (e.g.
+   *  `'BlueMarble_NextGeneration'`). If omitted, the first layer is used. */
+  layer?: string;
+  /** TileMatrixSet identifier (only for `type: 'wmts-capabilities'`).
+   *  e.g. `'500m'` selects the 500m EPSG:4326 matrix set on NASA GIBS. If
+   *  omitted, the first tileMatrixSet on the layer is used. */
+  tileMatrixSet?: string;
+  /** WMS coordinate reference system. Default 'EPSG:4326'. */
+  crs?: string;
+  /** WMS image format. Default 'image/png'. */
+  format?: string;
+  /** WMS styles parameter */
+  styles?: string;
+  /** WMS version. Default '1.1.1'. */
+  version?: string;
+  /** WMS: request transparent tiles. Default true. */
+  transparent?: boolean;
+  /** Bounding box [west, south, east, north] in degrees. Tiles outside are skipped. */
+  bounds?: [number, number, number, number];
+  /** Minimum zoom level. Tiles below this are skipped (regional data doesn't exist at low zoom). */
+  minZoom?: number;
+  /** Stretch the top/bottom tile row to ±90° latitude when using Mercator (EPSG:3857).
+   *  Default true (3d-tiles-renderer default). Set false for `type: 'imagery'` if
+   *  you'd rather see the underlying body sphere at the polar cap than a smear of
+   *  the highest-latitude mercator pixel row. Only meaningful for mercator content. */
+  endCaps?: boolean;
+  /** Layer opacity 0..1. Default 1. Applied to ImageOverlayPlugin overlays; ignored
+   *  for the first imagery in an imagery-only array (which generates geometry, not
+   *  an overlay). Useful for semi-transparent layers like cloud cover. */
+  opacity?: number;
+  /** Layer tint color (hex int or any three.js Color value). Default 0xffffff
+   *  (no tint). Multiplied per-pixel with the layer texture in the overlay
+   *  shader. Mostly useful for diagnostics ("does the overlay render at all?"
+   *  — set a wild color) but also for stylized basemaps. Applied to overlays
+   *  only; ignored for the geometry-generating first imagery. */
+  color?: number;
+  /** ISO date string `YYYY-MM-DD` for time-dimensioned services (NASA GIBS).
+   *  The literal string `'yesterday'` resolves to today-UTC minus one day —
+   *  matches the typical 24h publishing lag of daily imagery products like
+   *  VIIRS/MODIS true-color reflectance. When set, the resolved date replaces
+   *  the `default` time segment in the WMTS tile URL path. */
+  time?: string | 'yesterday';
+}
+
+export interface TerrainConfig {
+  /** Terrain source type. 'imagery' uses XYZ image tiles projected onto an ellipsoid (no terrain mesh needed). */
+  type: 'quantized-mesh' | 'cesium-ion' | '3dtiles' | 'imagery';
+  /** Base URL for quantized-mesh or 3dtiles tileset.json */
+  url?: string;
+  /** Cesium Ion asset ID (for type: 'cesium-ion') */
+  cesiumIonAssetId?: number;
+  /** Cesium Ion API token (for type: 'cesium-ion') */
+  cesiumIonToken?: string;
+  /** Imagery overlay to drape on terrain (single layer or array of layers, bottom to top) */
+  imagery?: TerrainImageryConfig | TerrainImageryConfig[];
+  /** Screen-space error threshold — higher = coarser tiles. Default 6. */
+  errorTarget?: number;
+  /** LRU cache max bytes. Default 256MB. */
+  maxCacheBytes?: number;
+  /** URL of a heightmap to derive per-pixel normals from.
+   *  Applied to terrain tiles to smooth shadow boundaries at the terminator. */
+  normalMapUrl?: string;
+  /** Normal map strength (higher = more dramatic shadows). Default 3. */
+  normalMapStrength?: number;
+  /** Screen-space body size (pixels) at which to start streaming tiles below the
+   *  visible sphere. Tiles pre-load so they're warm by the time the sphere swaps
+   *  out. Default 40. Pair with showAtPixels (must be < showAtPixels). */
+  preloadAtPixels?: number;
+  /** Screen-space body size (pixels) at which to swap from the static sphere to
+   *  streamed tiles. Lower = tiles appear sooner (more bandwidth, more pop-in
+   *  on slow connections). Default 80. Tune per-body: a high-res GIBS Earth
+   *  might warrant 60; a coarse Mars overlay might warrant 200. */
+  showAtPixels?: number;
+  /** Offset (km) between this tileset's reference surface and the body's IAU sphere.
+   *  Some Mars QuantizedMesh datasets (e.g., marshub Mars_v14) encode heights against
+   *  a non-standard reference, putting decoded ECEF positions ~8 km above where SPICE
+   *  expects them. Setting this to a positive value subtracts it from the ellipsoid
+   *  radius the QuantizedMesh decoder uses, pulling decoded vertices radially inward
+   *  by that amount so they align with SPICE positions. Calibrate by sampling terrain
+   *  at a body with a known SPICE position (e.g., a rover) and computing
+   *  `terrain_sample_elev - spice_elev`. */
+  referenceRadiusOffsetKm?: number;
+  /** Quantized-mesh tile skirt length (m). Each tile edge gets a vertical
+   *  skirt hanging down from its perimeter, hiding cracks at LOD-swap
+   *  boundaries. The default `null` makes the plugin use `tile.geometricError`
+   *  per zoom, which shrinks at high zooms (~1m at z15) and becomes too small
+   *  to hide the few-tens-of-meters height mismatches caused by overview
+   *  resampling at LOD boundaries. Setting this to a fixed value (e.g., 50)
+   *  forces uniform skirts at all zoom levels — same trick the marshub
+   *  Mars_v14 setup uses. Use `skirtScale` for distance-adaptive sizing. */
+  skirtLength?: number;
+  /** Multiplier applied to `tile.geometricError` to derive per-tile skirt
+   *  length. Lets you keep small skirts at close zoom (z15 default ~1.25 m)
+   *  while scaling them up at altitude (z10 default ~40 m) so they actually
+   *  cover the gaps between low-LOD tiles. Typical values 0.03–0.1. When
+   *  unset (and `skirtLength` also unset), the plugin defaults to
+   *  `tile.geometricError` outright, which produces visible terraces. Ignored
+   *  when `skirtLength` is set (skirtLength wins). */
+  skirtScale?: number;
+  /** `TilesFadePlugin` fade duration in ms. When unset, the fade plugin is
+   *  disabled (was 300 ms by default — caused visible jitter on high-zoom
+   *  HiRISE tiles while the camera was moving, as tiles streaming in/out
+   *  triggered fade animations every frame). Set to a positive number to
+   *  re-enable. */
+  fadeDurationMs?: number;
+  /** ImageOverlayPlugin per-terrain-tile composited texture resolution in
+   *  pixels. When unset the plugin uses its built-in default of 256. Each
+   *  terrain tile gets one composited texture at this resolution containing
+   *  all WMTS overlays sampled across its lat/lon span. Higher = sharper
+   *  imagery + less downsampling seams between adjacent terrain tiles, at
+   *  the cost of GPU memory (R² × 4 bytes × N tiles) and per-tile composite
+   *  cost (re-rendered when LOD changes). Bumping from 256 to 1024 makes the
+   *  composite ~16× more expensive per tile, which can outweigh the
+   *  resolution gain when terrain is moving — tiles arrive stale-looking
+   *  during pan/zoom. Try modest steps (e.g. 512) before reaching for 1024+. */
+  overlayResolution?: number;
+}
+
+/**
+ * 1×1 transparent PNG returned by preprocessURL when a tile should be skipped.
+ *
+ * Returning `null` from preprocessURL causes the overlay to call `fetch(null)` → fetch("null")
+ * which fetches an HTML page. The browser then fails to decode HTML as an image →
+ * InvalidStateError. This cascades and breaks the entire ImageOverlayPlugin.
+ * Instead, return a transparent PNG that decodes successfully and contributes nothing visually.
+ */
+const SKIP_TILE_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+/** Resolve a `time` config value to an ISO date string `YYYY-MM-DD`.
+ *  Supports the literal `'yesterday'` to mean today-UTC minus one day —
+ *  matches the 24h publishing lag of daily GIBS reflectance products.
+ *  Returns undefined for unset input. */
+function resolveTime(spec: string | undefined): string | undefined {
+  if (!spec) return undefined;
+  if (spec === 'yesterday') {
+    return new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  }
+  return spec;
+}
+
+/** Substitute the resolved date into a GIBS-style REST URL. GIBS WMTS REST
+ *  URLs follow `/{Layer}/{Style}/{Time}/{TileMatrixSet}/...`; the upstream
+ *  WMTSImageSource bakes the capabilities' time-dimension default into the
+ *  URL template at init (`{Time}` → `2026-05-18` or whatever), so by the
+ *  time `preprocessURL` runs the date is already a path segment, not
+ *  `default`. Match that ISO-date segment between style and TMS and swap
+ *  it for the user-requested date. Services with a custom style or a
+ *  non-date time format fall through unchanged. */
+function timeSubstitutedURL(url: string, resolvedTime: string): string {
+  return url.replace(/\/default\/\d{4}-\d{2}-\d{2}\//, `/default/${resolvedTime}/`);
+}
+
+/** Build a `preprocessURL` callback for a WMTS overlay that does time
+ *  substitution. Returns undefined if no time substitution is needed.
+ *  (For XYZ overlays, the equivalent helper in `createImageryOverlay` also
+ *  enforces minZoom-skipping; for WMTS overlays minZoom semantics live on
+ *  `calculateLevel` instead — clamping the requested level so the data is
+ *  *up*-sampled rather than skipped.) */
+function buildWmtsOverlayPreprocessURL(
+  time: string | undefined,
+): ((url: string) => string) | undefined {
+  if (!time) return undefined;
+  return (url: string) => timeSubstitutedURL(url, time);
+}
+
+/** Clamp a WMTS overlay's `calculateLevel` to a minimum, so far-out zooms
+ *  request good-quality tiles rather than the source's coarse-LOD output.
+ *  Distinct from `preprocessURL`-based skipping (the XYZ pattern): a clamp
+ *  *up-samples* — the overlay fetches level-`min` tiles even when the base
+ *  is rendering at level 0, and `ImageOverlayPlugin` composites them over
+ *  the larger base region. Result: overlay stays visible at every zoom,
+ *  just uses a fixed-floor LOD when the natural one would be too coarse.
+ *
+ *  Use case: NASA GIBS' VIIRS_*_TrueColor at levels 0-2 shows individual
+ *  orbital swaths (data not composited). Level 3+ blends cleanly. Clamping
+ *  to 3 keeps clouds visible without the streaky low-LOD artifacts.
+ *
+ *  `calculateLevel` lives on `TiledImageOverlay`, the (non-exported)
+ *  superclass of `WMTSTilesOverlay`, so we monkey-patch through `any`. */
+function clampOverlayMinLevel(overlay: WMTSTilesOverlay, minLevel: number): void {
+  type CalcFn = (range: number[], tile: unknown) => number;
+  const o = overlay as unknown as { calculateLevel: CalcFn };
+  const original = o.calculateLevel.bind(o);
+  o.calculateLevel = (range, tile) => Math.max(original(range, tile), minLevel);
+}
+
+/** Create the appropriate imagery overlay based on config type. */
+function createImageryOverlay(img: TerrainImageryConfig): XYZTilesOverlay | WMSTilesOverlay | WMTSTilesOverlay | TMSTilesOverlay {
+  const type = img.type ?? 'xyz';
+  switch (type) {
+    case 'wms':
+      return new WMSTilesOverlay({
+        url: img.url,
+        layer: img.layer!,
+        crs: img.crs ?? 'EPSG:4326',
+        format: img.format ?? 'image/png',
+        styles: img.styles,
+        version: img.version ?? '1.1.1',
+        levels: img.levels ?? 8,
+        tileDimension: img.dimension ?? 256,
+        transparent: img.transparent ?? true,
+        color: 0xffffff,
+        opacity: 1,
+      });
+    case 'wmts': {
+      const preprocessURL = buildWmtsOverlayPreprocessURL(resolveTime(img.time));
+      // The 3d-tiles-renderer 0.4.24 TS defs made `tileMatrices` required even
+      // for the url-only overlay shape — the JS constructor still accepts the
+      // old form (it derives matrices from the WMTS URL pattern), so cast
+      // through `unknown` to keep the simpler call site.
+      const overlay = new WMTSTilesOverlay({
+        url: img.url,
+        color: 0xffffff,
+        opacity: 1,
+        ...(preprocessURL ? { preprocessURL } : {}),
+      } as unknown as ConstructorParameters<typeof WMTSTilesOverlay>[0]);
+      if (img.minZoom != null) clampOverlayMinLevel(overlay, img.minZoom);
+      return overlay;
+    }
+    case 'tms':
+      return new TMSTilesOverlay({
+        url: img.url,
+        color: 0xffffff,
+        opacity: 1,
+      });
+    case 'xyz':
+    default: {
+      // bounds + minZoom filter: skip tiles outside the coverage rectangle or below minimum zoom.
+      // Returns a transparent 1×1 PNG instead of null — fetch(null) would call fetch("null")
+      // which returns HTML, and createImageBitmap(htmlBlob) throws InvalidStateError that
+      // cascades and breaks the entire ImageOverlayPlugin (including the global Viking layer).
+      let preprocessURL: ((url: string) => string) | undefined;
+      if (img.bounds || img.minZoom) {
+        const bounds = img.bounds;
+        const minZ = img.minZoom ?? 0;
+        preprocessURL = (url: string) => {
+          // Extract z/y/x from URL pattern like .../default028mm/{z}/{y}/{x}.png
+          const parts = url.split('/');
+          const z = parseInt(parts[parts.length - 3], 10);
+          if (isNaN(z)) return url;
+
+          // Skip tiles below minimum zoom — regional datasets don't have data at low levels.
+          if (z < minZ) return SKIP_TILE_DATA_URL;
+
+          if (bounds) {
+            const y = parseInt(parts[parts.length - 2], 10);
+            const x = parseInt(parts[parts.length - 1], 10);
+            if (isNaN(y) || isNaN(x)) return url;
+
+            const [west, south, east, north] = bounds;
+            const numTilesX = 2 * (1 << z);
+            const numTilesY = 1 << z;
+            const tileLonSize = 360 / numTilesX;
+            const tileLatSize = 180 / numTilesY;
+            const tileWest = -180 + x * tileLonSize;
+            const tileNorth = 90 - y * tileLatSize;
+            const tileEast = tileWest + tileLonSize;
+            const tileSouth = tileNorth - tileLatSize;
+
+            if (tileEast < west || tileWest > east || tileNorth < south || tileSouth > north) {
+              return SKIP_TILE_DATA_URL;
+            }
+          }
+          return url;
+        };
+      }
+      return new XYZTilesOverlay({
+        url: img.url,
+        levels: img.levels ?? 8,
+        tileDimension: img.dimension ?? 256,
+        projection: img.projection ?? 'EPSG:4326',
+        color: 0xffffff,
+        opacity: 1,
+        preprocessURL,
+      });
+    }
+  }
+}
+
+/**
+ * Manages streaming terrain tiles for a planetary body.
+ * Wraps 3DTilesRendererJS's TilesRenderer with appropriate plugins
+ * and coordinate transforms for non-Earth bodies.
+ */
+const _camPos = /* @__PURE__ */ new THREE.Vector3();
+
+export class TerrainManager {
+  readonly tiles: TilesRenderer;
+  /** Group to add to the scene. Positioned at body center, transforms meters→km and Z-up→Y-up. */
+  readonly group: THREE.Group;
+  private readonly isImageryOnly: boolean;
+  /** True when more than one imagery layer was configured — `ImageOverlayPlugin`
+   *  is registered to composite the extras. Used to gate the imagery-only
+   *  MeshBasicMaterial → MeshStandardMaterial swap in `customizeTileMaterial`:
+   *  the swap discards `ImageOverlayPlugin`'s shader wrap (it lives on the
+   *  original material instance via `onBeforeCompile`), so when overlays are
+   *  present we keep the original material instead. */
+  private readonly hasOverlays: boolean;
+  /** False while we're still waiting on an async plugin registration (e.g.
+   *  wmts-capabilities fetch). tiles.update() crashes on a TilesRenderer with
+   *  no URL and no plugin (tries to fetch a null tileset URL), so the render
+   *  loop skips updates until this flips true. */
+  private _pluginReady = true;
+  private readonly bodyRadiusKm: number;
+  private disposed = false;
+  private shadowUniforms: ShadowUniforms | null = null;
+  private aerialPerspectiveUniforms: AerialPerspectiveUniforms | null = null;
+  /** Global equirectangular normal map derived from heightmap. Applied per-tile with UV transforms. */
+  private normalMap: THREE.CanvasTexture | null = null;
+  private debugPlugin: DebugTilesPlugin | null = null;
+  /** Coverage camera: ensures tiles load for the body's visible hemisphere
+   *  even when the main camera's frustum doesn't include the body. */
+  private coverageCam: THREE.PerspectiveCamera | null = null;
+  /** Nadir camera: 90° FOV pointing straight down to drive high-LOD tiles directly
+   *  under the camera. The 178° coverage camera uses such an extreme FOV that its
+   *  screen-space error calculation requests only coarse tiles (tiles appear tiny in
+   *  the fisheye projection). This camera fills that gap with a normal-FOV view of
+   *  the nadir region so the closest tiles always load at the correct detail level. */
+  private nadirCam: THREE.PerspectiveCamera | null = null;
+  /** Terrain camera: mirrors main camera with terrain-appropriate near/far.
+   *  The scene camera's near/far can have extreme ratios (1e-12/1e6) that
+   *  produce degenerate frustum planes in the tiles renderer's SAT test. */
+  private terrainCam: THREE.PerspectiveCamera | null = null;
+
+  // Reusable temporaries for sampleElevationKm — avoids per-call Matrix4/Vector3 allocation.
+  private readonly _sampleGroupInv = new THREE.Matrix4();
+  private readonly _sampleLocalMat = new THREE.Matrix4();
+  private readonly _sampleV = new THREE.Vector3();
+
+  /**
+   * @param config Terrain source configuration
+   * @param bodyRadii Body radii in km — either a single value (treats body as
+   *   a sphere) or `[rx, ry, rz]` for oblate bodies. Oblateness matters
+   *   visibly on Mars: at Jezero's 18.44°N the IAU radius is ~3393.95 km,
+   *   2.24 km smaller than the equatorial 3396.19 km — treating Mars as a
+   *   sphere puts terrain ~2.24 km too high at that latitude vs the
+   *   trajectory's latitude-aware position.
+   * @param renderer WebGL renderer (needed for ImageOverlayPlugin texture rendering)
+   */
+  /** Screen-px threshold to begin pre-loading tiles below the visible sphere. */
+  readonly preloadAtPixels: number;
+  /** Screen-px threshold to swap the static sphere for streamed tiles. */
+  readonly showAtPixels: number;
+
+  constructor(
+    config: TerrainConfig,
+    bodyRadii: number | [number, number, number],
+    renderer: THREE.WebGLRenderer,
+  ) {
+    const [rxKm, ryKm, rzKm] = typeof bodyRadii === 'number'
+      ? [bodyRadii, bodyRadii, bodyRadii]
+      : bodyRadii;
+    this.bodyRadiusKm = Math.max(rxKm, ryKm, rzKm);
+    this.isImageryOnly = config.type === 'imagery';
+    this.hasOverlays = Array.isArray(config.imagery) && config.imagery.length > 1;
+    this.preloadAtPixels = config.preloadAtPixels ?? 40;
+    this.showAtPixels = config.showAtPixels ?? 80;
+
+    // For imagery-only mode, no tileset URL needed — XYZTilesPlugin generates geometry.
+    // For Cesium Ion, the auth plugin resolves the tileset URL via the Ion API, so we
+    // also construct without a URL. For quantized-mesh / 3dtiles, the URL points at
+    // the tileset's layer.json / tileset.json.
+    const constructWithoutUrl = this.isImageryOnly || config.type === 'cesium-ion';
+    this.tiles = new TilesRenderer(constructWithoutUrl ? undefined : config.url);
+
+    // Upstream bug guard: multiple plugins (QuantizedMeshPlugin, ImageOverlayPlugin)
+    // access tile.children.length in disposeTile without null checks. During LRU cache
+    // eviction, tile.children can be null. Register a guard plugin FIRST so its
+    // disposeTile runs before the others and ensures children is always an array.
+    this.tiles.registerPlugin({
+      disposeTile(tile: any) {
+        if (!tile.children) tile.children = [];
+      },
+    } as any);
+
+    if (this.isImageryOnly) {
+      // Imagery-only mode: the first imagery config generates ellipsoid tile
+      // geometry (XYZTilesPlugin or WMTSTilesPlugin); any additional configs
+      // get draped on top as ImageOverlayPlugin overlays. Mirrors the
+      // terrain-mesh branch's overlay handling (line ~360) so multi-layer
+      // composition works regardless of which TerrainConfig.type is in use.
+      //
+      // Setup is async whenever any layer uses wmts-capabilities (the
+      // GetCapabilities fetch). We dedupe by URL so multiple GIBS layers that
+      // all point at the same WMTSCapabilities.xml only fetch once and share
+      // the parsed document — tile-grid alignment between base and overlays
+      // depends on them seeing the same capabilities. `_pluginReady` gates
+      // tiles.update() until everything is registered (calling update() on a
+      // TilesRenderer with no plugin crashes inside fetch(null)).
+      this._pluginReady = false;
+      const imgArr = Array.isArray(config.imagery) ? config.imagery : [config.imagery!];
+      const baseImg = imgArr[0];
+      const overlayImgs = imgArr.slice(1);
+
+      const basePluginOpts = {
+        shape: 'ellipsoid' as const,
+        useRecommendedSettings: true,
+        // Mercator end caps stretch the top/bottom tile row to ±90°. Useful
+        // when there's no underlying sphere, awkward when there is one (the
+        // smeared southernmost mercator row covers the body's static baseMap
+        // at the polar cap). Only applied to the base layer — overlays follow
+        // the base's geometry.
+        ...(baseImg.endCaps === false ? { endCaps: false } : {}),
+      };
+
+      // Per-URL capabilities cache so base + overlays sharing one GIBS
+      // GetCapabilities endpoint only fetch the doc once.
+      const capabilitiesCache = new Map<string, Promise<WMTSCapabilitiesResult>>();
+      const fetchCapabilities = (url: string): Promise<WMTSCapabilitiesResult> => {
+        let p = capabilitiesCache.get(url);
+        if (!p) {
+          p = new WMTSCapabilitiesLoader().loadAsync(url) as Promise<WMTSCapabilitiesResult>;
+          capabilitiesCache.set(url, p);
+        }
+        return p;
+      };
+
+      // Base layer setup — synchronous for XYZ, async for wmts-capabilities.
+      // Resolves to a 0-arg function that actually registers the plugin so we
+      // can sequence base before overlays in the final Promise.all callback.
+      const baseReady: Promise<() => void> = baseImg.type === 'wmts-capabilities'
+        ? fetchCapabilities(baseImg.url).then((capabilities) => () => {
+            // `capabilities` is the deprecated-but-still-runtime-supported shape
+            // (0.4.24 changelog). TS defs now require `tileMatrices` directly;
+            // cast through `unknown` to preserve the simpler runtime call.
+            this.tiles.registerPlugin(new WMTSTilesPlugin({
+              capabilities,
+              layer: baseImg.layer,
+              tileMatrixSet: baseImg.tileMatrixSet,
+              ...basePluginOpts,
+            } as unknown as ConstructorParameters<typeof WMTSTilesPlugin>[0]));
+          })
+        : Promise.resolve(() => {
+            this.tiles.registerPlugin(new XYZTilesPlugin({
+              url: baseImg.url,
+              levels: baseImg.levels ?? 8,
+              ...basePluginOpts,
+            }));
+          });
+
+      // Base layer time substitution. The WMTSTilesPlugin / XYZTilesPlugin
+      // construction pipeline (ImageFormatPlugin in 3d-tiles-renderer) calls
+      // `tiles.invokeAllPlugins(plugin => preprocessURL?.(...))` to massage
+      // tile URLs — so registering a plain plugin object with a preprocessURL
+      // is enough. ImageOverlayPlugin uses its OWN per-overlay preprocessURL
+      // (not this chain), so this hook never affects overlay URLs.
+      const baseTime = resolveTime(baseImg.time);
+      if (baseTime) {
+        this.tiles.registerPlugin({
+          preprocessURL: (url: string) => timeSubstitutedURL(url, baseTime),
+        } as { preprocessURL: (url: string) => string });
+      }
+
+      // Overlay layer setup — each one builds an ImageOverlay instance,
+      // resolved after any required capabilities fetches.
+      const overlaysReady: Promise<unknown>[] = overlayImgs.map(async (img) => {
+        const opacity = img.opacity ?? 1;
+        const color = img.color ?? 0xffffff;
+        const preprocessURL = buildWmtsOverlayPreprocessURL(resolveTime(img.time));
+
+        if (img.type === 'wmts-capabilities') {
+          const capabilities = await fetchCapabilities(img.url);
+          const overlay = new WMTSTilesOverlay({
+            capabilities,
+            layer: img.layer,
+            tileMatrixSet: img.tileMatrixSet,
+            color,
+            opacity,
+            ...(preprocessURL ? { preprocessURL } : {}),
+          } as unknown as ConstructorParameters<typeof WMTSTilesOverlay>[0]);
+          if (img.minZoom != null) clampOverlayMinLevel(overlay, img.minZoom);
+          return overlay;
+        }
+
+        // For non-WMTS overlays, `createImageryOverlay` handles its own
+        // minZoom/bounds logic via its XYZ preprocessURL. We override color
+        // and opacity afterward since createImageryOverlay hardcodes 0xffffff/1.
+        const overlay = createImageryOverlay(img);
+        (overlay as { opacity: number }).opacity = opacity;
+        (overlay as { color: number }).color = color;
+        return overlay;
+      });
+
+      Promise.all([baseReady, Promise.all(overlaysReady)]).then(([registerBase, overlays]) => {
+        registerBase();
+        if (overlays.length > 0) {
+          this.tiles.registerPlugin(new ImageOverlayPlugin({
+            overlays: overlays as ConstructorParameters<typeof ImageOverlayPlugin>[0]['overlays'],
+            renderer,
+            // Upstream default — let the plugin subdivide base tiles when an
+            // overlay has higher-resolution data. The terrain-mesh branch
+            // sets this to false because the terrain mesh already provides
+            // the splitting strategy; in imagery-only mode the WMTS-generated
+            // base tiles need the plugin's splitter to composite correctly.
+            enableTileSplitting: true,
+          }));
+        }
+        this._pluginReady = true;
+      }).catch((err) => {
+        console.error('[TerrainManager] Failed to set up imagery layers:', err);
+      });
+    } else {
+      if (config.type === 'quantized-mesh') {
+        const qmOpts: { useRecommendedSettings: boolean; skirtLength?: number } = {
+          useRecommendedSettings: true,
+        };
+        if (config.skirtLength != null) qmOpts.skirtLength = config.skirtLength;
+        // Monkey-patch parseToMesh so skirtLength = tile.geometricError * skirtScale
+        // per tile. The plugin only supports a single scalar skirtLength, but a
+        // single value either visibly terraces at altitude (when big enough to
+        // hide low-LOD gaps) or shows hairline cracks at high LOD (when small).
+        // skirtScale gives us a per-LOD skirt without forking the plugin.
+        const qmPlugin = new QuantizedMeshPlugin(qmOpts) as unknown as {
+          parseToMesh: (buffer: ArrayBuffer, tile: any, extension: string, uri: string) => unknown;
+          skirtLength: number | null;
+        };
+        if (config.skirtLength == null && config.skirtScale != null) {
+          const skirtScale = config.skirtScale;
+          const origParseToMesh = qmPlugin.parseToMesh.bind(qmPlugin);
+          qmPlugin.parseToMesh = function (buffer, tile, extension, uri) {
+            const prev = qmPlugin.skirtLength;
+            qmPlugin.skirtLength = tile.geometricError * skirtScale;
+            try {
+              return origParseToMesh(buffer, tile, extension, uri);
+            } finally {
+              qmPlugin.skirtLength = prev;
+            }
+          };
+        }
+        this.tiles.registerPlugin(qmPlugin as any);
+      } else if (config.type === 'cesium-ion') {
+        if (!config.cesiumIonToken) {
+          throw new Error(`TerrainManager: type "cesium-ion" requires \`cesiumIonToken\` (Cesium Ion API token). Set VITE_CESIUM_ION_TOKEN in apps/viewer/.env.local and the loader will inject it.`);
+        }
+        if (config.cesiumIonAssetId == null) {
+          throw new Error(`TerrainManager: type "cesium-ion" requires \`cesiumIonAssetId\` (e.g. 3644333 for Cesium Mars).`);
+        }
+        this.tiles.registerPlugin(new CesiumIonAuthPlugin({
+          apiToken: config.cesiumIonToken,
+          assetId: String(config.cesiumIonAssetId),
+        }));
+        // Cesium Ion returns 404 "ResourceNotFound" when the asset isn't in
+        // your account, even with a valid token. Premium assets (Cesium Mars,
+        // Moon, etc.) require an explicit "Add to my assets" click in the
+        // Asset Depot first — surface this hint instead of the bare 404.
+        const ionAssetId = config.cesiumIonAssetId;
+        this.tiles.addEventListener('load-error', (event: any) => {
+          if (event.url?.includes(`/v1/assets/${ionAssetId}/endpoint`) && event.error?.message?.includes('404')) {
+            console.error(`[Cosmolabe:Terrain] Cesium Ion asset ${ionAssetId} returned 404. Likely cause: the asset isn't in your account yet. Visit https://ion.cesium.com/assetdepot, find the asset, click "Add to my assets", then reload.`);
+          }
+        });
+      }
+
+      // Imagery overlays: drape image tiles onto terrain geometry
+      if (config.imagery) {
+        const imgConfigs = Array.isArray(config.imagery) ? config.imagery : [config.imagery];
+        const overlays = imgConfigs.map(img => createImageryOverlay(img));
+        const overlayOpts: { overlays: typeof overlays; renderer: typeof renderer; enableTileSplitting: boolean; resolution?: number } = {
+          overlays,
+          renderer,
+          enableTileSplitting: false,
+        };
+        if (config.overlayResolution != null) overlayOpts.resolution = config.overlayResolution;
+        this.tiles.registerPlugin(new ImageOverlayPlugin(overlayOpts as ConstructorParameters<typeof ImageOverlayPlugin>[0]));
+      }
+    }
+
+    // Fade between LOD transitions to smooth color differences between zoom levels.
+    // Default 300 ms preserves existing behavior. Set `fadeDurationMs: 0` in
+    // the catalog to disable — useful for HiRISE-detail tilesets where the
+    // fade animation can cause visible jitter as tiles stream in/out while
+    // the camera is moving.
+    const fadeMs = config.fadeDurationMs ?? 300;
+    if (fadeMs > 0) {
+      this.tiles.registerPlugin(new TilesFadePlugin({ fadeDuration: fadeMs }));
+    }
+
+    // Upstream bug: QuantizedMeshPlugin.expandChildren always pushes new children
+    // without checking if children already exist. When a tile is evicted from the LRU
+    // cache, disposeTile removes virtual children but keeps real ones. When the tile
+    // is re-loaded, expandChildren creates duplicates. The old children have .traversal
+    // (from preprocessing) but the new ones don't, causing TypeError crashes in the
+    // traversal that silently abort the entire update cycle — no tiles get queued.
+    //
+    // Fix: skip only if all 4 quadtree children are present. If < 4, some virtual
+    // children were removed during eviction — clear and re-expand to fill the gaps.
+    // The cleared children get re-preprocessed on the next traversal cycle.
+    const qmPlugin = (this.tiles as any).getPluginByName('QUANTIZED_MESH_PLUGIN');
+    if (qmPlugin && qmPlugin.expandChildren) {
+      const origExpand = qmPlugin.expandChildren.bind(qmPlugin);
+      qmPlugin.expandChildren = (tile: any) => {
+        if (tile.children && tile.children.length >= 4) return;
+        // Clear partial children to prevent duplicates, then re-expand.
+        tile.children = [];
+        origExpand(tile);
+      };
+    }
+
+    // Customize tile materials as they load
+    this.tiles.addEventListener('load-model', (event: { scene: THREE.Object3D; tile: any }) => {
+      this.customizeTileMaterial(event.scene, event.tile);
+    });
+
+    // Log tile load errors — rate-limited to avoid flooding the console.
+    // Sparse terrain datasets (e.g. Mars Hub at level 12+) may return 404 for valid-looking
+    // tile coordinates that simply aren't in the dataset. These are non-blocking but noisy.
+    let errCount = 0, errLoggedAt = 0;
+    this.tiles.addEventListener('load-error', (event: any) => {
+      errCount++;
+      const now = Date.now();
+      if (now - errLoggedAt > 5000) {
+        const suffix = errCount > 1 ? ` (+${errCount - 1} suppressed since last log)` : '';
+        console.warn('[Cosmolabe:Terrain] Tile load error:', event.url, event.error?.message, suffix);
+        errCount = 0;
+        errLoggedAt = now;
+      }
+    });
+
+    // Load heightmap and generate per-pixel normal map for terrain tiles.
+    // Smooths out the faceted vertex-normal shading from coarse tile geometry.
+    if (config.normalMapUrl) {
+      this.loadNormalMap(config.normalMapUrl, config.normalMapStrength ?? 1.5);
+    }
+
+    // Set ellipsoid to the body's actual radii (oblate spheroids matter here —
+    // Mars at Jezero's 18.44°N has a 2.24 km smaller radius than at the equator,
+    // and treating it as a sphere puts terrain that much too high at that
+    // latitude vs the trajectory's latitude-aware position).
+    // referenceRadiusOffsetKm compensates for tilesets that encode heights against
+    // a non-standard reference (see TerrainConfig.referenceRadiusOffsetKm doc).
+    const offsetKm = config.referenceRadiusOffsetKm ?? 0;
+    this.tiles.ellipsoid.radius.set(
+      (rxKm - offsetKm) * 1000,
+      (ryKm - offsetKm) * 1000,
+      (rzKm - offsetKm) * 1000,
+    );
+
+    // Only override errorTarget if explicitly set in config.
+    // QuantizedMeshPlugin's useRecommendedSettings already sets errorTarget=2.
+    if (config.errorTarget != null) {
+      this.tiles.errorTarget = config.errorTarget;
+    } else if (this.isImageryOnly) {
+      // Imagery-only: match the quantized-mesh default. Going lower (e.g. 1)
+      // causes more zoom-level mixing, which shows as color seams in composite
+      // imagery sources where adjacent zoom levels have different color grading.
+      this.tiles.errorTarget = 2;
+    }
+    this.tiles.lruCache.maxBytesSize = config.maxCacheBytes ?? 512 * 1024 * 1024;
+    this.tiles.downloadQueue.maxJobs = 12;
+    this.tiles.parseQueue.maxJobs = 6;
+
+    // Upstream bug: ThreeJS TilesRenderer.disposeTile crashes when
+    // engineData.geometry/materials/textures are null (tile was partially loaded
+    // or already disposed). Guard by ensuring arrays exist before the original runs.
+    const origDisposeTile = (this.tiles as any).disposeTile.bind(this.tiles);
+    (this.tiles as any).disposeTile = (tile: any) => {
+      const ed = tile?.engineData;
+      if (ed?.scene) {
+        if (!ed.geometry) ed.geometry = [];
+        if (!ed.materials) ed.materials = [];
+        if (!ed.textures) ed.textures = [];
+      }
+      return origDisposeTile(tile);
+    };
+
+    // Upstream bugs cause crashes inside dispose callbacks during LRU cache eviction.
+    // The cache's unloadUnusedContent uses forEach to splice+dispose items. If any
+    // dispose callback throws, the forEach aborts — orphaning remaining items and
+    // stalling all future tile loading. Proxy the callbacks Map so every dispose
+    // callback returned by .get() is individually wrapped in try-catch.
+    const cache = this.tiles.lruCache as any;
+    const origCallbacks = cache.callbacks;
+    const noopCb = () => {};
+    cache.callbacks = new Proxy(origCallbacks, {
+      get(target: Map<any, Function>, prop: string | symbol, receiver: any) {
+        if (prop === 'get') {
+          return (key: any) => {
+            const cb = target.get(key);
+            if (typeof cb !== 'function') return noopCb;
+            return (tile: any) => {
+              try { return cb(tile); } catch (e) {
+                console.warn('[Cosmolabe] Error in tile dispose, caught to prevent stall:', (e as Error).message);
+              }
+            };
+          };
+        }
+        const val = Reflect.get(target, prop, receiver);
+        return typeof val === 'function' ? val.bind(target) : val;
+      },
+    });
+
+    // The tiles.group contains tile meshes in meters, Z-up (3D Tiles convention).
+    // We need to transform to cosmolabe's coordinate system: km, Y-up.
+    // Wrap in a parent group that applies the conversion.
+    this.group = new THREE.Group();
+    this.group.name = 'terrain';
+
+    // Scale: meters → km
+    const mToKm = 0.001;
+    this.tiles.group.scale.setScalar(mToKm);
+
+    // Rotate: Z-up → Y-up (rotate -90° around X)
+    this.tiles.group.rotation.x = -Math.PI / 2;
+
+    this.group.add(this.tiles.group);
+  }
+
+  /**
+   * Call once per frame to update tile LOD based on camera position.
+   * @param camera Scene camera
+   * @param renderer WebGL renderer
+   * @param bodyWorldPos World-space position of the body center (for coverage camera)
+   */
+  update(camera: THREE.Camera, renderer: THREE.WebGLRenderer, bodyWorldPos?: THREE.Vector3): void {
+    if (this.disposed) return;
+
+    // Compute terrain-appropriate near/far from camera position.
+    // The scene camera can have extreme near/far ratios (e.g. 1e-12 / 1e6)
+    // which make projection matrix rows 3 and 4 nearly identical. When
+    // 3d-tiles-renderer extracts frustum planes via SAT, the far plane
+    // (row4 - row3) collapses to zero → NaN after normalization → the root
+    // tile's bounding volume fails the frustum test → 0 tiles rendered.
+    _camPos.setFromMatrixPosition(camera.matrixWorld);
+    const distToBody = bodyWorldPos ? _camPos.distanceTo(bodyWorldPos) : 0;
+
+    // Near the surface, distToBody ≈ bodyRadius so distToBody*0.001 clips terrain
+    // for km around the camera (e.g., 3.4 km near clip at Mars surface).
+    // Switch to altitude-based near/far when close to the surface.
+    const sf = this.group.scale.x || 1e-6;
+    const bodyRadiusSU = this.bodyRadiusKm * sf;
+    const altAboveRefSphere = distToBody - bodyRadiusSU;
+    let terrainNear: number;
+    let terrainFar: number;
+    if (Math.abs(altAboveRefSphere) < bodyRadiusSU * 0.01) {
+      // Near surface: tight near/far for ground-level viewing.
+      // 1m near, 50km far → ratio 5e4, within Float64 precision for SAT.
+      terrainNear = Math.max(1e-10, 0.001 * sf);
+      terrainFar = Math.max(50 * sf, 1e-4);
+    } else {
+      // Orbital: near = 0.1% of body distance, far = 100×. Ratio ≤ 1e5.
+      terrainNear = Math.max(1e-8, distToBody * 0.001);
+      terrainFar = Math.max(distToBody * 100, 1e-2);
+    }
+
+    // Terrain camera: mirrors main camera but with terrain-appropriate near/far.
+    const mainCam = camera as THREE.PerspectiveCamera;
+    if (!this.terrainCam) {
+      this.terrainCam = new THREE.PerspectiveCamera(mainCam.fov, mainCam.aspect, terrainNear, terrainFar);
+    }
+    const tc = this.terrainCam;
+    // Use a wider FOV than the main camera so terrain tiles load beyond the
+    // view edges. At close range (near surface), camera rotation can quickly
+    // expose new terrain; pre-loading with a wider frustum prevents gaps.
+    tc.fov = Math.min(mainCam.fov * 1.5, 120);
+    tc.aspect = mainCam.aspect;
+    tc.near = terrainNear;
+    tc.far = terrainFar;
+    tc.updateProjectionMatrix();
+    tc.position.copy(_camPos);
+    tc.quaternion.copy(mainCam.quaternion);
+    tc.updateMatrixWorld();
+
+    this.tiles.setCamera(tc);
+    this.tiles.setResolutionFromRenderer(tc, renderer);
+
+    // Coverage cameras: ensure tiles load for the full visible hemisphere.
+    // At close range (near surface), the terrain camera only sees ±45° from
+    // the view direction, missing terrain at the sides and horizon. Two cameras
+    // looking toward body center fill this gap:
+    //   1. Coverage camera: 178° FOV → hemisphere-wide tile loading (coarse LOD)
+    //   2. Nadir camera: 90° FOV → high-LOD tiles directly under the camera
+    //
+    // The 178° coverage camera uses tan(89°)≈57 in its screen-space error formula,
+    // making every tile appear 57× smaller than it really is — only coarse tiles
+    // get loaded. A separate 90° nadir camera (tan(45°)=1) correctly drives
+    // high-resolution loading for terrain immediately underfoot.
+    if (bodyWorldPos) {
+      // Coverage/nadir cameras: at the surface, use the same near/far as the terrain
+      // camera so the ratio stays within SAT precision limits (~1e5). The standard
+      // formula (near=terrainNear*0.001, far=distToBody*2) produces ratios of ~7e7
+      // at ground level (distToBody ≈ bodyRadius), causing NaN in frustum plane
+      // extraction and zero tiles loaded → visible gaps in terrain.
+      const isSurface = Math.abs(altAboveRefSphere) < bodyRadiusSU * 0.01;
+      const camNear = isSurface ? terrainNear : Math.max(1e-10, terrainNear * 0.001);
+      const camFar = isSurface ? terrainFar : Math.max(distToBody * 2, terrainFar);
+
+      if (!this.coverageCam) {
+        this.coverageCam = new THREE.PerspectiveCamera(178, 1, camNear, camFar);
+      }
+      const cc = this.coverageCam;
+      cc.near = camNear;
+      cc.far = camFar;
+      cc.updateProjectionMatrix();
+      cc.position.copy(_camPos);
+      cc.up.copy(camera.up);
+      cc.lookAt(bodyWorldPos);
+      cc.updateMatrixWorld();
+      this.tiles.setCamera(cc);
+      this.tiles.setResolutionFromRenderer(cc, renderer);
+
+      // Nadir camera: 90° FOV pointing at body center drives high-LOD loading
+      // for tiles directly under the camera. Only activate when the camera is
+      // close to the surface (altitude < 2× body radius in scene units) to avoid
+      // the extra tiles.update() traversal pass at orbital distances where the
+      // terrain camera already provides sufficient LOD.
+      const bodyRadiusSceneUnits = this.tiles.ellipsoid.radius.x * 0.001; // m→km, matches scene scale
+      const altitudeSceneUnits = distToBody - bodyRadiusSceneUnits;
+      if (altitudeSceneUnits < bodyRadiusSceneUnits * 2) {
+        if (!this.nadirCam) {
+          this.nadirCam = new THREE.PerspectiveCamera(90, 1, camNear, camFar);
+        }
+        const nc = this.nadirCam;
+        nc.near = camNear;
+        nc.far = camFar;
+        nc.updateProjectionMatrix();
+        nc.position.copy(_camPos);
+        nc.up.copy(camera.up);
+        nc.lookAt(bodyWorldPos);
+        nc.updateMatrixWorld();
+        this.tiles.setCamera(nc);
+        this.tiles.setResolutionFromRenderer(nc, renderer);
+      } else if (this.nadirCam) {
+        this.tiles.deleteCamera(this.nadirCam);
+        this.nadirCam = null;
+      }
+    }
+
+    if (!this._pluginReady) return;
+    try {
+      this.tiles.update();
+    } catch (e) {
+      console.error('[Cosmolabe] tiles.update() crashed:', e);
+    }
+  }
+
+  /**
+   * Sample terrain elevation at a given geodetic position by finding the closest
+   * loaded terrain vertex. Returns height in km above the reference sphere, or null
+   * if no terrain is loaded near that position.
+   *
+   * Also returns the angular distance (degrees) of the closest vertex for diagnostics.
+   */
+  sampleElevationKm(latDeg: number, lonDeg: number, bodyRadiusKm: number): { elevationKm: number; angularDistDeg: number } | null {
+    const lat = latDeg * Math.PI / 180;
+    const lon = lonDeg * Math.PI / 180;
+    const cosLat = Math.cos(lat);
+    const sinLat = Math.sin(lat);
+    const cosLon = Math.cos(lon);
+    const sinLon = Math.sin(lon);
+
+    // Target direction in ECEF Z-up (unit vector)
+    const targetX = cosLat * cosLon;
+    const targetY = cosLat * sinLon;
+    const targetZ = sinLat;
+
+    let closestDist = Infinity;
+    let closestRadiusKm = 0;
+
+    // tiles.group.matrixWorld⁻¹ × child.matrixWorld gives us the child's
+    // transform in tiles.group's child space, which is ECEF meters Z-up
+    // (that's what the QuantizedMeshLoader outputs).
+    this._sampleGroupInv.copy(this.tiles.group.matrixWorld).invert();
+    const groupInv = this._sampleGroupInv;
+    const localMat = this._sampleLocalMat;
+    const v = this._sampleV;
+
+    this.tiles.group.traverse((child: any) => {
+      if (!child.isMesh || !child.geometry) return;
+      const pos = child.geometry.getAttribute('position');
+      if (!pos) return;
+
+      localMat.multiplyMatrices(groupInv, child.matrixWorld);
+
+      // Sample every 4th vertex to keep per-frame cost reasonable.
+      // At step=4, each 65×65 tile contributes ~1056 samples — still dense
+      // enough to find a vertex within ~0.01° of any target lat/lon.
+      for (let i = 0; i < pos.count; i += 4) {
+        v.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+        v.applyMatrix4(localMat);
+        // v is now in ECEF meters, Z-up
+        const r = v.length();
+        if (r < 1) continue;
+        // Direction in ECEF Z-up
+        const dx = v.x / r - targetX;
+        const dy = v.y / r - targetY;
+        const dz = v.z / r - targetZ;
+        const angDist = dx * dx + dy * dy + dz * dz;
+        if (angDist < closestDist) {
+          closestDist = angDist;
+          closestRadiusKm = r / 1000;
+        }
+      }
+    });
+
+    if (closestDist === Infinity) return null;
+    // angDist² ≈ 2(1 - cos θ) ≈ θ² for small θ; convert to degrees
+    const angularDistDeg = Math.sqrt(closestDist) * (180 / Math.PI);
+
+    return { elevationKm: closestRadiusKm - bodyRadiusKm, angularDistDeg };
+  }
+
+  /** Log tile renderer stats to console for debugging */
+  logStats(): void {
+    const t = this.tiles as any;
+    const cache = t.lruCache as any;
+    const queue = t.downloadQueue as any;
+
+    console.table({
+      visibleTiles: t.visibleTiles?.size ?? '?',
+      activeTiles: t.activeTiles?.size ?? '?',
+      errorTarget: t.errorTarget,
+      cacheMB: `${((cache.cachedBytes ?? 0) / (1024 * 1024)).toFixed(1)} / ${(cache.maxBytesSize / (1024 * 1024)).toFixed(0)}`,
+      downloading: queue.currJobs ?? '?',
+      queued: queue.items?.length ?? '?',
+    });
+
+    // Active tile depth and error
+    const depthCounts: Record<number, number> = {};
+    let maxErr = 0, minErr = Infinity;
+    t.activeTiles?.forEach((tile: any) => {
+      const depth = tile.internal?.depth ?? -1;
+      depthCounts[depth] = (depthCounts[depth] || 0) + 1;
+      const err = tile.traversal?.error ?? 0;
+      if (err > maxErr) maxErr = err;
+      if (err < minErr) minErr = err;
+    });
+    console.log('[Cosmolabe] Active tiles by depth:', depthCounts,
+      '| error range:', minErr.toFixed(2), '-', maxErr.toFixed(2));
+  }
+
+  /** Toggle debug tile bounds visualization. Lazily registers the plugin on first enable. */
+  setDebug(show: boolean): void {
+    if (show && !this.debugPlugin) {
+      this.debugPlugin = new DebugTilesPlugin({ displayBoxBounds: true, displayRegionBounds: true });
+      this.tiles.registerPlugin(this.debugPlugin);
+    } else if (this.debugPlugin) {
+      this.debugPlugin.displayBoxBounds = show;
+      this.debugPlugin.displayRegionBounds = show;
+    }
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.terrainCam) {
+      this.tiles.deleteCamera(this.terrainCam);
+      this.terrainCam = null;
+    }
+    if (this.coverageCam) {
+      this.tiles.deleteCamera(this.coverageCam);
+      this.coverageCam = null;
+    }
+    if (this.nadirCam) {
+      this.tiles.deleteCamera(this.nadirCam);
+      this.nadirCam = null;
+    }
+    this.normalMap?.dispose();
+    this.tiles.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Normal map from heightmap — per-pixel surface normals for smooth terminators
+  // ---------------------------------------------------------------------------
+
+  private async loadNormalMap(url: string, strength: number): Promise<void> {
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.crossOrigin = 'anonymous';
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = url;
+      });
+
+      this.normalMap = this.generateNormalMap(img, strength);
+      console.log(`[Cosmolabe] Generated terrain normal map from heightmap (${this.normalMap.image.width}x${this.normalMap.image.height})`);
+
+      // Retroactively apply to tiles that loaded before the normal map was ready
+      this.tiles.forEachLoadedModel((scene: THREE.Object3D, tile: any) => {
+        this.applyNormalMap(scene, tile);
+      });
+    } catch (e) {
+      console.warn('[Cosmolabe] Failed to load terrain normal map source:', e);
+    }
+  }
+
+  /**
+   * Generate a tangent-space normal map from a heightmap image.
+   * Caps resolution at 4096px wide for performance (~32MB working memory).
+   */
+  private generateNormalMap(img: HTMLImageElement, strength: number): THREE.CanvasTexture {
+    const maxDim = 4096;
+    let w = img.naturalWidth ?? img.width;
+    let h = img.naturalHeight ?? img.height;
+    if (w > maxDim) {
+      h = Math.round(h * maxDim / w);
+      w = maxDim;
+    }
+
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = w;
+    srcCanvas.height = h;
+    const srcCtx = srcCanvas.getContext('2d')!;
+    srcCtx.drawImage(img, 0, 0, w, h);
+    const srcData = srcCtx.getImageData(0, 0, w, h).data;
+
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = w;
+    outCanvas.height = h;
+    const outCtx = outCanvas.getContext('2d')!;
+    const outImg = outCtx.createImageData(w, h);
+    const out = outImg.data;
+
+    // Sample height, wrapping horizontally (equirectangular), clamping vertically
+    const getH = (x: number, y: number) => {
+      x = ((x % w) + w) % w;
+      y = Math.max(0, Math.min(h - 1, y));
+      return srcData[(y * w + x) * 4] / 255;
+    };
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const hL = getH(x - 1, y);
+        const hR = getH(x + 1, y);
+        const hU = getH(x, y - 1);
+        const hD = getH(x, y + 1);
+        const dx = (hR - hL) * strength;
+        const dy = (hD - hU) * strength;
+        const len = Math.sqrt(dx * dx + dy * dy + 1);
+        const idx = (y * w + x) * 4;
+        out[idx]     = (-dx / len * 0.5 + 0.5) * 255;
+        out[idx + 1] = (-dy / len * 0.5 + 0.5) * 255;
+        out[idx + 2] = (1 / len * 0.5 + 0.5) * 255;
+        out[idx + 3] = 255;
+      }
+    }
+
+    outCtx.putImageData(outImg, 0, 0);
+    const tex = new THREE.CanvasTexture(outCanvas);
+    tex.colorSpace = THREE.LinearSRGBColorSpace;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return tex;
+  }
+
+  /**
+   * Set material properties on a loaded tile, blend normals toward sphere, and apply normal map.
+   */
+  /** Enable eclipse shadow receiving on all current and future terrain tiles. */
+  enableShadowReceiving(uniforms: ShadowUniforms): void {
+    this.shadowUniforms = uniforms;
+  }
+
+  /** Enable aerial-perspective compositing on all current and future terrain tiles. */
+  enableAerialPerspective(uniforms: AerialPerspectiveUniforms): void {
+    this.aerialPerspectiveUniforms = uniforms;
+  }
+
+  private customizeTileMaterial(scene: THREE.Object3D, tile: any): void {
+    // Disable Three.js frustum culling — TilesRenderer handles visibility.
+    // The main camera's extreme near/far ratio (up to 10^14 with log depth)
+    // can produce degenerate frustum planes that incorrectly cull tiles.
+    scene.traverse((child) => { child.frustumCulled = false; });
+
+    // Pin tile renderables to renderOrder = -2 for imagery-only tilesets.
+    // TilesFadePlugin (registered above) flips tile materials to
+    // `transparent: true` for 300 ms after a tile loads, which puts the tile in
+    // three.js's transparent pass at the OBJECT3D's renderOrder. TrajectoryLine
+    // uses renderOrder = -1, so without this every fading tile (default
+    // renderOrder 0) would render AFTER trails and paint over them whenever the
+    // camera moved.
+    //
+    // Scoped to imagery-only because real 3D Tiles (terrain.url) have actual
+    // displacement and interact with the placeholder body sphere differently —
+    // setting renderOrder = -2 there can let trajectory lines render visibly
+    // *through* the planet at viewpoints where the fading tiles don't yet write
+    // depth and the body sphere has been hidden by the close-zoom transition.
+    // Imagery-only tiles sit at exact sphere altitude so this concern doesn't
+    // apply to them.
+    if (this.isImageryOnly) {
+      scene.traverse((child) => {
+        const c = child as THREE.Object3D & { isMesh?: boolean; isLine?: boolean; isPoints?: boolean; isSprite?: boolean };
+        if (c.isMesh || c.isLine || c.isPoints || c.isSprite) {
+          c.renderOrder = -2;
+        }
+      });
+    }
+
+    const su = this.shadowUniforms;
+    const apu = this.aerialPerspectiveUniforms;
+    const cacheKey = (su ? '_shadow_v1' : '') + (apu ? '_ap_v1' : '');
+
+    scene.traverse((child) => {
+      if (!isMesh(child) || !child.material) return;
+      const material = child.material as THREE.Material;
+
+      // Three.js shadow-map receiving for tile geometry. Lets the sun
+      // DirectionalLight's shadow map (cast by helicopters / drones) darken
+      // the terrain underneath. Independent of the analytical eclipse shadow.
+      child.receiveShadow = true;
+
+      // Unlit tiles (MeshBasicMaterial — used by XYZTilesPlugin imagery and
+      // also by 3D Tiles that ship with the KHR_materials_unlit extension,
+      // e.g. Cesium Mars's photo-baked global imagery) need a swap to
+      // MeshStandardMaterial to receive the sun DirectionalLight + atmosphere
+      // shading. Originally gated on `isImageryOnly`, but cesium-ion terrain
+      // hits the same case via KHR_materials_unlit, so the gate is just
+      // "incoming material is unlit".
+      //
+      // When ImageOverlayPlugin has already wrapped this MeshBasicMaterial
+      // (multi-layer config), preserve its wrap: the wrap is an
+      // `onBeforeCompile` closure over IOP's shared `params` object (which
+      // holds `layerMaps` / `layerInfo` uniform refs) plus a couple of
+      // `defines` (`LAYER_COUNT` etc.). Copying those over to the new
+      // MeshStandardMaterial keeps overlay composition working — IOP's
+      // per-frame `meshParams.get(mesh)` writes land on the new material
+      // because it reads `mesh.material` dynamically, not a cached ref.
+      if (isMeshBasicMaterial(material) && material.map) {
+        const basic = material;
+        const overlayOnBeforeCompile = basic.onBeforeCompile;
+        const overlayDefines = basic.defines ? { ...basic.defines } : null;
+        const hasOverlayWrap = this.hasOverlays && overlayDefines && 'LAYER_COUNT' in overlayDefines;
+
+        const mat = new THREE.MeshStandardMaterial({
+          map: basic.map,
+          transparent: false,
+          metalness: 0,
+          roughness: 0.85,
+        });
+        if (hasOverlayWrap) {
+          // Bring the LAYER_COUNT (+ LAYER_N_EXISTS etc.) defines across so the
+          // overlay shader chunks compile in. IOP updates these each frame.
+          mat.defines = { ...(mat.defines ?? {}), ...overlayDefines };
+        }
+        // Chain shader injections: IOP wrap first (overlay compositing on top
+        // of `diffuseColor`), then cosmolabe's eclipse-shadow + aerial-
+        // perspective passes. Order matters — overlays should land before
+        // shadow/atmosphere darken the result.
+        const cacheKeySuffix = (hasOverlayWrap ? '_overlay_v1' : '');
+        if (su || apu || hasOverlayWrap) {
+          mat.onBeforeCompile = (shader, renderer) => {
+            if (hasOverlayWrap && overlayOnBeforeCompile) {
+              (overlayOnBeforeCompile as (s: typeof shader, r: typeof renderer) => void)(shader, renderer);
+            }
+            if (su) injectShadowIntoShader(shader, su);
+            if (apu) injectAerialPerspectiveIntoShader(shader, apu as unknown as Record<string, { value: unknown }>);
+          };
+          mat.customProgramCacheKey = () => cacheKey + cacheKeySuffix;
+        }
+        child.material = mat;
+        basic.dispose();
+        // Imagery-only tiles from XYZTilesPlugin already have correct sphere normals
+        // on their generated ellipsoid geometry — skip the expensive per-vertex blend.
+        return;
+      }
+
+      // Blend vertex normals toward sphere normals for surface vertices only.
+      // (terrain tiles only — imagery-only tiles skip this via early return above)
+      this.blendSphereNormals(child, 0.6);
+
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      for (const mat of mats) {
+        if ('roughness' in mat) (mat as THREE.MeshStandardMaterial).roughness = 0.85;
+        if ('metalness' in mat) (mat as THREE.MeshStandardMaterial).metalness = 0;
+        if (su || apu) {
+          const prevOBC = (mat as any).onBeforeCompile;
+          (mat as any).onBeforeCompile = (shader: any) => {
+            prevOBC?.(shader);
+            if (su) injectShadowIntoShader(shader, su);
+            if (apu) injectAerialPerspectiveIntoShader(shader, apu as unknown as Record<string, { value: unknown }>);
+          };
+          (mat as any).customProgramCacheKey = () => cacheKey;
+          (mat as any).needsUpdate = true;
+        }
+      }
+    });
+
+    if (this.normalMap) {
+      this.applyNormalMap(scene, tile);
+    }
+  }
+
+  /**
+   * Blend vertex normals toward sphere normals for surface vertices.
+   * Skirt vertices (geometry groups 2+) are left unchanged.
+   *
+   * Vertex positions in quantized mesh are ECEF relative to tile center
+   * (mesh.position holds the center offset). Adding it back gives the absolute
+   * ECEF position, and normalizing that gives the ellipsoid surface direction.
+   *
+   * @param blendFactor 0 = pure vertex normal, 1 = pure sphere normal
+   */
+  private blendSphereNormals(mesh: THREE.Mesh, blendFactor: number): void {
+    const geom = mesh.geometry;
+    const pos = geom.getAttribute('position');
+    const norm = geom.getAttribute('normal');
+    if (!pos || !norm) return;
+
+    // Find the index range for surface vertices (group 0).
+    // Groups: 0=surface, 1=bottom cap (if solid), 2+=skirts
+    const groups = geom.groups;
+    let surfaceVertexEnd = pos.count; // default: all vertices are surface
+    if (groups.length > 0) {
+      // Surface group is the first one. Find max vertex index used by surface triangles.
+      const surfaceGroup = groups[0];
+      const index = geom.index;
+      if (index && surfaceGroup) {
+        let maxIdx = 0;
+        const start = surfaceGroup.start;
+        const end = start + surfaceGroup.count;
+        for (let i = start; i < end; i++) {
+          const idx = index.getX(i);
+          if (idx > maxIdx) maxIdx = idx;
+        }
+        surfaceVertexEnd = maxIdx + 1;
+      }
+    }
+
+    // Tile center in ECEF — mesh.position is set by QuantizedMeshLoader
+    const cx = mesh.position.x;
+    const cy = mesh.position.y;
+    const cz = mesh.position.z;
+
+    const sphere = new THREE.Vector3();
+    const vertex = new THREE.Vector3();
+
+    for (let i = 0; i < surfaceVertexEnd; i++) {
+      // Absolute ECEF position = relative position + tile center
+      sphere.set(
+        pos.getX(i) + cx,
+        pos.getY(i) + cy,
+        pos.getZ(i) + cz,
+      ).normalize();
+
+      // Existing vertex normal
+      vertex.set(norm.getX(i), norm.getY(i), norm.getZ(i));
+
+      // Blend: lerp toward sphere normal, then renormalize
+      vertex.lerp(sphere, blendFactor).normalize();
+
+      norm.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+    norm.needsUpdate = true;
+  }
+
+  /**
+   * Apply the global normal map to a tile's material with per-tile UV offset/repeat.
+   * Uses the tile's bounding volume region (EPSG:4326 radians) to compute the
+   * transform from tile-local UVs to global equirectangular coordinates.
+   */
+  private applyNormalMap(scene: THREE.Object3D, tile: any): void {
+    if (!this.normalMap) return;
+
+    // boundingVolume.region = [west, south, east, north, minHeight, maxHeight] in radians
+    const region = tile?.boundingVolume?.region as number[] | undefined;
+    if (!region || region.length < 4) return;
+
+    const [west, south, east, north] = region;
+    const TWO_PI = 2 * Math.PI;
+
+    // Map tile UV → global equirectangular UV for the normal map.
+    // Normal map: U = (lon + π) / 2π, V = (π/2 - lat) / π
+    // Tile UV: u ∈ [0,1] west→east, v ∈ [0,1] south→north
+    const repeatX = (east - west) / TWO_PI;
+    const offsetX = (west + Math.PI) / TWO_PI;
+    const repeatY = -(north - south) / Math.PI;  // negative: tile v goes S→N, texture V goes N→S
+    const offsetY = (Math.PI / 2 - south) / Math.PI;
+
+    scene.traverse((child) => {
+      if (!isMesh(child) || !child.material) return;
+      const mat = child.material as THREE.MeshStandardMaterial;
+      if (!('normalMap' in mat)) return;
+
+      // Clone texture — shares GPU data (same source), gets its own offset/repeat
+      const normalTex = this.normalMap!.clone();
+      normalTex.offset.set(offsetX, offsetY);
+      normalTex.repeat.set(repeatX, repeatY);
+      normalTex.updateMatrix();
+
+      mat.normalMap = normalTex;
+      mat.normalScale = new THREE.Vector2(0.5, 0.5);
+      mat.needsUpdate = true;
+    });
+  }
+}

@@ -1,0 +1,33 @@
+node_modules/
+dist/
+*.wasm
+*.data
+.DS_Store
+.env
+.env.local
+.env.*.local
+CLAUDE.md
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Vite cache
+.vite/
+
+# SPICE kernels — see scripts/fetch-*.sh for downloads.
+# Tier rule: anything > ~5 MB lives behind a fetch script, not in the repo.
+*.gz
+apps/viewer/test-catalogs/kernels/de440s.bsp
+apps/viewer/test-catalogs/kernels/codes_300ast_20100725.bsp
+apps/viewer/test-catalogs/kernels/mar099s.bsp
+apps/viewer/test-catalogs/kernels/jup348.bsp
+apps/viewer/test-catalogs/kernels/sat459.bsp
+apps/viewer/test-catalogs/kernels/europa-clipper/ref_trj_scpse.bsp
+apps/viewer/test-catalogs/kernels/msl/mar099s.bsp
+apps/viewer/test-catalogs/kernels/psyche/
+apps/viewer/test-catalogs/kernels/voyager/
+
+# Self-hosted Mars terrain — see scripts/build-mars-terrain/
+# Source GeoTIFFs (~11 GB) and generated quantized-mesh tiles (~1-3 GB).
+apps/viewer/test-catalogs/data/mars-terrain/
+scripts/build-mars-terrain/data/

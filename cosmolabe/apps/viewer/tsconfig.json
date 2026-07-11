@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client"],
+    "paths": {
+      "$lib": ["./src/lib"],
+      "$lib/*": ["./src/lib/*"]
+    }
+  },
+  "include": ["src", "*.ts"],
+  "references": [
+    { "path": "../../packages/spice" },
+    { "path": "../../packages/core" },
+    { "path": "../../packages/three" }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@cosmolabe/three",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Three.js rendering layer — syncs Cosmolabe Universe to a 3D scene graph with terrain, atmosphere, eclipse shadows, sensor frustums, and a plugin system.",
+  "author": "Aaron Plave",
+  "homepage": "https://github.com/AaronPlave/cosmolabe#readme",
+  "bugs": "https://github.com/AaronPlave/cosmolabe/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AaronPlave/cosmolabe.git",
+    "directory": "packages/three"
+  },
+  "keywords": [
+    "threejs",
+    "three",
+    "spice",
+    "spacecraft",
+    "mission-visualization",
+    "3d",
+    "webgl",
+    "trajectory",
+    "terrain",
+    "3d-tiles",
+    "astronomy",
+    "space"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./src/workers/spice-cache.worker": "./src/workers/spice-cache.worker.ts"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@cosmolabe/core": "*",
+    "@types/three": "^0.183.1",
+    "3d-tiles-renderer": "0.4.27"
+  },
+  "peerDependencies": {
+    "three": "^0.183.2"
+  }
+}

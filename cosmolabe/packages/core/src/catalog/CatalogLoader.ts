@@ -1,0 +1,1293 @@
+import type { SpiceInstance, Vec3 } from '@cosmolabe/spice';
+import { Body, type TrajectoryPlotConfig } from '../Body.js';
+import type { Trajectory } from '../trajectories/Trajectory.js';
+import { FixedPointTrajectory } from '../trajectories/FixedPoint.js';
+import { KeplerianTrajectory } from '../trajectories/Keplerian.js';
+import { SpiceTrajectory } from '../trajectories/SpiceTrajectory.js';
+import { CompositeTrajectory } from '../trajectories/CompositeTrajectory.js';
+import { InterpolatedStatesTrajectory, type StateRecord } from '../trajectories/InterpolatedStates.js';
+import { parseXyzv } from '../trajectories/XyzvParser.js';
+import { TLETrajectory } from '../trajectories/TLETrajectory.js';
+import { ChebyshevPolyTrajectory } from '../trajectories/ChebyshevPolyTrajectory.js';
+import { LinearCombinationTrajectory } from '../trajectories/LinearCombinationTrajectory.js';
+import { WaypointTrajectory, type Waypoint } from '../trajectories/WaypointTrajectory.js';
+import { createAnalyticalTrajectory, createAnalyticalTrajectoryByName } from '../trajectories/analytical/AnalyticalTrajectory.js';
+import type { RotationModel } from '../rotations/RotationModel.js';
+import { UniformRotation } from '../rotations/UniformRotation.js';
+import { SpiceRotation } from '../rotations/SpiceRotation.js';
+import { NadirRotation } from '../rotations/NadirRotation.js';
+import { TrajectoryNadirRotation } from '../rotations/TrajectoryNadirRotation.js';
+import { SurfaceUpRotation } from '../rotations/SurfaceUpRotation.js';
+import { FixedRotation } from '../rotations/FixedRotation.js';
+import { FixedEulerRotation } from '../rotations/FixedEulerRotation.js';
+import { InterpolatedRotation, parseQFile } from '../rotations/InterpolatedRotation.js';
+
+/**
+ * A SPICE kernel reference inside a catalog. Bare strings are Cosmographia-native;
+ * the object form is a cosmolabe extension that adds optional metadata used by the
+ * viewer's progress UI (Cosmographia ignores unknown fields).
+ */
+export type KernelRef = string | { url: string; size?: number; label?: string };
+
+/**
+ * Bulk-import body items from the contents of an SPK kernel. The loader walks
+ * the kernel via `spkobj_c`, optionally filters by NAIF ID range, and creates
+ * one Body per ID with `defaults` applied. Override-by-name still wins, so a
+ * subsequent item with the same name replaces the auto-generated one.
+ *
+ * Cosmolabe-only extension; Cosmographia ignores it.
+ */
+export interface SpkImportSpec {
+  /** Kernel filename — must match a `spiceKernels` entry that's been furnished. */
+  kernel: string;
+  /** Center body name or NAIF ID for trajectories of imported items. */
+  center: string | number;
+  /** Optional inclusive [low, high] NAIF ID filter. */
+  naifIdRange?: [number, number];
+  /** Body field defaults applied to every imported item (geometry, label, plot, etc.). */
+  defaults?: Partial<CatalogItem>;
+  /**
+   * Optional name template. `{naifId}` and `{name}` are substituted; defaults to
+   * the SPICE-resolved name (via `bodc2n`) or `Body {naifId}` if no name.
+   */
+  nameTemplate?: string;
+}
+
+// Cosmographia catalog JSON schema types
+export interface CatalogJson {
+  name?: string;
+  version?: string;
+  require?: string[];
+  items?: CatalogItem[];
+  /**
+   * SPICE kernels needed by this catalog. Resolved relative to the catalog's URL.
+   * `.tm` meta-kernels are expanded by the viewer pipeline. Cosmographia-native field name.
+   */
+  spiceKernels?: KernelRef[];
+  /**
+   * Cosmolabe-only: bulk-import items from one or more SPK kernels. Evaluated
+   * after `items` so explicit items take precedence (last-wins by name).
+   */
+  spkImport?: SpkImportSpec[];
+  /** Default time to set when loading this catalog (UTC string, e.g. "2004-07-01T02:48:00Z") */
+  defaultTime?: string;
+  /** Name of a Viewpoint item to apply as the initial camera view when this catalog loads */
+  defaultViewpoint?: string;
+}
+
+export interface TrajectoryPlotSpec {
+  duration?: string;
+  lead?: string;
+  fade?: number;
+  color?: string | number[];
+  opacity?: number;
+  visible?: string | boolean;
+  sampleCount?: number;
+  lineWidth?: number;
+}
+
+export interface CatalogItem {
+  name: string;
+  type?: string;
+  center?: string;
+  class?: string;
+  trajectoryFrame?: string;
+  trajectory?: TrajectorySpec;
+  trajectoryPlot?: TrajectoryPlotSpec;
+  rotationModel?: RotationModelSpec;
+  bodyFrame?: string | BodyFrameSpec;
+  geometry?: GeometrySpec;
+  label?: LabelSpec;
+  naifId?: number;
+  mass?: number | string;
+  radii?: number[];
+  startTime?: string;
+  endTime?: string | number;
+  items?: CatalogItem[];
+  // Top-level arcs (Cosmographia uses this for spacecraft with multiple mission phases)
+  arcs?: ArcSpec[];
+  /** Item-scoped SPICE kernels (accumulate with catalog-level `spiceKernels`). */
+  spiceKernels?: KernelRef[];
+}
+
+export interface ArcSpec {
+  center?: string;
+  trajectoryFrame?: string;
+  trajectory: TrajectorySpec;
+  bodyFrame?: string | BodyFrameSpec;
+  startTime?: string | number;
+  endTime?: string | number;
+  /** When false, the composite-trajectory line builder skips drawing a
+   *  line for this arc. The arc's samples are still consulted for body
+   *  positioning. Default true. */
+  showLine?: boolean;
+  /** Override default key-sample count for this arc's trajectory line
+   *  (long cruise arcs benefit from a higher count to avoid a faceted
+   *  appearance at high eccentricity). */
+  numKeySamples?: number;
+}
+
+export interface BodyFrameSpec {
+  type: string;
+  primaryAxis?: string;
+  secondaryAxis?: string;
+  primary?: Record<string, unknown>;
+  secondary?: Record<string, unknown>;
+  body?: string;
+}
+
+export interface TrajectorySpec {
+  type: string;
+  // FixedPoint
+  position?: number[];
+  // Keplerian — elements MUST be referenced to the ecliptic J2000 plane (the scene coordinate system).
+  // Satellite elements from databases are typically in the central body's equatorial plane, NOT ecliptic J2000.
+  // For planetary moons use Builtin (analytical theory) or Spice instead.
+  // Values may be numbers or strings with unit suffixes like "42.99au", "281.9y".
+  semiMajorAxis?: number | string;
+  eccentricity?: number;
+  inclination?: number;
+  ascendingNode?: number;
+  argOfPeriapsis?: number;
+  argumentOfPeriapsis?: number;
+  meanAnomaly?: number;
+  period?: number | string;
+  epoch?: string;
+  // Spice
+  target?: string;
+  center?: string;
+  // Builtin
+  name?: string;
+  // InterpolatedStates
+  source?: string;
+  /** Inline state records as an alternative to `source` (which fetches a
+   *  `.xyzv` file). Useful when the catalog producer already has the samples
+   *  in memory — e.g. after parsing an OEM or pulling from a live FDS feed —
+   *  and wants to skip the file round-trip. Each record carries an ET (s
+   *  past J2000 TDB), a position (km), and a velocity (km/s). If both
+   *  `samples` and `source` are present, `samples` wins. */
+  samples?: StateRecord[];
+  // TLE
+  line1?: string;
+  line2?: string;
+  /** Half-window (days) around TLE epoch over which the trajectory is valid.
+   *  Default 30. See TLETrajectoryOptions.windowDays. */
+  windowDays?: number;
+  // Composite
+  arcs?: ArcSpec[];
+  /** Cosmographia alias for arcs (used in some catalog files) */
+  segments?: ArcSpec[];
+  // LinearCombination
+  weights?: number[];
+  trajectories?: TrajectorySpec[];
+  // Analytical theory (TASS17, L1, Gust86, MarsSat)
+  satellite?: string;
+  // FixedSpherical
+  latitude?: number;
+  longitude?: number;
+  radius?: number;
+  // Waypoints
+  referenceRadius?: number | string;
+  waypoints?: WaypointSpec[];
+  /**
+   * When true, the waypoint `alt` values are absolute (km above referenceRadius)
+   * and surface-lock terrain adjustment will not be applied to this body.
+   * Use for long flights where terrain pre-sampling isn't reliable —
+   * pre-compute absolute altitudes from an offline DEM and set this flag.
+   */
+  useAbsoluteAlt?: boolean;
+  // Units
+  distanceUnits?: string;
+}
+
+export interface WaypointSpec {
+  /** ISO UTC string, or seconds offset from the trajectory's `epoch`. */
+  t: string | number;
+  lat?: number;
+  /** Cosmographia alias for `lat`. */
+  latitude?: number;
+  lon?: number;
+  /** Cosmographia alias for `lon`. */
+  longitude?: number;
+  /** Altitude above the trajectory's `referenceRadius`. Bare number = km; string accepts unit suffix (e.g. "3m"). */
+  alt?: number | string;
+  /** Alias for `alt`. */
+  altitude?: number | string;
+}
+
+export interface RotationModelSpec {
+  type: string;
+  name?: string;
+  period?: number;
+  epoch?: string;
+  meridianAngle?: number;
+  inclination?: number;
+  ascendingNode?: number;
+  ascension?: number;
+  declination?: number;
+  bodyFrame?: string;
+  inertialFrame?: string;
+  /** For Nadir type: SPICE target name (e.g. "LRO", "-85") */
+  target?: string;
+  /** For Nadir type: SPICE center body name (e.g. "MOON") */
+  center?: string;
+  /** For Fixed type: explicit quaternion [w, x, y, z] */
+  quaternion?: number[];
+  /** For FixedEuler type: axis sequence string (e.g. "XYZ", "ZXZ") */
+  sequence?: string;
+  /** For FixedEuler type: angles in degrees (one per axis in sequence) */
+  angles?: number[];
+  /** For Interpolated type: source data file (e.g. "attitude.q") */
+  source?: string;
+  /** For Interpolated type: in-memory orientation records, used when the
+   *  caller pre-parses the attitude data (e.g. a CCSDS AEM file parsed at
+   *  SSR time). Takes precedence over `source`. Quaternion is [w, x, y, z]
+   *  scalar-first; interpretation matches `InterpolatedRotation` (body-to-
+   *  inertial). */
+  records?: Array<{ et: number; q: [number, number, number, number] }>;
+}
+
+export interface GeometrySpec {
+  type: string;
+  radius?: number;
+  radii?: number[];
+  size?: number;
+  source?: string;
+  meshFile?: string;
+  meshRotation?: number[];
+  sensor?: {
+    horizontalFov?: number;
+    verticalFov?: number;
+    frustumColor?: number[];
+    target?: string;
+  };
+  [key: string]: unknown;
+}
+
+export interface LabelSpec {
+  color?: number[] | string;
+  fadeSize?: number;
+  /** If false, no label is created for this body. Defaults to true. */
+  visible?: boolean;
+}
+
+/** A viewpoint definition parsed from a Cosmographia catalog Viewpoint item */
+export interface ViewpointDefinition {
+  name: string;
+  /** Body to center the view on */
+  center?: string;
+  /** Reference frame (default: EclipticJ2000) */
+  frame?: string;
+  /** Distance from center body in km */
+  distance?: number;
+  /** Longitude offset in degrees (azimuth around center) */
+  longitude?: number;
+  /** Latitude offset in degrees (elevation from equatorial plane) */
+  latitude?: number;
+  /** Explicit eye position [x, y, z] in km (overrides spherical coords) */
+  eye?: [number, number, number];
+  /** Explicit target position [x, y, z] in km */
+  target?: [number, number, number];
+  /** Up direction */
+  up?: [number, number, number];
+  /** Field of view in degrees */
+  fov?: number;
+}
+
+export interface LoadedCatalog {
+  bodies: Body[];
+  viewpoints: ViewpointDefinition[];
+  name?: string;
+  version?: string;
+  require?: string[];
+  /** Kernel refs collected from catalog-level + items, in declaration order. Unresolved (paths as written). */
+  spiceKernels?: KernelRef[];
+  /** Name of the viewpoint to apply as the initial camera view */
+  defaultViewpoint?: string;
+}
+
+/** Walk a catalog JSON and collect all `spiceKernels` entries (catalog-level + every item, recursively). */
+export function collectKernelRefs(json: CatalogJson): KernelRef[] {
+  const refs: KernelRef[] = [];
+  if (json.spiceKernels) refs.push(...json.spiceKernels);
+  if (json.items) {
+    for (const item of json.items) collectItemKernelRefs(item, refs);
+  }
+  return refs;
+}
+
+function collectItemKernelRefs(item: CatalogItem, out: KernelRef[]): void {
+  if (item.spiceKernels) out.push(...item.spiceKernels);
+  if (item.items) {
+    for (const child of item.items) collectItemKernelRefs(child, out);
+  }
+}
+
+const DISTANCE_SCALE: Record<string, number> = {
+  km: 1, m: 0.001, au: 149597870.7, mm: 1e-6, cm: 1e-5,
+};
+
+/** Parse a numeric value that may have a unit suffix (e.g. "42.99au", "281.9y", "1000km") */
+function parseValueWithUnit(val: number | string | undefined, defaultVal: number): number {
+  if (val == null) return defaultVal;
+  if (typeof val === 'number') return val;
+  const match = val.match(/^([+-]?[\d.eE+-]+)\s*(\w*)$/);
+  if (!match) return defaultVal;
+  const num = parseFloat(match[1]);
+  if (isNaN(num)) return defaultVal;
+  const unit = match[2].toLowerCase();
+  switch (unit) {
+    case 'au': return num * 149597870.7;
+    case 'km': return num;
+    case 'm': return num * 0.001;
+    case 'y': case 'yr': case 'yrs': case 'year': case 'years':
+      return num * 365.25 * 86400; // years → seconds
+    case 'd': case 'day': case 'days':
+      return num * 86400;           // days → seconds
+    case 'h': case 'hr': case 'hrs': case 'hour': case 'hours':
+      return num * 3600;            // hours → seconds
+    case 'min': case 'mins': case 'minute': case 'minutes':
+      return num * 60;              // minutes → seconds
+    case 's': case 'sec': case 'secs': case 'second': case 'seconds':
+      return num;                   // seconds
+    case '': return num;
+    default: return num;
+  }
+}
+
+// Well-known GM values (km³/s²) for Keplerian orbit propagation without SPICE
+const BODY_GM: Record<string, number> = {
+  Sun: 132712440041.94, Earth: 398600.4418, Moon: 4902.8,
+  Mars: 42828.37, Jupiter: 126686534, Saturn: 37931187,
+  Uranus: 5793939, Neptune: 6836529, Venus: 324859, Mercury: 22032,
+  Pluto: 871,
+};
+
+// Well-known Builtin body names → SPICE targets
+const BUILTIN_BODIES: Record<string, { target: string; center: string }> = {
+  Sun: { target: '10', center: 'SOLAR SYSTEM BARYCENTER' },
+  Mercury: { target: '199', center: 'SUN' },
+  Venus: { target: '299', center: 'SUN' },
+  Earth: { target: '399', center: 'SUN' },
+  EMB: { target: '3', center: 'SUN' },
+  Mars: { target: '499', center: 'SUN' },
+  Jupiter: { target: '599', center: 'SUN' },
+  Saturn: { target: '699', center: 'SUN' },
+  Uranus: { target: '799', center: 'SUN' },
+  Neptune: { target: '899', center: 'SUN' },
+  Pluto: { target: '999', center: 'SUN' },
+  Moon: { target: '301', center: 'EARTH' },
+  Phobos: { target: '401', center: 'MARS' },
+  Deimos: { target: '402', center: 'MARS' },
+  Io: { target: '501', center: 'JUPITER' },
+  Europa: { target: '502', center: 'JUPITER' },
+  Ganymede: { target: '503', center: 'JUPITER' },
+  Callisto: { target: '504', center: 'JUPITER' },
+  Mimas: { target: '601', center: 'SATURN' },
+  Enceladus: { target: '602', center: 'SATURN' },
+  Tethys: { target: '603', center: 'SATURN' },
+  Dione: { target: '604', center: 'SATURN' },
+  Rhea: { target: '605', center: 'SATURN' },
+  Titan: { target: '606', center: 'SATURN' },
+  Hyperion: { target: '607', center: 'SATURN' },
+  Iapetus: { target: '608', center: 'SATURN' },
+  Phoebe: { target: '609', center: 'SATURN' },
+  Miranda: { target: '705', center: 'URANUS' },
+  Ariel: { target: '701', center: 'URANUS' },
+  Umbriel: { target: '702', center: 'URANUS' },
+  Titania: { target: '703', center: 'URANUS' },
+  Oberon: { target: '704', center: 'URANUS' },
+  Triton: { target: '801', center: 'NEPTUNE' },
+  Charon: { target: '901', center: 'PLUTO' },
+};
+
+// Fallback Keplerian elements for major planets at J2000 epoch (2000-01-01T12:00:00 TDB).
+// Semi-major axis in km, angles in radians. Ecliptic J2000 frame, center = Sun.
+// Used when SPICE is not available (e.g. pure Cosmographia catalogs without kernel files).
+const DEG = Math.PI / 180;
+const AU = 149597870.7;
+const SUN_MU = 132712440041.94;
+
+interface FallbackOrbit {
+  semiMajorAxis: number; eccentricity: number; inclination: number;
+  raan: number; argPeriapsis: number; meanAnomalyAtEpoch: number;
+  mu: number; center: string;
+}
+
+const BUILTIN_KEPLERIAN: Record<string, FallbackOrbit> = {
+  Mercury: {
+    semiMajorAxis: 0.38710 * AU, eccentricity: 0.20563,
+    inclination: 7.005 * DEG, raan: 48.331 * DEG,
+    argPeriapsis: 29.124 * DEG, meanAnomalyAtEpoch: 174.796 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Venus: {
+    semiMajorAxis: 0.72333 * AU, eccentricity: 0.00677,
+    inclination: 3.3946 * DEG, raan: 76.680 * DEG,
+    argPeriapsis: 54.884 * DEG, meanAnomalyAtEpoch: 50.115 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Earth: {
+    semiMajorAxis: 1.00000 * AU, eccentricity: 0.01671,
+    inclination: 0.00005 * DEG, raan: -11.261 * DEG,
+    argPeriapsis: 102.937 * DEG, meanAnomalyAtEpoch: 357.529 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  EMB: {
+    semiMajorAxis: 1.00000 * AU, eccentricity: 0.01671,
+    inclination: 0.00005 * DEG, raan: -11.261 * DEG,
+    argPeriapsis: 102.937 * DEG, meanAnomalyAtEpoch: 357.529 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Mars: {
+    semiMajorAxis: 1.52368 * AU, eccentricity: 0.09341,
+    inclination: 1.8497 * DEG, raan: 49.558 * DEG,
+    argPeriapsis: 286.502 * DEG, meanAnomalyAtEpoch: 19.373 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Jupiter: {
+    semiMajorAxis: 5.20260 * AU, eccentricity: 0.04839,
+    inclination: 1.3033 * DEG, raan: 100.464 * DEG,
+    argPeriapsis: 273.867 * DEG, meanAnomalyAtEpoch: 20.020 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Saturn: {
+    semiMajorAxis: 9.55491 * AU, eccentricity: 0.05415,
+    inclination: 2.4889 * DEG, raan: 113.666 * DEG,
+    argPeriapsis: 339.392 * DEG, meanAnomalyAtEpoch: 317.021 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Uranus: {
+    semiMajorAxis: 19.2184 * AU, eccentricity: 0.04717,
+    inclination: 0.7732 * DEG, raan: 74.006 * DEG,
+    argPeriapsis: 96.999 * DEG, meanAnomalyAtEpoch: 142.239 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Neptune: {
+    semiMajorAxis: 30.1104 * AU, eccentricity: 0.00859,
+    inclination: 1.7700 * DEG, raan: 131.784 * DEG,
+    argPeriapsis: 276.336 * DEG, meanAnomalyAtEpoch: 256.228 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Pluto: {
+    semiMajorAxis: 39.4821 * AU, eccentricity: 0.24881,
+    inclination: 17.1417 * DEG, raan: 110.299 * DEG,
+    argPeriapsis: 113.834 * DEG, meanAnomalyAtEpoch: 14.533 * DEG,
+    mu: SUN_MU, center: 'Sun',
+  },
+  Moon: {
+    semiMajorAxis: 384400, eccentricity: 0.0549,
+    inclination: 5.145 * DEG, raan: 125.08 * DEG,
+    argPeriapsis: 318.15 * DEG, meanAnomalyAtEpoch: 135.27 * DEG,
+    mu: 398600.4418, center: 'Earth',
+  },
+};
+
+/**
+ * IAU 2009 / WGCCRE rotational parameters for major bodies — pole RA/Dec at
+ * J2000 in EquatorJ2000, prime meridian angle W0 at J2000, and sidereal
+ * period in seconds. Used as a fallback when SPICE isn't available, so
+ * `rotationModel: { type: 'Builtin' }` still produces a working analytical
+ * body-fixed → inertial rotation in SPICE-free demos. SPICE (when loaded)
+ * supplies the same nominal model plus libration / nutation / precession
+ * corrections; this table is the constant-rate baseline that's good enough
+ * for surface viz on multi-day timescales.
+ *
+ * Sources: NASA TRS WGCCRE 2009 report. Sidereal periods from JPL
+ * planetary ephemerides documentation.
+ */
+const BUILTIN_IAU_ROTATIONS: Record<string, { poleRaDeg: number; poleDecDeg: number; W0Deg: number; periodSec: number }> = {
+  MERCURY: { poleRaDeg: 281.0097, poleDecDeg:  61.4143, W0Deg: 329.5469, periodSec: 5067031.68 },     // 58.6462 d sidereal
+  VENUS:   { poleRaDeg: 272.76,   poleDecDeg:  67.16,   W0Deg: 160.20,   periodSec: -20996817.6 },    // -243.0185 d (retrograde)
+  EARTH:   { poleRaDeg:   0.00,   poleDecDeg:  90.00,   W0Deg: 190.147,  periodSec: 86164.0905 },     // 23h56m04.0905s
+  MOON:    { poleRaDeg: 269.9949, poleDecDeg:  66.5392, W0Deg:  38.3213, periodSec: 2360584.685 },    // 27.32166 d synchronous
+  MARS:    { poleRaDeg: 317.68143,poleDecDeg:  52.88650,W0Deg: 176.630,  periodSec: 88642.6632 },     // 24h37m22.6632s
+  JUPITER: { poleRaDeg: 268.056595,poleDecDeg: 64.495303,W0Deg:284.95,   periodSec: 35729.856 },      // 9h55m29.856s (System III)
+  SATURN:  { poleRaDeg:  40.589,  poleDecDeg:  83.537,  W0Deg:  38.90,   periodSec: 38362.4 },        // 10h39m22.4s (System III)
+  URANUS:  { poleRaDeg: 257.311,  poleDecDeg: -15.175,  W0Deg: 203.81,   periodSec: -62063.712 },     // -17h14m23.712s (retrograde)
+  NEPTUNE: { poleRaDeg: 299.36,   poleDecDeg:  43.46,   W0Deg: 253.18,   periodSec: 57996 },          // 16h6m36s (System II)
+  SUN:     { poleRaDeg: 286.13,   poleDecDeg:  63.87,   W0Deg:  84.176,  periodSec: 2192832 },        // ~25.38 d (sidereal at equator)
+};
+
+/** Context passed to custom trajectory factories. */
+export interface TrajectoryFactoryContext {
+  readonly spice?: SpiceInstance;
+  readonly item: CatalogItem;
+  readonly spec: TrajectorySpec;
+  resolveFile?(source: string): string | undefined;
+  resolveFileBinary?(source: string): ArrayBuffer | undefined;
+}
+
+/** Context passed to custom rotation factories. */
+export interface RotationFactoryContext {
+  readonly spice?: SpiceInstance;
+  readonly item: CatalogItem;
+  readonly spec: RotationModelSpec;
+  readonly trajectory?: Trajectory;
+}
+
+export type TrajectoryFactory = (ctx: TrajectoryFactoryContext) => Trajectory | undefined;
+export type RotationFactory = (ctx: RotationFactoryContext) => RotationModel | undefined;
+
+export interface CatalogLoaderOptions {
+  spice?: SpiceInstance;
+  /** Resolve trajectory data files (e.g. .xyzv). Return file text content or undefined if unavailable. */
+  resolveFile?: (source: string) => string | undefined;
+  /** Resolve binary data files (e.g. .cheb). Return raw bytes or undefined if unavailable. */
+  resolveFileBinary?: (source: string) => ArrayBuffer | undefined;
+  /** Custom trajectory factories keyed by type string. Checked before built-in types. */
+  trajectoryFactories?: Record<string, TrajectoryFactory>;
+  /** Custom rotation factories keyed by type string. Checked before built-in types. */
+  rotationFactories?: Record<string, RotationFactory>;
+}
+
+export class CatalogLoader {
+  private readonly spice?: SpiceInstance;
+  private readonly resolveFile?: (source: string) => string | undefined;
+  private readonly resolveFileBinary?: (source: string) => ArrayBuffer | undefined;
+  private readonly trajectoryFactories?: Record<string, TrajectoryFactory>;
+  private readonly rotationFactories?: Record<string, RotationFactory>;
+  /** Epoch (ET) used to probe whether SPICE kernels have coverage. Set from catalog's defaultTime. */
+  private probeEpoch = 0;
+
+  constructor(spiceOrOptions?: SpiceInstance | CatalogLoaderOptions) {
+    if (!spiceOrOptions) return;
+    // Distinguish SpiceInstance (has furnish method) from options object
+    if (typeof (spiceOrOptions as SpiceInstance).furnish === 'function') {
+      this.spice = spiceOrOptions as SpiceInstance;
+    } else {
+      const opts = spiceOrOptions as CatalogLoaderOptions;
+      this.spice = opts.spice;
+      this.resolveFile = opts.resolveFile;
+      this.resolveFileBinary = opts.resolveFileBinary;
+      this.trajectoryFactories = opts.trajectoryFactories;
+      this.rotationFactories = opts.rotationFactories;
+    }
+  }
+
+  load(json: CatalogJson): LoadedCatalog {
+    // If catalog specifies a defaultTime, use it as the probe epoch for SPICE coverage checks.
+    // This ensures Builtin bodies use SPICE data when the loaded kernels cover the mission epoch
+    // (e.g. a Cassini SCPSE kernel covering 2004 would fail the default J2000 probe at ET=0).
+    if (json.defaultTime && this.spice) {
+      try {
+        this.probeEpoch = this.spice.str2et(json.defaultTime);
+      } catch { /* keep default 0 */ }
+    }
+
+    const bodies: Body[] = [];
+    const viewpoints: ViewpointDefinition[] = [];
+
+    // Bulk SPK import — runs BEFORE explicit items so override-by-name still works
+    // (a later loadItem with the same name will replace the auto-generated body).
+    if (json.spkImport && this.spice) {
+      for (const spec of json.spkImport) {
+        try {
+          this.evaluateSpkImport(spec, bodies);
+        } catch (err) {
+          console.warn(`[Cosmolabe] spkImport failed for ${spec.kernel}:`, err);
+        }
+      }
+    }
+
+    if (json.items) {
+      for (const item of json.items) {
+        if (item.type === 'Viewpoint') {
+          viewpoints.push(this.parseViewpoint(item));
+        } else {
+          this.loadItem(item, bodies, undefined);
+        }
+      }
+    }
+
+    const kernels = collectKernelRefs(json);
+    return {
+      bodies,
+      viewpoints,
+      name: json.name,
+      version: json.version,
+      require: json.require,
+      spiceKernels: kernels.length > 0 ? kernels : undefined,
+      defaultViewpoint: json.defaultViewpoint,
+    };
+  }
+
+  private evaluateSpkImport(spec: SpkImportSpec, bodies: Body[]): void {
+    if (!this.spice) return;
+    const ids = this.spice.spkobj(spec.kernel);
+    if (ids.length === 0) {
+      console.warn(`[Cosmolabe] spkImport: ${spec.kernel} returned no NAIF IDs (kernel furnished?)`);
+      return;
+    }
+
+    const [lo, hi] = spec.naifIdRange ?? [-Infinity, Infinity];
+    const centerStr = typeof spec.center === 'number' ? String(spec.center) : spec.center;
+
+    for (const naifId of ids) {
+      if (naifId < lo || naifId > hi) continue;
+
+      // Resolve a human-readable name via SPICE if available, else fall back to numeric.
+      let resolvedName: string;
+      try {
+        const n = this.spice.bodc2n(naifId);
+        resolvedName = n ?? `Body ${naifId}`;
+      } catch {
+        resolvedName = `Body ${naifId}`;
+      }
+
+      const finalName = spec.nameTemplate
+        ? spec.nameTemplate.replace('{naifId}', String(naifId)).replace('{name}', resolvedName)
+        : resolvedName;
+
+      // Build a synthetic CatalogItem from defaults + per-import fields, then loadItem
+      // it through the normal pipeline so trajectories/rotation/etc. are uniform.
+      const item: CatalogItem = {
+        ...(spec.defaults ?? {}),
+        name: finalName,
+        naifId,
+        center: centerStr,
+        trajectory: spec.defaults?.trajectory ?? {
+          type: 'Spice',
+          target: String(naifId),
+          center: centerStr,
+        },
+      };
+
+      this.loadItem(item, bodies, undefined);
+    }
+  }
+
+  private parseViewpoint(item: CatalogItem): ViewpointDefinition {
+    const vp: ViewpointDefinition = { name: item.name };
+    vp.center = item.center;
+    // Parse viewpoint-specific fields from the generic CatalogItem
+    const raw = item as unknown as Record<string, unknown>;
+    if (raw.frame) vp.frame = String(raw.frame);
+    if (raw.distance != null) vp.distance = parseFloat(String(raw.distance));
+    if (raw.longitude != null) vp.longitude = parseFloat(String(raw.longitude));
+    if (raw.latitude != null) vp.latitude = parseFloat(String(raw.latitude));
+    if (Array.isArray(raw.eye)) vp.eye = raw.eye.map(Number) as [number, number, number];
+    if (Array.isArray(raw.target)) vp.target = raw.target.map(Number) as [number, number, number];
+    if (Array.isArray(raw.up)) vp.up = raw.up.map(Number) as [number, number, number];
+    if (raw.fov != null) vp.fov = parseFloat(String(raw.fov));
+    return vp;
+  }
+
+  private loadItem(item: CatalogItem, bodies: Body[], parentName: string | undefined): void {
+    if (item.type === 'Visualizer' || item.type === 'FeatureLabels') {
+      return;
+    }
+
+    // ParticleSystem items without a trajectory get a FixedPoint at origin
+    // (they're decorative — comet tails, volcanic plumes — positioned relative to their parent).
+    // Other items without trajectory/arcs are kept (e.g. Rings).
+
+    const trajectory = this.buildItemTrajectory(item);
+    const parentBody = parentName ? bodies.find(b => b.name === parentName) : (item.center ? bodies.find(b => b.name === item.center) : undefined);
+    const rotation = this.buildRotationModel(item, trajectory, parentBody);
+    const radii = this.extractRadii(item);
+
+    const trajectoryPlot = this.parseTrajectoryPlot(item.trajectoryPlot);
+
+    // TLE trajectories output in TEME (≈equatorial), not ecliptic.
+    // FixedSpherical takes lat/lon which is intrinsically body-fixed (rotates with parent).
+    // Catalog may also specify trajectoryFrame explicitly.
+    let trajectoryFrame: 'ecliptic' | 'equatorial' | 'body-fixed' | undefined;
+    if (item.trajectoryFrame === 'J2000' || item.trajectory?.type === 'TLE') {
+      trajectoryFrame = 'equatorial';
+    } else if (item.trajectoryFrame === 'BodyFixed' || item.trajectory?.type === 'FixedSpherical' || item.trajectory?.type === 'Waypoints') {
+      trajectoryFrame = 'body-fixed';
+    }
+
+    const body = new Body({
+      name: item.name,
+      naifId: item.naifId,
+      trajectory,
+      rotation,
+      parentName: parentName ?? item.center,
+      radii,
+      mass: typeof item.mass === 'number' ? item.mass : this.parseMass(item.mass),
+      classification: item.class,
+      labelColor: item.label?.color ? this.parseColor(item.label.color) : undefined,
+      labelVisible: item.label?.visible !== false,
+      geometryType: item.geometry?.type,
+      geometryData: item.geometry ? { ...item.geometry } : undefined,
+      trajectoryPlot,
+      trajectoryFrame,
+    });
+
+    bodies.push(body);
+
+    if (item.items) {
+      for (const child of item.items) {
+        this.loadItem(child, bodies, item.name);
+      }
+    }
+  }
+
+  private buildItemTrajectory(item: CatalogItem): Trajectory {
+    // Top-level arcs (Cassini pattern: multiple mission phases at item level)
+    if (item.arcs && item.arcs.length > 0) {
+      return this.buildArcsTrajectory(item, item.arcs);
+    }
+
+    return this.buildTrajectory(item.trajectory, item);
+  }
+
+  private buildArcsTrajectory(item: CatalogItem, arcs: ArcSpec[]): Trajectory {
+    // Always wrap in CompositeTrajectory so centerName is preserved for absolutePositionOf.
+    // Even single-arc items (e.g. MSL Cruise Stage with center="MSL") need this.
+    const compositeArcs = arcs.map((arc, i) => {
+      const startTime = arc.startTime != null
+        ? this.parseEpochValue(arc.startTime)
+        : (item.startTime ? this.parseEpochValue(item.startTime) : 0);
+      const endTime = arc.endTime != null
+        ? this.parseEpochValue(arc.endTime)
+        : (i < arcs.length - 1 && arcs[i + 1].startTime != null
+          ? this.parseEpochValue(arcs[i + 1].startTime!)
+          : startTime + 365.25 * 86400);
+
+      return {
+        trajectory: this.buildTrajectory(arc.trajectory, {
+          ...item,
+          center: arc.center ?? item.center,
+          trajectoryFrame: arc.trajectoryFrame ?? item.trajectoryFrame,
+        }),
+        startTime,
+        endTime,
+        centerName: arc.center ?? item.center,
+        showLine: arc.showLine,
+        numKeySamples: arc.numKeySamples,
+      };
+    });
+
+    return new CompositeTrajectory(compositeArcs);
+  }
+
+  private buildTrajectory(spec: TrajectorySpec | undefined, item: CatalogItem): Trajectory {
+    if (!spec) {
+      if (this.spice) {
+        return new SpiceTrajectory(this.spice, item.name, item.center ?? 'SUN', item.trajectoryFrame ?? 'ECLIPJ2000');
+      }
+      return new FixedPointTrajectory([0, 0, 0]);
+    }
+
+    // Check custom factories before built-in types (allows overriding built-ins)
+    const customFactory = this.trajectoryFactories?.[spec.type];
+    if (customFactory) {
+      const result = customFactory({
+        spice: this.spice,
+        item,
+        spec,
+        resolveFile: this.resolveFile,
+        resolveFileBinary: this.resolveFileBinary,
+      });
+      if (result) return result;
+    }
+
+    const distScale = DISTANCE_SCALE[spec.distanceUnits ?? 'km'] ?? 1;
+
+    switch (spec.type) {
+      case 'FixedPoint':
+        return new FixedPointTrajectory(
+          spec.position ? [spec.position[0] * distScale, spec.position[1] * distScale, spec.position[2] * distScale] : [0, 0, 0]
+        );
+
+      case 'Keplerian': {
+        const sma = parseValueWithUnit(spec.semiMajorAxis, 0) * distScale;
+        const argPeri = spec.argOfPeriapsis ?? spec.argumentOfPeriapsis ?? 0;
+        return new KeplerianTrajectory({
+          semiMajorAxis: sma,
+          eccentricity: spec.eccentricity ?? 0,
+          inclination: (spec.inclination ?? 0) * Math.PI / 180,
+          raan: (spec.ascendingNode ?? 0) * Math.PI / 180,
+          argPeriapsis: argPeri * Math.PI / 180,
+          meanAnomalyAtEpoch: (spec.meanAnomaly ?? 0) * Math.PI / 180,
+          epoch: spec.epoch ? this.parseEpochValue(spec.epoch) : 0,
+          mu: BODY_GM[item.center ?? 'Sun'] ?? 0,
+        });
+      }
+
+      case 'Builtin': {
+        const bodyName = spec.name ?? item.name;
+        const info = BUILTIN_BODIES[bodyName];
+        if (this.spice) {
+          const target = info?.target ?? bodyName;
+          const center = item.center ?? info?.center ?? 'SUN';
+          const frame = item.trajectoryFrame ?? 'ECLIPJ2000';
+          const spiceTraj = new SpiceTrajectory(this.spice, target, center, frame);
+          // Probe: check if SPICE actually has data for this body at the catalog's epoch
+          try {
+            spiceTraj.stateAt(this.probeEpoch);
+            if (!spiceTraj.failed) return spiceTraj;
+          } catch { /* fall through to analytical/Keplerian */ }
+        }
+        // Fallback: analytical theories for moons, Keplerian for planets
+        const fallbackReason = this.spice ? 'no SPICE coverage' : 'no SPICE instance';
+        const analytical = createAnalyticalTrajectoryByName(bodyName);
+        if (analytical) {
+          console.log(`[Cosmolabe] ${bodyName}: using analytical theory (${fallbackReason})`);
+          return analytical;
+        }
+        const kep = BUILTIN_KEPLERIAN[bodyName];
+        if (kep) {
+          console.log(`[Cosmolabe] ${bodyName}: using Keplerian fallback (${fallbackReason})`);
+          return new KeplerianTrajectory({
+            semiMajorAxis: kep.semiMajorAxis,
+            eccentricity: kep.eccentricity,
+            inclination: kep.inclination,
+            raan: kep.raan,
+            argPeriapsis: kep.argPeriapsis,
+            meanAnomalyAtEpoch: kep.meanAnomalyAtEpoch,
+            epoch: 0, // J2000
+            mu: kep.mu,
+          });
+        }
+        return new FixedPointTrajectory([0, 0, 0]);
+      }
+
+      case 'Spice':
+        if (!this.spice) throw new Error(`Spice trajectory for ${item.name} requires SPICE instance`);
+        return new SpiceTrajectory(
+          this.spice,
+          spec.target ?? item.name,
+          spec.center ?? item.center ?? 'SUN',
+          item.trajectoryFrame ?? 'ECLIPJ2000',
+        );
+
+      case 'InterpolatedStates': {
+        // Inline `samples` wins over `source` so producers that already have
+        // state records in memory (e.g. an OEM parser, a live FDS feed) can
+        // skip the file round-trip entirely. Falls through to the `source`
+        // path if `samples` is absent or too small to interpolate.
+        if (Array.isArray(spec.samples) && spec.samples.length >= 2) {
+          return new InterpolatedStatesTrajectory(spec.samples);
+        }
+        if (spec.source && this.resolveFile) {
+          const text = this.resolveFile(spec.source);
+          if (text) {
+            const records = parseXyzv(text);
+            if (records.length >= 2) {
+              return new InterpolatedStatesTrajectory(records);
+            }
+          }
+        }
+        return new FixedPointTrajectory([0, 0, 0]);
+      }
+
+      case 'TLE':
+        if (spec.line1 && spec.line2) {
+          return new TLETrajectory(
+            { line1: spec.line1, line2: spec.line2 },
+            spec.windowDays !== undefined ? { windowDays: spec.windowDays } : undefined,
+          );
+        }
+        return new FixedPointTrajectory([0, 0, 0]);
+
+      case 'Composite': {
+        const arcs = spec.arcs ?? spec.segments;
+        if (arcs && arcs.length > 0) {
+          return this.buildArcsTrajectory(item, arcs);
+        }
+        return new FixedPointTrajectory([0, 0, 0]);
+      }
+
+      case 'ChebyshevPoly': {
+        if (spec.source && this.resolveFileBinary) {
+          const data = this.resolveFileBinary(spec.source);
+          if (data) {
+            const traj = ChebyshevPolyTrajectory.fromBuffer(data);
+            if (traj) {
+              if (spec.period) traj.setPeriod(parseValueWithUnit(spec.period, 86400));
+              return traj;
+            }
+          }
+        }
+        return new FixedPointTrajectory([0, 0, 0]);
+      }
+
+      case 'LinearCombination': {
+        if (spec.trajectories && spec.weights && spec.trajectories.length >= 2 && spec.weights.length >= 2) {
+          const t0 = this.buildTrajectory(spec.trajectories[0], item);
+          const t1 = this.buildTrajectory(spec.trajectories[1], item);
+          if (!(t0 instanceof FixedPointTrajectory) && !(t1 instanceof FixedPointTrajectory)) {
+            const lc = new LinearCombinationTrajectory(t0, spec.weights[0], t1, spec.weights[1]);
+            if (spec.period) lc.setPeriod(parseValueWithUnit(spec.period, 86400));
+            return lc;
+          }
+        }
+        return new FixedPointTrajectory([0, 0, 0]);
+      }
+
+      case 'TASS17':
+      case 'L1':
+      case 'Gust86':
+      case 'MarsSat': {
+        const satName = spec.satellite ?? spec.name ?? item.name;
+        const traj = createAnalyticalTrajectory(spec.type, satName);
+        if (traj) return traj;
+        return new FixedPointTrajectory([0, 0, 0]);
+      }
+
+      case 'FixedSpherical': {
+        const latRad = (spec.latitude ?? 0) * Math.PI / 180;
+        const lonRad = (spec.longitude ?? 0) * Math.PI / 180;
+        const r = (spec.radius ?? 0) * distScale;
+        return new FixedPointTrajectory([
+          r * Math.cos(latRad) * Math.cos(lonRad),
+          r * Math.cos(latRad) * Math.sin(lonRad),
+          r * Math.sin(latRad),
+        ]);
+      }
+
+      case 'Waypoints': {
+        const refRadius = parseValueWithUnit(spec.referenceRadius, 0);
+        if (!Array.isArray(spec.waypoints) || spec.waypoints.length < 2) {
+          return new FixedPointTrajectory([0, 0, 0]);
+        }
+        const epochEt = spec.epoch != null ? this.parseEpochValue(spec.epoch) : 0;
+        const waypoints: Waypoint[] = [];
+        for (const w of spec.waypoints) {
+          let et: number;
+          if (typeof w.t === 'string') {
+            et = this.parseEpochValue(w.t);
+          } else if (typeof w.t === 'number') {
+            et = epochEt + w.t;
+          } else {
+            continue;
+          }
+          waypoints.push({
+            et,
+            latDeg: w.lat ?? w.latitude ?? 0,
+            lonDeg: w.lon ?? w.longitude ?? 0,
+            altKm: parseValueWithUnit(w.alt ?? w.altitude, 0),
+          });
+        }
+        if (waypoints.length < 2) return new FixedPointTrajectory([0, 0, 0]);
+        return new WaypointTrajectory(waypoints, refRadius, { useAbsoluteAlt: spec.useAbsoluteAlt === true });
+      }
+
+      default:
+        return new FixedPointTrajectory([0, 0, 0]);
+    }
+  }
+
+  private buildRotationModel(item: CatalogItem, trajectory?: Trajectory, parentBody?: Body): RotationModel | undefined {
+    const spec = item.rotationModel;
+    if (!spec) return undefined;
+
+    // Check custom factories before built-in types
+    const customFactory = this.rotationFactories?.[spec.type];
+    if (customFactory) {
+      const result = customFactory({ spice: this.spice, item, spec, trajectory });
+      if (result) return result;
+    }
+
+    switch (spec.type) {
+      case 'Uniform': {
+        // Period in Cosmographia catalogs is in days by default, but may have unit suffix (e.g. "24.6h")
+        const periodRaw = spec.period ?? 1;
+        // Bare number = days. String with unit suffix (e.g. "10.656h") = parsed.
+        // String without unit (e.g. "25.38") = days (Cosmographia convention).
+        const periodSec = typeof periodRaw === 'string'
+          ? (/[a-zA-Z]/.test(periodRaw) ? parseValueWithUnit(periodRaw, 86400) : parseFloat(periodRaw) * 86400)
+          : periodRaw * 86400;
+
+        // Pole direction: ascension/declination are direct pole coords;
+        // inclination/ascendingNode use orbital element convention and need conversion.
+        // Cosmographia's inclination = tilt of equator from reference plane (0° = pole at ref north).
+        let poleRaDeg: number;
+        let poleDecDeg: number;
+        if (spec.ascension != null || spec.declination != null) {
+          poleRaDeg = spec.ascension ?? 0;
+          poleDecDeg = spec.declination ?? 90;
+        } else {
+          const incDeg = spec.inclination ?? 0;
+          const nodeDeg = spec.ascendingNode ?? 0;
+          poleDecDeg = 90 - incDeg;
+          poleRaDeg = nodeDeg - 90;
+        }
+
+        // UniformRotation conventionally interprets pole RA/Dec in
+        // J2000-equatorial (the IAU 2009 pole-table frame). Honor an
+        // explicit catalog frame override; otherwise default the rotation's
+        // own 'EquatorJ2000'.
+        return new UniformRotation(
+          periodSec,
+          spec.epoch ? this.parseEpochValue(spec.epoch) : 0,
+          (spec.meridianAngle ?? 0) * Math.PI / 180,
+          poleRaDeg * Math.PI / 180,
+          poleDecDeg * Math.PI / 180,
+          spec.inertialFrame ?? 'EquatorJ2000',
+        );
+      }
+
+      case 'Builtin': {
+        const frameName = spec.name ?? `IAU_${item.name.toUpperCase()}`;
+        // "IAU Moon" → "IAU_MOON"
+        const normalized = frameName.replace(/\s+/g, '_').toUpperCase();
+        // Use the trajectory's inertial frame so the rotation matches body positions.
+        // Without this, a body with trajectoryFrame=J2000 but rotation in ECLIPJ2000
+        // creates a ~23.4° offset (ecliptic obliquity).
+        const inertialFrame = item.trajectoryFrame ?? 'ECLIPJ2000';
+        if (this.spice) {
+          return new SpiceRotation(this.spice, normalized, inertialFrame);
+        }
+        // Fallback: hardcoded IAU 2009 pole + spin for major bodies, when no
+        // SPICE is loaded. This lets SPICE-free demos still get correct
+        // body-fixed rotation. Without this, a body-fixed child (lander/heli)
+        // gets placed in raw body-fixed coords because Universe.absolutePositionOf
+        // can't find a parent rotation to compose. Returns undefined for bodies
+        // not in the table — caller already handles undefined.
+        const builtin = BUILTIN_IAU_ROTATIONS[item.name.toUpperCase()];
+        if (builtin) {
+          // IAU pole tables are J2000-equatorial (EquatorJ2000), regardless of
+          // the catalog's trajectory frame. UniformRotation handles the
+          // sourceFrame; BodyMesh + Universe.absolutePositionOf compose the
+          // obliquity rotation as needed when sourceFrame != ECLIPJ2000.
+          console.log(`[Cosmolabe] ${item.name}: using analytical IAU rotation (no SPICE)`);
+          return new UniformRotation(
+            builtin.periodSec,
+            0,                                  // epoch et=0 (J2000)
+            builtin.W0Deg * Math.PI / 180,      // prime meridian angle at J2000
+            builtin.poleRaDeg * Math.PI / 180,
+            builtin.poleDecDeg * Math.PI / 180,
+            'EquatorJ2000',
+          );
+        }
+        return undefined;
+      }
+
+      case 'Spice':
+        if (!this.spice) return undefined;
+        return new SpiceRotation(
+          this.spice,
+          spec.bodyFrame ?? `IAU_${item.name.toUpperCase()}`,
+          spec.inertialFrame ?? item.trajectoryFrame ?? 'ECLIPJ2000',
+        );
+
+      case 'Nadir': {
+        const target = spec.target ?? item.name;
+        const inertialFrame = spec.inertialFrame ?? item.trajectoryFrame ?? 'ECLIPJ2000';
+        // Bodies with a non-SPICE trajectory (TLE, Keplerian, FixedPoint) have no
+        // SPICE ephemeris — when the catalog asks for the body's own nadir, use
+        // its trajectory directly. SpiceTrajectory bodies still get NadirRotation.
+        if (
+          trajectory
+          && target === item.name
+          && !(trajectory instanceof SpiceTrajectory)
+        ) {
+          return new TrajectoryNadirRotation(trajectory, inertialFrame);
+        }
+        if (this.spice) {
+          return new NadirRotation(
+            this.spice,
+            target,
+            spec.center ?? item.center ?? 'EARTH',
+            inertialFrame,
+          );
+        }
+        if (trajectory) {
+          return new TrajectoryNadirRotation(trajectory, inertialFrame);
+        }
+        return undefined;
+      }
+
+      case 'SurfaceUp': {
+        // Body's +X axis points along the local up (radially outward from
+        // parent center) at any moment; co-rotates with the parent. Used for
+        // aircraft / landers whose model is authored with vertical = local +X.
+        // sourceFrame is derived from the parent's rotation (see
+        // SurfaceUpRotation) so we don't pass it here.
+        if (trajectory && parentBody) {
+          return new SurfaceUpRotation(trajectory, parentBody);
+        }
+        return undefined;
+      }
+
+      case 'Fixed': {
+        const sourceFrame = spec.inertialFrame ?? 'EquatorJ2000';
+        if (spec.quaternion && spec.quaternion.length >= 4) {
+          return new FixedRotation(
+            [spec.quaternion[0], spec.quaternion[1], spec.quaternion[2], spec.quaternion[3]],
+            sourceFrame,
+          );
+        }
+        // Pole angles form: inclination/ascendingNode/meridianAngle (degrees)
+        return FixedRotation.fromPoleAngles(
+          (spec.inclination ?? 0) * Math.PI / 180,
+          (spec.ascendingNode ?? 0) * Math.PI / 180,
+          (spec.meridianAngle ?? 0) * Math.PI / 180,
+          sourceFrame,
+        );
+      }
+
+      case 'FixedEuler': {
+        if (spec.sequence && spec.angles) {
+          return new FixedEulerRotation(
+            spec.sequence,
+            spec.angles,
+            spec.inertialFrame ?? 'EquatorJ2000',
+          );
+        }
+        return undefined;
+      }
+
+      case 'Interpolated': {
+        // sourceFrame: catalog declaration wins, then `item.trajectoryFrame`
+        // for catalogs that pre-rotated samples into the body's trajectory
+        // frame, then cosmolabe's native default. Cosmographia `.q` files
+        // don't pin a frame; producers writing AEM-derived data should pass
+        // an explicit `inertialFrame` so the catalog boundary is self-
+        // describing.
+        const sourceFrame = spec.inertialFrame ?? item.trajectoryFrame ?? 'EclipticJ2000';
+        // Prefer in-memory records when the caller pre-parsed the attitude
+        // data (e.g. from a server-side CCSDS AEM parse). Falls through to
+        // the `source` path for Cosmographia .q files routed via
+        // `resolveFile`.
+        if (spec.records && spec.records.length >= 2) {
+          return new InterpolatedRotation(
+            spec.records.map((r) => ({ et: r.et, q: r.q })),
+            sourceFrame,
+          );
+        }
+        if (spec.source && this.resolveFile) {
+          const text = this.resolveFile(spec.source);
+          if (text) {
+            const records = parseQFile(text);
+            if (records.length >= 2) {
+              return new InterpolatedRotation(records, sourceFrame);
+            }
+          }
+        }
+        return undefined;
+      }
+
+      default:
+        return undefined;
+    }
+  }
+
+  private extractRadii(item: CatalogItem): Vec3 | undefined {
+    // From explicit triaxial radii array in the catalog (highest priority)
+    if (item.radii && item.radii.length >= 3) {
+      return [item.radii[0], item.radii[1], item.radii[2]];
+    }
+    if (item.geometry?.radii && item.geometry.radii.length >= 3) {
+      return [item.geometry.radii[0], item.geometry.radii[1], item.geometry.radii[2]];
+    }
+
+    // From SPICE PCK kernel — try to get triaxial radii.
+    // Use bodn2c first (fast name→ID lookup) to avoid expensive bodvrd failures.
+    if (this.spice) {
+      let naifId = item.naifId ?? null;
+      if (naifId == null && item.name) {
+        naifId = this.spice.bodn2c(item.name.toUpperCase());
+      }
+      if (naifId != null && naifId > 0 && naifId < 1000000) {
+        try {
+          const r = this.spice.bodvcd(naifId, 'RADII');
+          if (r && r.length >= 3 && r[0] > 0) return [r[0], r[1], r[2]];
+        } catch { /* not in PCK */ }
+      }
+    }
+
+    // Fallback: scalar radius from catalog → sphere
+    if (item.radii) {
+      if (item.radii.length === 1) return [item.radii[0], item.radii[0], item.radii[0]];
+      if (item.radii.length >= 3) return [item.radii[0], item.radii[1], item.radii[2]];
+    }
+    if (item.geometry?.radii) {
+      const r = item.geometry.radii;
+      if (r.length === 1) return [r[0], r[0], r[0]];
+      if (r.length >= 3) return [r[0], r[1], r[2]];
+    }
+    if (item.geometry?.radius != null) {
+      const r = item.geometry.radius;
+      return [r, r, r];
+    }
+    return undefined;
+  }
+
+  parseEpochValue(timeValue: string | number): number {
+    if (typeof timeValue === 'number') {
+      // Numeric epochs come in two conventions in the wild:
+      //   - Julian Date (Cosmographia / classical astronomy) — values
+      //     around 2.45e6 for the modern era; convert to ET via
+      //     (jd − 2451545.0) × 86400.
+      //   - Ephemeris Time seconds past J2000 (cosmolabe-native, SPICE
+      //     convention) — values around 1e9 for the modern era.
+      //
+      // The two number ranges don't overlap (JD ≲ 1e7 covers ~30000 BC
+      // to ~2025; ET ≳ 1e8 covers ~3 AD onward), so we dispatch on
+      // magnitude. Programmatically-built catalogs (e.g. is-timeline-three's
+      // OEM-to-composite-arc generator) that already work in ET seconds
+      // can pass them straight in instead of pre-converting to JD.
+      if (Math.abs(timeValue) >= 5e7) {
+        // ET seconds past J2000 — large positive (or negative for
+        // pre-J2000 epochs).
+        return timeValue;
+      }
+      return (timeValue - 2451545.0) * 86400;
+    }
+    return this.parseEpoch(timeValue);
+  }
+
+  private parseEpoch(timeStr: string): number {
+    if (this.spice) {
+      // SPICE str2et doesn't accept trailing "Z" — strip it
+      const spiceStr = timeStr.endsWith('Z') ? timeStr.slice(0, -1) : timeStr;
+      try { return this.spice.str2et(spiceStr); } catch { /* fall through */ }
+    }
+    const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
+    const ms = Date.parse(timeStr);
+    if (isNaN(ms)) return 0;
+    return (ms - J2000_MS) / 1000;
+  }
+
+  private parseColor(color: number[] | string): [number, number, number] {
+    if (Array.isArray(color)) {
+      return [color[0] ?? 1, color[1] ?? 1, color[2] ?? 1];
+    }
+    if (typeof color === 'string' && color.startsWith('#')) {
+      const hex = color.slice(1);
+      if (hex.length === 6) {
+        return [
+          parseInt(hex.slice(0, 2), 16) / 255,
+          parseInt(hex.slice(2, 4), 16) / 255,
+          parseInt(hex.slice(4, 6), 16) / 255,
+        ];
+      }
+    }
+    return [1, 1, 1];
+  }
+
+  private parseTrajectoryPlot(spec: TrajectoryPlotSpec | undefined): TrajectoryPlotConfig | undefined {
+    if (!spec) return undefined;
+    const config: TrajectoryPlotConfig = {};
+    if (spec.duration != null) config.duration = parseValueWithUnit(spec.duration, 0);
+    if (spec.lead != null) config.lead = parseValueWithUnit(spec.lead, 0);
+    if (spec.fade != null) config.fade = Math.max(0, Math.min(1, spec.fade));
+    if (spec.color != null) config.color = spec.color;
+    if (spec.opacity != null) config.opacity = Math.max(0, Math.min(1, spec.opacity));
+    if (spec.sampleCount != null) config.sampleCount = Math.max(100, Math.min(50000, spec.sampleCount));
+    if (spec.visible != null) {
+      config.visible = spec.visible === true || spec.visible === 'true';
+    }
+    return config;
+  }
+
+  private parseMass(mass: string | undefined): number | undefined {
+    if (!mass) return undefined;
+    const match = mass.match(/^([\d.eE+-]+)\s*(\w+)?$/);
+    if (!match) return undefined;
+    const value = parseFloat(match[1]);
+    const unit = match[2]?.toLowerCase();
+    switch (unit) {
+      case 'kg': return value;
+      case 'g': return value * 0.001;
+      case 'mearth': return value * 5.972e24;
+      default: return value;
+    }
+  }
+}
