@@ -5,6 +5,15 @@
 // set hash comes from the frames tier, and the first two engines wired end
 // to end as jobs. Engines emit authority 'exploratory' only (iron rule 4);
 // the host door lands with the first host data adapter, by ADR.
+//
+// Stability policy: this surface is schema v0 and additive only until the
+// packages restructure. New optional fields, new exported helpers, and new
+// engine adapters may land; renaming, removing, retyping, or changing the
+// semantics of anything exported here is a breaking change and requires an
+// M-0004 amendment first, not a refactor. The policy is mechanical, not
+// aspirational: api-surface.test.ts holds a committed snapshot of the public
+// shapes and the export list, and any drift fails typecheck or the test
+// suite, so a breaking change cannot land quietly.
 
 export type {
   AnalysisProduct,
@@ -28,4 +37,16 @@ export {
 } from './job.ts';
 export { accessJob, type AccessJobRequest } from './access-job.ts';
 export { coverageJob, type CoverageJobRequest } from './coverage-job.ts';
+export {
+  encodeAnalysisProduct,
+  decodeAnalysisProduct,
+  encodeF64,
+  decodeF64,
+  type EncodedF64,
+  type SerializedAnalysisProduct,
+  type SerializedGeoLayer,
+  type SerializedProduct,
+  type SerializedScalarField,
+  type SerializedTimeSeries,
+} from './serialization.ts';
 export { AsyncQueue } from './queue.ts';

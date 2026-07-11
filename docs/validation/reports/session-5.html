@@ -51,6 +51,25 @@ the existing app and SDK call paths (the bespoke coverage worker protocol,
 the SDK's inert AbortSignal) are not yet migrated onto JobHandle; that
 convergence is W3 and later work, recorded here so the three ad hoc patterns
 do not read as intended permanence.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge. The compute surface
+gained its stability policy, stated in the package doc block (schema v0,
+additive only until the packages restructure, breaking changes require an
+M-0004 amendment first) and enforced mechanically by an API-surface snapshot:
+api-surface.test.ts holds committed exact-type mirrors of every schema shape
+plus keyof pins on the protocol interfaces (drift fails pnpm typecheck) and a
+runtime pin of the export list (drift fails the suite). The field payload
+wire encoding is pinned: Float64Array in memory, f64le-base64 in serialized
+form with NaN surviving bit-exactly (the unresolved-cell marker), the JSON
+NaN-nulling hazard demonstrated by test since the CLI file format is a named
+consumer, and encode plus decode round-trip tests covering all four kinds
+including negative zero and NaN positions. And the carryover items above now
+have executioners in writing, in the brief's new carryover ledger read by the
+/gate duty: worker-substrate execution and cancellation hardening land with
+the W4 panel session, geometry and series emission land with the Session 6
+grammar demo whose goal now owns them in its Steps, and ad hoc invocation
+convergence lands at the packages restructure alongside the adapter.
+<code>pnpm verify</code> was re-run green after the amendments.</p>
 </div>
 
 <h2>Verified-by assertions</h2>
