@@ -57,10 +57,42 @@ one failure is <code>electron-dsk.spec.ts</code> refusing to run because the
 desktop build artifact does not exist locally (its own guard message says
 run <code>pnpm build:desktop</code> first); this is a missing local
 prerequisite, not a regression, and the web suite including both new specs
-is green. Sixth, the panel renders geometry and field in 2D (the
-ground-track map and a flat heatmap); the in-scene drapes remain the
-inventoried scene welds, and the render-binding interface remains their
-executioner.</p>
+is green. Sixth, panel v0 is scene-less by design: it renders geometry and field in
+2D (the ground-track map and a flat heatmap), so it evidences the grammar's
+portability into an embedded host but not the scene-first layout; the
+section 10 heuristics of M-0008 remain unevidenced pending the
+spine-embedded, scene-bearing panel, and the in-scene drapes remain the
+inventoried scene welds, with the render-binding interface the executioner
+for both. Seventh, rule 4's host-authority door has never been exercised:
+no host data adapter exists and every product to date is 'exploratory';
+Session 8's first host adapter is the named executioner and opens the door
+by ADR, as M-0004 reserved.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge, re-verified with
+<code>pnpm verify</code>. First, panel scoping made explicit everywhere it
+binds: this report and the M-0008 evidence addendum now state that panel v0
+is scene-less (2D canonical forms only) and that the section 10 scene-first
+heuristics stay unevidenced pending the scene-bearing panel; the ledger
+gains that spine-embedded panel as an entry with the render-binding
+interface work as executioner, and names the host-authority path as
+unexercised with Session 8's host adapter as its executioner. Second, the
+compute-mode ledger entries were sharpened: 'threads' lands when a
+workbench or device performance need demands shared memory and 'iframe'
+lands with the first host that cannot serve COOP and COEP, both throwing by
+design until then; and the brief now records that transfer-only v0 is by
+design the Companion baseline, so the device-truth pass tests the panel as
+it ships. Third, the Session 8 goal was rescoped to embed mechanics plus
+the first HostDataAdapter mapping MMGIS-shaped data to authority 'host'
+products (exercising rule 4's host door by ADR and the
+authoritative-plus-exploratory criterion), recording MMGIS's observed
+posture on the M-0010 isolation tree, explicitly not the 3D-in-MMGIS story,
+with the PlanDev-MMGIS sync a prerequisite only for work targeting MMGIS's
+own repository; and <code>docs/goals/SESSION-DEVICE-TRUTH.goal.md</code>
+is drafted now (Capacitor build, WKWebView SharedArrayBuffer and WebGPU
+probes, the 20 minute thermal scrub, OPFS budget behavior, the panel in
+'transfer' mode on device, results as the M-0007 addendum plus M-0001's
+deferred frame-time and memory legs) so preemption is executable the moment
+hardware is in hand.</p>
 </div>
 
 <h2>Verified-by assertions</h2>
@@ -330,8 +362,10 @@ executioner.</p>
   <td>Next goal drafted</td>
   <td class="pass">pass</td>
   <td><code>docs/goals/SESSION-8-MMGIS-EMBED.goal.md</code>: the host-panel
-  contract and the MMGIS embed behind a flag (the W4 item needing no
-  hardware), with the explicit rule that the device-truth session preempts
-  it the moment hardware is in hand.</td>
+  contract, the first host data adapter (rule 4's host door, by ADR), and
+  the MMGIS embed behind a flag (the W4 item needing no hardware), scoped
+  per the pre-merge amendments; and
+  <code>docs/goals/SESSION-DEVICE-TRUTH.goal.md</code>, drafted ahead of
+  need so the device session preempts the moment hardware is in hand.</td>
 </tr>
 </table>
