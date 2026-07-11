@@ -89,6 +89,8 @@ export function createSpiceWorkerPool(workers: Worker[]): SpiceWorkerPool {
       next().occult(targ1, shape1, frame1, targ2, shape2, frame2, abcorr, observer, et),
     spkposBatch: (target, etArray, frame, abcorr, observer) =>
       next().spkposBatch(target, etArray, frame, abcorr, observer),
+    spkezrBatch: (target, etArray, frame, abcorr, observer) =>
+      next().spkezrBatch(target, etArray, frame, abcorr, observer),
     getfov: (instId, room) => next().getfov(instId, room),
     bodvrd: (body, item) => next().bodvrd(body, item),
     bodvcd: (bodyId, item) => next().bodvcd(bodyId, item),

@@ -3,7 +3,7 @@
 // browser uses createSpiceWorkerClient (client.ts) to keep furnsh and geometry
 // off the main thread; both paths share these bindings.
 
-import CSpice from '@bessel/spice/wasm/cspice.mjs';
+import CSpice from 'cspice-wasm/wasm/cspice.mjs';
 import { SpiceBindings } from './bindings.ts';
 import type { AberrationCorrection, SpiceEngine } from './index.ts';
 
@@ -73,6 +73,9 @@ export async function createSpiceEngine(options?: SpiceEngineOptions): Promise<S
     },
     async spkposBatch(target, etArray, frame, abcorr: AberrationCorrection, observer) {
       return bindings.spkposBatch(target, etArray, frame, abcorr, observer);
+    },
+    async spkezrBatch(target, etArray, frame, abcorr: AberrationCorrection, observer) {
+      return bindings.spkezrBatch(target, etArray, frame, abcorr, observer);
     },
     async getfov(instId, room) {
       return bindings.getfov(instId, room);

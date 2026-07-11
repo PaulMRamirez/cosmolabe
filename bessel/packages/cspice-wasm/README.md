@@ -1,4 +1,4 @@
-# @bessel/spice
+# cspice-wasm
 
 A typed, promise-based API over CSPICE compiled to WebAssembly. It runs the SPICE
 toolkit either in-process or in a Web Worker so the renderer and geometry layers
@@ -44,7 +44,7 @@ so the engine never reads kernel files directly.
 
 ## Tests
 
-Tests live in `packages/spice/src/*.test.ts` (spice, batch, dsk, geometry, geodetic,
+Tests live in `packages/cspice-wasm/src/*.test.ts` (spice, batch, dsk, geometry, geodetic,
 occultation, propagation, eval-series, ck). The `ck.test.ts` round trip writes a known
 attitude profile to a CK Type 3 segment, furnshes it, and asserts both `ckgp` and
 `pxform(frame, J2000)` against the validated `q2m` quaternion convention. The acceptance

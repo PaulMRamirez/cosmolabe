@@ -78,6 +78,9 @@ importers:
       '@bessel/spice':
         specifier: workspace:*
         version: link:../../packages/spice
+      cspice-wasm:
+        specifier: workspace:*
+        version: link:../../packages/cspice-wasm
       three:
         specifier: ^0.171.0
         version: 0.171.0
@@ -197,6 +200,9 @@ importers:
       '@bessel/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      cspice-wasm:
+        specifier: workspace:*
+        version: link:../../packages/cspice-wasm
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -327,6 +333,8 @@ importers:
       '@bessel/timeline':
         specifier: workspace:*
         version: link:../timeline
+
+  packages/cspice-wasm: {}
 
   packages/events:
     dependencies:
@@ -485,9 +493,9 @@ importers:
 
   packages/spice:
     dependencies:
-      '@bessel/pal':
+      cspice-wasm:
         specifier: workspace:*
-        version: link:../pal
+        version: link:../cspice-wasm
 
   packages/state:
     devDependencies:

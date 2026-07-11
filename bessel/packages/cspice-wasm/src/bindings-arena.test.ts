@@ -5,7 +5,7 @@
 // instead of the real WASM build, so it isolates pointer lifetime from numerics.
 
 import { describe, it, expect } from 'vitest';
-import type { CSpiceModule, CValueType } from '@bessel/spice/wasm/cspice.mjs';
+import type { CSpiceModule, CValueType } from 'cspice-wasm/wasm/cspice.mjs';
 import { SpiceBindings } from './bindings.ts';
 
 interface MockModule extends CSpiceModule {
@@ -113,7 +113,7 @@ function makeMockModule(): MockModule {
   } as unknown as MockModule;
 }
 
-describe('@bessel/spice bindings arena (heap lifecycle)', () => {
+describe('cspice-wasm bindings arena (heap lifecycle)', () => {
   it('frees every allocation the constructor makes (no live pointers carried)', () => {
     const mod = makeMockModule();
     new SpiceBindings(mod);

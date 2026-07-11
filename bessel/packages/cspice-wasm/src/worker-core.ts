@@ -49,6 +49,8 @@ export async function dispatchSpice(engine: SpiceEngine, req: SpiceWorkerRequest
       return engine.spkpos(req.target, req.et, req.frame, req.abcorr, req.observer);
     case 'spkposBatch':
       return engine.spkposBatch(req.target, req.etArray, req.frame, req.abcorr, req.observer);
+    case 'spkezrBatch':
+      return engine.spkezrBatch(req.target, req.etArray, req.frame, req.abcorr, req.observer);
     case 'spkezr':
       return engine.spkezr(req.target, req.et, req.frame, req.abcorr, req.observer);
     case 'oscelt':

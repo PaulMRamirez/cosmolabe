@@ -1,18 +1,14 @@
 {
   "name": "@bessel/spice",
-  "description": "Typed, promise-based CSPICE-WASM engine for ephemeris, frames, and geometry events, in-process or in a Web Worker",
+  "description": "Facade over cspice-wasm, kept so bessel-heritage imports of @bessel/spice keep resolving after the Session 3 extraction (ADR M-0002). New code should depend on cspice-wasm (or the frames tier) directly.",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./worker": "./src/worker.ts",
-    "./worker-core": "./src/worker-core.ts",
-    "./wasm/cspice.mjs": "./wasm/cspice.mjs",
-    "./wasm/cspice.wasm": "./wasm/cspice.wasm"
+    ".": "./src/index.ts"
   },
   "types": "./src/index.ts",
   "dependencies": {
-    "@bessel/pal": "workspace:*"
+    "cspice-wasm": "workspace:*"
   }
 }

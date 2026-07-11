@@ -14,7 +14,7 @@ const fixture = (name: string) =>
 const CASSINI = '-82';
 const STEP = 120; // seconds; shorter than the shadow ingress/egress events
 
-describe('@bessel/spice gfoclt occultation vs occult', () => {
+describe('cspice-wasm gfoclt occultation vs occult', () => {
   let spice: SpiceEngine;
   let et0: number;
   let et1: number;

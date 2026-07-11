@@ -4,7 +4,7 @@
 // (their package "exports" point at .ts) into one ESM file targeting Node 22,
 // with the shebang preserved. The CSPICE-WASM Emscripten loader is the one piece
 // we must NOT inline: it resolves cspice.wasm relative to its own import.meta.url
-// at runtime. So we keep @bessel/spice/wasm/cspice.mjs external, rewrite the
+// at runtime. So we keep cspice-wasm/wasm/cspice.mjs external, rewrite the
 // import to a sibling ./cspice.mjs, and copy both cspice.mjs and cspice.wasm next
 // to dist/main.js. Node built-ins and third-party packages stay external and are
 // resolved from node_modules at runtime. Fails loudly on any build error.
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 const distDir = resolve(root, 'dist');
-const wasmDir = resolve(root, '../../packages/spice/wasm');
+const wasmDir = resolve(root, '../../packages/cspice-wasm/wasm');
 
 // Keep the Emscripten loader external and point it at a sibling file in dist so
 // its import.meta.url based wasm lookup resolves cspice.wasm next to main.js.

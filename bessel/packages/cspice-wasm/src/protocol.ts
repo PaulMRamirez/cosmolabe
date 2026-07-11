@@ -14,6 +14,7 @@ import type {
   Mat3,
   OsculatingElements,
   PositionResult,
+  StateBatchArrays,
   StateVector,
   SubPointResult,
   Vec3,
@@ -134,6 +135,15 @@ export type SpiceWorkerRequest =
       abcorr: AberrationCorrection;
       observer: string;
     }
+  | {
+      id: number;
+      method: 'spkezrBatch';
+      target: string;
+      etArray: Float64Array;
+      frame: string;
+      abcorr: AberrationCorrection;
+      observer: string;
+    }
   | { id: number; method: 'getfov'; instId: number; room?: number }
   | { id: number; method: 'bodvrd'; body: string; item: string }
   | { id: number; method: 'bodvcd'; bodyId: number; item: string }
@@ -221,6 +231,7 @@ export type SpiceWorkerResultMap = {
   utc2et: number;
   spkpos: PositionResult;
   spkposBatch: Float64Array;
+  spkezrBatch: StateBatchArrays;
   spkezr: StateVector;
   oscelt: OsculatingElements;
   conics: CartesianState;

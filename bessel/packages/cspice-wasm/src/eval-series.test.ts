@@ -47,7 +47,7 @@ function makeFakeWorker(): Worker {
   } as unknown as Worker;
 }
 
-describe('@bessel/spice EvalSpec interpreter (F3)', () => {
+describe('cspice-wasm EvalSpec interpreter (F3)', () => {
   let spice: SpiceEngine;
   let et0: number;
 
@@ -113,7 +113,7 @@ describe('@bessel/spice EvalSpec interpreter (F3)', () => {
   });
 });
 
-describe('@bessel/spice evalSeries worker job (F3)', () => {
+describe('cspice-wasm evalSeries worker job (F3)', () => {
   it('runs a series job and a cancelJob aborts it', async () => {
     const responses = new Map<number, { res: SpiceWorkerResponse }>();
     const scope: SpiceWorkerScope = {
@@ -165,7 +165,7 @@ describe('@bessel/spice evalSeries worker job (F3)', () => {
   });
 });
 
-describe('@bessel/spice worker pool (F3)', () => {
+describe('cspice-wasm worker pool (F3)', () => {
   it('broadcasts kernels and partitions an evalSeries across workers', async () => {
     const pool = createSpiceWorkerPool([makeFakeWorker(), makeFakeWorker()]);
     expect(pool.size).toBe(2);

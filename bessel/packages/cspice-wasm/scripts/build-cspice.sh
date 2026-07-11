@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 #
-# Reproducible CSPICE-WASM build for @bessel/spice.
+# Reproducible CSPICE-WASM build for cspice-wasm.
 #
 # Vendors NASA/JPL CSPICE via the arturania/cspice fork (ADR-0004), compiles it
 # to a static library with Emscripten, then links the SPICE surface Bessel needs
 # into an ES module plus a .wasm payload. Kernels are never embedded: they arrive
 # at runtime through the PAL KernelSource and are written into the Emscripten FS.
 #
-# Usage: bash packages/spice/scripts/build-cspice.sh
+# Usage: bash packages/cspice-wasm/scripts/build-cspice.sh
 # Requires: emscripten (emcc) and csh on PATH; run from the repository root.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 VENDOR="$REPO_ROOT/vendor/cspice"
-OUT="$REPO_ROOT/packages/spice/wasm"
+OUT="$REPO_ROOT/packages/cspice-wasm/wasm"
 CSPICE_REMOTE="https://github.com/arturania/cspice.git"
 
 mkdir -p "$OUT"
@@ -30,7 +30,7 @@ if [ ! -f "$VENDOR/lib/libcspice_wasm.a" ]; then
 fi
 
 # The SPICE surface the renderer and geometry layers call. Extend deliberately;
-# every symbol here is reachable from @bessel/spice's typed API.
+# every symbol here is reachable from cspice-wasm's typed API.
 EXPORTS='[
   "_malloc","_free",
   "_tkvrsn_c","_erract_c","_errprt_c","_errdev_c","_failed_c","_getmsg_c","_reset_c",
@@ -79,5 +79,5 @@ emcc "$VENDOR/lib/libcspice_wasm.a" -o "$OUT/cspice.mjs" \
 sed -i.bak '1s;^;/* eslint-disable */\n// @ts-nocheck\n;' "$OUT/cspice.mjs"
 rm -f "$OUT/cspice.mjs.bak"
 
-echo "Done. Artifacts in packages/spice/wasm:"
+echo "Done. Artifacts in packages/cspice-wasm/wasm:"
 ls -la "$OUT"
