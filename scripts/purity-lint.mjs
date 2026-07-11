@@ -28,6 +28,14 @@
  *                            construction, the renderer is DOM territory.
  * Test files are excluded: purity binds the shipped model layer.
  *
+ * The Session 3 seam packages, bessel/packages/cspice-wasm and
+ * bessel/packages/frames (ADR M-0002), are audited mechanically, not
+ * incidentally: they appear in REQUIRED_AUDIT below, so the gate fails loudly
+ * if either directory goes missing from the discovered set rather than
+ * silently shrinking the audit. The emscripten glue lives under
+ * packages/cspice-wasm/wasm, outside src, and is a build artifact, not model
+ * code; the audit binds the typed wrapper and the frames tier themselves.
+ *
  * Usage: node scripts/purity-lint.mjs [--list] [--spine-audit]
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
@@ -45,6 +53,21 @@ const AUDIT_DIRS = [
     .map((e) => join('bessel/packages', e.name, 'src')),
   'cosmolabe/packages/core/src',
 ];
+
+// Directories the audit must contain: the seam packages of ADR M-0002 and the
+// cosmolabe spine. A rename or move that drops one of these from AUDIT_DIRS
+// fails the gate instead of silently narrowing it.
+const REQUIRED_AUDIT = [
+  'bessel/packages/cspice-wasm/src',
+  'bessel/packages/frames/src',
+  'cosmolabe/packages/core/src',
+];
+for (const dir of REQUIRED_AUDIT) {
+  if (!AUDIT_DIRS.includes(dir) || !existsSync(join(ROOT, dir))) {
+    console.error(`purity-lint: required audit directory missing: ${dir}`);
+    process.exit(1);
+  }
+}
 
 const FORBIDDEN_IMPORTS =
   /^(svelte|react|react-dom|preact|vue|solid-js|@sveltejs\/|jsdom$|happy-dom$)|\.svelte$/;

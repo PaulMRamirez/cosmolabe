@@ -1,4 +1,4 @@
-// Validates the Phase 1 geometry surface of @bessel/spice against committed
+// Validates the Phase 1 geometry surface of cspice-wasm against committed
 // fixtures: body radii (bodvrd), instrument field of view (getfov), the
 // sub-observer point (subpnt), and a surface intercept (sincpt). The fixtures are
 // the Cassini ISS instrument kernel, a planetary constants kernel, and the bounded
@@ -15,7 +15,7 @@ const fixture = (name: string) =>
 const CASSINI_ISS_NAC = -82360;
 const ET_UTC = '2004-07-01T02:00:00';
 
-describe('@bessel/spice geometry surface', () => {
+describe('cspice-wasm geometry surface', () => {
   let spice: SpiceEngine;
   let et: number;
 

@@ -12,7 +12,7 @@ import type { SpiceWorkerRequest, SpiceWorkerResponse } from './protocol.ts';
 const fixture = (name: string) =>
   new Uint8Array(readFileSync(fileURLToPath(new URL(`../../../kernels/fixtures/${name}`, import.meta.url))));
 
-describe('@bessel/spice spkposBatch (F3 batching)', () => {
+describe('cspice-wasm spkposBatch (F3 batching)', () => {
   let spice: SpiceEngine;
   let et0: number;
 

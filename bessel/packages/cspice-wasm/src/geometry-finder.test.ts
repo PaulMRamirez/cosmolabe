@@ -23,7 +23,7 @@ const vsep = (a: Vec3, b: Vec3): number => {
   return Math.acos(Math.min(1, Math.max(-1, dot / (na * nb))));
 };
 
-describe('@bessel/spice gfsep vs independent vsep', () => {
+describe('cspice-wasm gfsep vs independent vsep', () => {
   let spice: SpiceEngine;
   let et0: number;
   let et1: number;
@@ -103,7 +103,7 @@ describe('@bessel/spice gfsep vs independent vsep', () => {
   });
 });
 
-describe('@bessel/spice gfposc latitudinal latitude vs independent elevation', () => {
+describe('cspice-wasm gfposc latitudinal latitude vs independent elevation', () => {
   let spice: SpiceEngine;
   let et0: number;
   let et1: number;

@@ -4,7 +4,7 @@
 // hands paths to CSPICE, satisfying "the SPICE engine never reads kernel bytes
 // directly" (the bytes arrive via the PAL, are staged here, then loaded by CSPICE).
 
-import type { CSpiceModule } from '@bessel/spice/wasm/cspice.mjs';
+import type { CSpiceModule } from 'cspice-wasm/wasm/cspice.mjs';
 import {
   SpiceError,
   type AberrationCorrection,
@@ -15,6 +15,7 @@ import {
   type InterceptResult,
   type OsculatingElements,
   type PositionResult,
+  type StateBatchArrays,
   type StateVector,
   type SubPointResult,
   type Vec3,
@@ -329,6 +330,53 @@ export class SpiceBindings {
         out[k * 3 + 2] = this.readDouble(pos + 16);
       }
       return out;
+    });
+  }
+
+  spkezrBatch(
+    target: string,
+    etArray: Float64Array,
+    frame: string,
+    abcorr: AberrationCorrection,
+    observer: string,
+  ): StateBatchArrays {
+    return this.scope(() => {
+      const n = etArray.length;
+      const states = new Float64Array(n * 6);
+      const lightTimes = new Float64Array(n);
+      const t = this.str(target);
+      const f = this.str(frame);
+      const a = this.str(abcorr);
+      const o = this.str(observer);
+      const st = this.scratch(48);
+      const lt = this.scratch(8);
+      for (let k = 0; k < n; k++) {
+        this.call('spkezr_c', t, etArray[k]!, f, a, o, st, lt);
+        this.checkFailed();
+        for (let j = 0; j < 6; j++) states[k * 6 + j] = this.readDouble(st + j * 8);
+        lightTimes[k] = this.readDouble(lt);
+      }
+      return { states, lightTimes };
+    });
+  }
+
+  /** Frame name to NAIF frame id (namfrm); 0 when the name is not recognized. */
+  namfrm(name: string): number {
+    return this.scope(() => {
+      const out = this.scratch(4);
+      this.call('namfrm_c', this.str(name), out);
+      this.checkFailed();
+      return this.readInt(out);
+    });
+  }
+
+  /** NAIF frame id to frame name (frmnam); empty string when the id is unknown. */
+  frmnam(code: number): string {
+    return this.scope(() => {
+      const out = this.scratch(33);
+      this.call('frmnam_c', code, 33, out);
+      this.checkFailed();
+      return this.mod.UTF8ToString(out);
     });
   }
 

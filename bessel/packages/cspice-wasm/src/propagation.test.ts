@@ -22,7 +22,7 @@ function relClose(a: { x: number; y: number; z: number }, b: { x: number; y: num
 // self-consistent mu, so a constant is used (and asserted to echo through oscelt).
 const MU_SUN = 1.32712440018e11;
 
-describe('@bessel/spice propagation primitives', () => {
+describe('cspice-wasm propagation primitives', () => {
   let spice: SpiceEngine;
   let et: number;
   const muSun = MU_SUN;

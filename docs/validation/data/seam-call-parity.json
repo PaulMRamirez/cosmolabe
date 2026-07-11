@@ -1,0 +1,377 @@
+{
+  "description": "Differential harness, call-parity mode (M-0002): identical CSPICE invocations through both wrappers, cosmolabe @cosmolabe/spice (timecraftjs) as reference vs the frames tier over cspice-wasm, identical kernel bytes, gate relative 1e-12. maxRelDelta is the worst epoch: vector-norm relative for spkezr position and velocity (plus relative light time under corrections), relative for str2et, max elementwise (unit scale) for pxform.",
+  "gateRelative": 1e-12,
+  "toolkit": {
+    "cosmolabe": "CSPICE_N0066",
+    "cspiceWasm": "CSPICE_N0066"
+  },
+  "scenarios": {
+    "GS-1": {
+      "fixture": "Cassini cruise, 010420R_SCPSE_EP1_JP83.bsp",
+      "epoch": "2000-06-01T00:00:00",
+      "sweep": "epoch -30d..+30d (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "cassini/010420R_SCPSE_EP1_JP83.bsp"
+      ],
+      "kernelSetHash": "43cc1b058594299eab87b09b804fc41a57ed7d5094c062922b66da3a795d2a76"
+    },
+    "GS-2": {
+      "fixture": "saturn-soi harness scene, SOI SCPSE kernel",
+      "epoch": "2004-07-01T02:48:00",
+      "sweep": "epoch -12h..+12h (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "cassini/040629AP_SCPSE_04179_04185.bsp"
+      ],
+      "kernelSetHash": "035e18772ee7aa6a0cbb3001ae383090b2c0ce5f215c8e3968e06c9d61831acd"
+    }
+  },
+  "rows": [
+    {
+      "scenario": "GS-1",
+      "call": "str2et",
+      "detail": "2000-06-01T00:00:00",
+      "correction": null,
+      "epochs": 1,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SUN @ ECLIPJ2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SUN @ ECLIPJ2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SUN @ ECLIPJ2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SUN @ ECLIPJ2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SUN @ ECLIPJ2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "EARTH wrt SUN @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "EARTH wrt SUN @ J2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "EARTH wrt SUN @ J2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "EARTH wrt SUN @ J2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "EARTH wrt SUN @ J2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "JUPITER wrt SUN @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "JUPITER wrt SUN @ J2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "JUPITER wrt SUN @ J2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "JUPITER wrt SUN @ J2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "spkezr",
+      "detail": "JUPITER wrt SUN @ J2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "pxform",
+      "detail": "ECLIPJ2000 -> J2000",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "pxform",
+      "detail": "J2000 -> IAU_EARTH",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-1",
+      "call": "pxform",
+      "detail": "ECLIPJ2000 -> IAU_JUPITER",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "str2et",
+      "detail": "2004-07-01T02:48:00",
+      "correction": null,
+      "epochs": 1,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SATURN @ ECLIPJ2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SATURN @ ECLIPJ2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SATURN @ ECLIPJ2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SATURN @ ECLIPJ2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "CASSINI wrt SATURN @ ECLIPJ2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "TITAN wrt SATURN @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "TITAN wrt SATURN @ J2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "TITAN wrt SATURN @ J2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "TITAN wrt SATURN @ J2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "TITAN wrt SATURN @ J2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "SATURN wrt SUN @ ECLIPJ2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "SATURN wrt SUN @ ECLIPJ2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "SATURN wrt SUN @ ECLIPJ2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "SATURN wrt SUN @ ECLIPJ2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "spkezr",
+      "detail": "SATURN wrt SUN @ ECLIPJ2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "pxform",
+      "detail": "ECLIPJ2000 -> J2000",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "pxform",
+      "detail": "ECLIPJ2000 -> IAU_SATURN",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-2",
+      "call": "pxform",
+      "detail": "J2000 -> IAU_SATURN",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    }
+  ],
+  "allPass": true
+}

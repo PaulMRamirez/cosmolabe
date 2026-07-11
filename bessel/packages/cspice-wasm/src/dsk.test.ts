@@ -10,7 +10,7 @@ import { createSpiceEngine, type DskShape, type SpiceEngine } from './index.ts';
 const fixture = (name: string) =>
   new Uint8Array(readFileSync(fileURLToPath(new URL(`../../../kernels/fixtures/${name}`, import.meta.url))));
 
-describe('@bessel/spice DSK type-2 reader', () => {
+describe('cspice-wasm DSK type-2 reader', () => {
   let engine: SpiceEngine;
   let shape: DskShape;
 

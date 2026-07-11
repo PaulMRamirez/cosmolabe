@@ -24,7 +24,7 @@
     "lhci": "lhci autorun",
     "release:dry": "changeset status --verbose",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:web && pnpm size",
-    "cspice:build": "bash packages/spice/scripts/build-cspice.sh"
+    "cspice:build": "bash packages/cspice-wasm/scripts/build-cspice.sh"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.1",

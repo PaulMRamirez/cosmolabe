@@ -13,7 +13,7 @@
 // profile is arbitrary; what matters is that pxform(frame, J2000) resolves a
 // real, time-varying orientation from a furnished CK.
 //
-// Run: node packages/spice/scripts/make-fixture-ck.mjs
+// Run: node packages/cspice-wasm/scripts/make-fixture-ck.mjs
 
 import { writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

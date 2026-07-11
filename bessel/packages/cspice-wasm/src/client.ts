@@ -16,6 +16,7 @@ import {
   type OsculatingElements,
   type PositionResult,
   type SpiceComputeEngine,
+  type StateBatchArrays,
   type StateVector,
   type SubPointResult,
   type Vec3,
@@ -66,6 +67,8 @@ export function createSpiceWorkerClient(worker: Worker): SpiceComputeEngine {
       send<PositionResult>({ method: 'spkpos', target, et, frame, abcorr, observer }),
     spkposBatch: (target, etArray, frame, abcorr: AberrationCorrection, observer) =>
       send<Float64Array>({ method: 'spkposBatch', target, etArray, frame, abcorr, observer }),
+    spkezrBatch: (target, etArray, frame, abcorr: AberrationCorrection, observer) =>
+      send<StateBatchArrays>({ method: 'spkezrBatch', target, etArray, frame, abcorr, observer }),
     spkezr: (target, et, frame, abcorr: AberrationCorrection, observer) =>
       send<StateVector>({ method: 'spkezr', target, et, frame, abcorr, observer }),
     oscelt: (state, et, mu) => send<OsculatingElements>({ method: 'oscelt', state, et, mu }),

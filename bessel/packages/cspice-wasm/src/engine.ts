@@ -3,7 +3,7 @@
 // browser uses createSpiceWorkerClient (client.ts) to keep furnsh and geometry
 // off the main thread; both paths share these bindings.
 
-import CSpice from '@bessel/spice/wasm/cspice.mjs';
+import CSpice from 'cspice-wasm/wasm/cspice.mjs';
 import { SpiceBindings } from './bindings.ts';
 import type { AberrationCorrection, SpiceEngine } from './index.ts';
 
@@ -12,9 +12,18 @@ export interface SpiceEngineOptions {
   locateFile?: (path: string) => string;
 }
 
-export async function createSpiceEngine(options?: SpiceEngineOptions): Promise<SpiceEngine> {
+/**
+ * Load the CSPICE WASM module and return the synchronous typed bindings. The
+ * in-process path for callers that need the full surface without the promise
+ * wrapper, notably the frames tier (ADR M-0002) and conformance rigs.
+ */
+export async function createSpiceBindings(options?: SpiceEngineOptions): Promise<SpiceBindings> {
   const mod = await CSpice(options?.locateFile ? { locateFile: options.locateFile } : undefined);
-  const bindings = new SpiceBindings(mod);
+  return new SpiceBindings(mod);
+}
+
+export async function createSpiceEngine(options?: SpiceEngineOptions): Promise<SpiceEngine> {
+  const bindings = await createSpiceBindings(options);
 
   return {
     async furnsh(name, bytes) {
@@ -73,6 +82,9 @@ export async function createSpiceEngine(options?: SpiceEngineOptions): Promise<S
     },
     async spkposBatch(target, etArray, frame, abcorr: AberrationCorrection, observer) {
       return bindings.spkposBatch(target, etArray, frame, abcorr, observer);
+    },
+    async spkezrBatch(target, etArray, frame, abcorr: AberrationCorrection, observer) {
+      return bindings.spkezrBatch(target, etArray, frame, abcorr, observer);
     },
     async getfov(instId, room) {
       return bindings.getfov(instId, room);

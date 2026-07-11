@@ -3,11 +3,11 @@
 // Subsets NASA/JPL de440s.bsp (the authoritative NAIF planetary ephemeris) to a
 // small, redistributable SPK covering the inner solar system plus Saturn over the
 // Cassini Saturn-orbit-insertion window, and prints the spkpos reference value the
-// @bessel/spice fixture test asserts against. de440s itself is bulk data (32 MB,
+// cspice-wasm fixture test asserts against. de440s itself is bulk data (32 MB,
 // git-ignored); this subset is a few hundred KB and is committed under
 // kernels/fixtures so the unit test is deterministic in CI without a download.
 //
-// Run: node packages/spice/scripts/make-fixture-spk.mjs
+// Run: node packages/cspice-wasm/scripts/make-fixture-spk.mjs
 
 import { writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

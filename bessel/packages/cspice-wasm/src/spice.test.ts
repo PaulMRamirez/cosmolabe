@@ -1,8 +1,8 @@
-// @bessel/spice acceptance test (SPEC 5.1): load an LSK plus a planetary SPK and
+// cspice-wasm acceptance test (SPEC 5.1): load an LSK plus a planetary SPK and
 // assert spkpos of a known body at a known epoch matches a NAIF reference within
 // tolerance. The reference is the position of Saturn barycenter (6) relative to
 // the Sun (10) in J2000 at 2004-07-01, taken from de440 (NAIF's authoritative
-// planetary ephemeris) via packages/spice/scripts/make-fixture-spk.mjs. de440 is
+// planetary ephemeris) via packages/cspice-wasm/scripts/make-fixture-spk.mjs. de440 is
 // the published NAIF ephemeris, so this both validates the WASM build and pins an
 // independent physical truth (Saturn sits ~9.04 AU from the Sun).
 
@@ -21,7 +21,7 @@ const REF = {
   lightTime: 4512.17091228751,
 };
 
-describe('@bessel/spice CSPICE-WASM engine', () => {
+describe('cspice-wasm CSPICE-WASM engine', () => {
   let engine: SpiceEngine;
 
   beforeAll(async () => {

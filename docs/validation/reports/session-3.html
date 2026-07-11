@@ -1,0 +1,265 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 3 (the seam)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 3</h1>
+<p>The seam: cspice-wasm extracted, the frames tier implementing the M-0002
+contracts, and the differential harness green in call-parity on GS-1 and GS-2.
+Adversarial cross-check of <code>docs/goals/SESSION-3-SEAM.goal.md</code>
+against observed evidence, binding ADR M-0002 (and M-0005 for the package
+name, M-0009 for the kernel manifest). Generated 2026-07-10 on branch
+<code>session-3</code>. Every row was reproduced during this cross-check by
+running the command or reading the artifact, not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence, CI included (the row below was amended to pass after the PR run was
+observed green). Call-parity is green on both scenarios with every delta exactly
+zero (both wrappers marshal into CSPICE_N0066; the asm.js and WASM builds
+agree bit for bit over identical kernel bytes). Pipeline mode is measured and
+reported: all eight GS-2 rows sit inside the 1 m and 5 arcsec tripwires; the
+GS-1 row sits outside at 87 to 95 m and is attributed exactly to the truncated
+J2000 obliquity constant in heritage <code>kinematics.ts</code> (rotating the
+SPICE truth by the constant difference collapses the residual to about
+0.1 mm). Per the goal, pipeline green gates the re-point, not this session.</p>
+<p><strong>Residual risk and honest carryover.</strong> First, the obliquity
+finding is recorded, not fixed: the GS-1 pipeline row stays red until its fix
+lands, and the re-point cannot merge over it. Second, the frames tier is
+deliberately cache-free, so pipeline mode currently measures cosmolabe's
+caching against direct CSPICE; when frames grows caching, the harness must
+re-measure. Third, FrameChain inspection pivots through J2000 only; a deeper
+kernel-defined walk needs frinfo_c, which the WASM export allowlist does not
+yet carry (recorded in the contract doc comment). Fourth, GS-1 carries no
+pointing row (the cruise fixture has no rotating oracle body); pointing is
+exercised on GS-2 and the table says so.</p>
+<p><strong>Pre-merge amendments (2026-07-10, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge, each closing one carryover
+item above. The Session 4 goal now sequences the obliquity fix as its own
+Class B commit before any re-point work, baseline-diffed, with the seam
+pipeline table attached before and after (GS-1 dropping from about 95 m to
+sub-millimeter), the re-entry brief finding re-tagged accordingly, and the
+re-point commits following separately behind the then-green strict pipeline.
+M-0002 gained one operational sentence in Consequences making the cache
+re-measurement duty explicit: any caching layer later added to frames requires
+pipeline-mode re-measurement before merge; a clarification, not a reopening,
+and Review-on-return stays no. And the GS-3 chain inspection question is
+decided in the Session 4 goal: the J2000 pivot suffices for GS-3 (the site
+frame is a fixture-authored TK frame with one constant hop over the moon's
+PCK frame, so the pivot isolates any disagreement to a leg whose pieces each
+carry an independent check), and extending the WASM allowlist with frinfo_c
+and siblings remains the recorded trigger if a kernel-defined chain ever needs
+walking below its J2000 legs. <code>pnpm verify</code> was re-run green after
+the amendments.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>Call-parity green on GS-1 and GS-2 at relative 1e-12</td>
+  <td class="pass">pass</td>
+  <td>Fresh <code>TZ=America/Los_Angeles node scripts/seam.mjs</code> run
+  during this cross-check: exit 0, &quot;call-parity: GREEN on GS-1 and
+  GS-2&quot;. The committed table
+  <code>docs/validation/data/seam-call-parity.json</code> holds 38 rows
+  (str2et, spkezr across all five corrections for three body pairs per
+  scenario, pxform across three frame pairs per scenario), every
+  <code>maxRelDelta</code> exactly 0, <code>allPass: true</code>, toolkits
+  CSPICE_N0066 on both sides, kernel set hashes recorded per scenario.
+  Re-running the rig left the committed tables byte-identical
+  (<code>git status</code> clean), so the numbers are deterministic.</td>
+</tr>
+<tr>
+  <td>Delta tables committed</td>
+  <td class="pass">pass</td>
+  <td><code>git ls-files docs/validation/data/</code> lists
+  <code>seam-call-parity.json</code> and <code>seam-pipeline.json</code>
+  alongside the Session 2 tables.</td>
+</tr>
+<tr>
+  <td>Pipeline mode measured and reported against the 1 m and 5 arcsec tripwires</td>
+  <td class="pass">pass</td>
+  <td><code>seam-pipeline.json</code>: nine rows. GS-2 (eight rows, the
+  saturn-soi oracle bodies): max position error 0.177 m (Titan), Saturn pole
+  0.922 arcsec, every row inside both tripwires, matching the Session 2
+  state-error evidence independently. GS-1 (Cassini wrt Sun at 5.6 AU):
+  94.9 m, outside the tripwire, <code>posWithinTripwire: false</code>, with
+  the named obliquity finding and its exact attribution in the table
+  description. The goal requires measurement and honest report this session,
+  green only before the re-point; the table asserts nothing and hides
+  nothing, and <code>scripts/seam.mjs --strict-pipeline</code> is the
+  ready-made re-point gate.</td>
+</tr>
+<tr>
+  <td>pnpm verify green locally with the harness wired in</td>
+  <td class="pass">pass</td>
+  <td>Full <code>pnpm verify</code> run: exit 0. Stages observed in the log:
+  fetch-kernels (15 files ok), purity-lint clean, golden-immutability clean
+  (pinned tree ae11b53b2e15), bessel gate (typecheck, lint, 1438 tests across
+  238 files, build:web, size limits including the 32 KB spice worker and 4 MB
+  WASM caps), cosmolabe build plus 312 tests, then verify:seam printing
+  call-parity GREEN. The first full run caught bessel's architecture-count
+  test (27 pinned packages vs 29), fixed by moving the pin to 29 and naming
+  cspice-wasm and @cosmolabe/frames as the deliberate additions.</td>
+</tr>
+<tr>
+  <td>pnpm verify green in CI</td>
+  <td class="pass">pass</td>
+  <td>Amended after the PR run, mirroring the Session 2 precedent: the
+  <code>verify</code> check on PR #3 concluded success for head commit
+  e399bb4 (github.com/PaulMRamirez/cosmolabe/actions/runs/29142337853),
+  running the same <code>pnpm verify</code> chain including verify:seam, with
+  the kernel cache key rolled by the manifest edit and the GS-1 cruise kernel
+  fetched from NAIF in CI.</td>
+</tr>
+<tr>
+  <td>Purity lint green with the two new packages audited</td>
+  <td class="pass">pass</td>
+  <td><code>node scripts/purity-lint.mjs</code>: clean, 220 files across 25
+  audited directories. <code>--list</code> shows
+  <code>bessel/packages/cspice-wasm/src</code> and
+  <code>bessel/packages/frames/src</code>. The audit is now mechanical, not
+  incidental: a REQUIRED_AUDIT check fails the gate if either directory drops
+  out of the discovered set.</td>
+</tr>
+<tr>
+  <td>Baseline compare still green (renderer path untouched)</td>
+  <td class="pass">pass</td>
+  <td><code>TZ=America/Los_Angeles node scripts/baseline.mjs compare</code>
+  under the pinned node v22.23.1 (the tool refuses other versions; the shell
+  default v26 was refused first, evidence the pin bites): fingerprints
+  byte-compare clean, renders at 0.000 to 0.001 percent diff, SHA256SUMS
+  verified (6 files), exit 0. Independently,
+  <code>git diff main --name-only -- cosmolabe/</code> is empty: zero
+  cosmolabe-heritage files changed, satisfying the session constraint of no
+  re-point and iron rule 2.</td>
+</tr>
+</table>
+
+<h2>Step assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>cspice-wasm extracted as an internally published package</td>
+  <td class="pass">pass</td>
+  <td><code>bessel/packages/cspice-wasm</code> carries the typed full-surface
+  wrapper (SpiceBindings and the SpiceEngine surface), the worker pool
+  (pool.ts, worker-core.ts, client.ts, protocol.ts), the zero-copy batch
+  transport (transferables; spkposBatch, plus the new spkezrBatch through
+  bindings, engine, protocol, client, pool, and dispatch), the WASM artifacts,
+  and the 53-test conformance suite (all passing, observed in the bessel
+  gate). The npm name is the reserved one from M-0005
+  (scripts/npm-placeholders/cspice-wasm). A thin @bessel/spice facade
+  re-exports the package, so all ten dependent bessel packages compile
+  unchanged; the two app spice workers and the CLI build import cspice-wasm
+  directly.</td>
+</tr>
+<tr>
+  <td>frames implements the two M-0002 contracts exactly as typed in docs/design/02 section 2</td>
+  <td class="pass">pass</td>
+  <td>Field-by-field comparison of
+  <code>bessel/packages/frames/src/contracts.ts</code> against the design
+  document: Correction is exactly the five-member union; StateQuery carries
+  targets, observer, frame, required correction, and the epochs array-or-range
+  union; StateProvider.states returns a zero-copy StateBatch (documented
+  Float64Array layout) and orientation returns a QuatBatch; FramesService
+  carries toEt, chain, kernels. Conformance tests observed passing: the layer
+  refuses a missing or invalid correction with a loud error (never defaults),
+  batch entries equal spkezr exactly, chain legs compose to the direct pxform
+  within 1e-14, the kernel set hash is order-independent and changes on
+  unload, and NONE vs LT+S states differ at km scale (the M-0002 rationale
+  made a test).</td>
+</tr>
+<tr>
+  <td>GS-1 cruise fixture added to the fetch-kernels manifest with recorded sha256</td>
+  <td class="pass">pass</td>
+  <td>Manifest line for
+  <code>cassini/010420R_SCPSE_EP1_JP83.bsp</code> (8 MB, the smallest
+  reconstructed cruise SCPSE NAIF publishes, Earth flyby through post-Jupiter
+  cruise, coverage observed 1999-08-19 to 2001-03-23 via spkcov) with sha256
+  6b91d6be... computed from the NAIF download and documented as postdating
+  the merge capture. <code>bash scripts/fetch-kernels</code>: 15 up-to-date,
+  0 failed, meaning the on-disk bytes re-verified against the recorded hash.
+  <code>git check-ignore</code> confirms the kernel is not committed (iron
+  rule 7). The manifest edit rolls the CI kernel cache key by construction
+  (hashFiles on the script).</td>
+</tr>
+<tr>
+  <td>Differential harness as a root rig over GS-1 and GS-2</td>
+  <td class="pass">pass</td>
+  <td><code>tests/rig/seam.rig.ts</code> under the Session 2 rig
+  infrastructure (cosmolabe's vitest, the zero-import config, now with
+  ordered aliases resolving cspice-wasm to bessel source). GS-2 drives the
+  unmodified saturn-soi harness scene and its SOI kernel; GS-1 drives a
+  root-owned inline catalog over the new cruise kernel, so the heritage scene
+  registry is untouched. Both paths furnish identical kernel bytes and the
+  tables record the kernel set hash per scenario for reproducibility.</td>
+</tr>
+<tr>
+  <td>/seam command written; harness wired into pnpm verify behind the kernel fetch</td>
+  <td class="pass">pass</td>
+  <td><code>.claude/commands/seam.md</code> in the house format;
+  <code>verify:seam</code> appended to the root verify chain whose first step
+  is fetch-kernels (the same fetch the gate already ran); observed in the
+  green verify log.</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>1: CSPICE only under the frames tier</td><td class="pass">pass</td>
+  <td>The new CSPICE surface lives in cspice-wasm (below frames) and frames
+  itself; no package above the tier gained a CSPICE call. The rig calls both
+  wrappers directly, which is its charter as the measurement instrument of
+  rule 3, not product code.</td></tr>
+<tr><td>2: mechanically minimal heritage diffs</td><td class="pass">pass</td>
+  <td>Zero changed files under <code>cosmolabe/</code> (observed via git
+  diff). The obliquity finding was deliberately recorded rather than fixed
+  in place.</td></tr>
+<tr><td>4: authority host-only</td><td class="na">n/a</td>
+  <td>The diff introduces no <code>authority</code> field anywhere; the five
+  textual matches are prose about the epoch conversion authority.</td></tr>
+<tr><td>7: kernels never committed</td><td class="pass">pass</td>
+  <td>No kernel file in the session diff; the new fixture is gitignored and
+  fetched.</td></tr>
+<tr><td>6: model-layer purity</td><td class="pass">pass</td>
+  <td>purity-lint clean with both new packages in the required audit set.</td></tr>
+<tr><td>9: SPICE kilometers at the contracts</td><td class="pass">pass</td>
+  <td>StateBatch documents km and km/s; the frames layer performs no unit
+  conversion (bindings marshal CSPICE values unchanged).</td></tr>
+<tr><td>10: dash sweep on new prose</td><td class="pass">pass</td>
+  <td>Zero em or en dashes in the added lines of the session diff (grep over
+  <code>git diff main</code>).</td></tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr><td>review-on-return run; re-entry register refreshed</td><td class="pass">pass</td>
+  <td><code>scripts/review-on-return.sh</code> output observed: flagged set
+  unchanged (M-0001, M-0003, M-0005, M-0007, M-0008; M-0002 not reopened, no
+  tolerance changed) and zero new commits in Aaron-owned paths. The brief
+  gained the Session 3 paragraph and the obliquity named finding.</td></tr>
+<tr><td>verify-spec run and report committed</td><td class="pass">pass</td>
+  <td>This report, committed as
+  <code>docs/validation/reports/session-3.html</code>.</td></tr>
+<tr><td>SESSION-4-REPOINT.goal.md drafted</td><td class="pass">pass</td>
+  <td><code>docs/goals/SESSION-4-REPOINT.goal.md</code>: the re-point behind
+  the green harness, GS-3 and GS-4 fixtures, strict pipeline as the merge
+  gate, the deliberate re-baseline against the pinned pre-merge goldens, and
+  closure of the obliquity finding as an explicit Verified-by clause.</td></tr>
+</table>

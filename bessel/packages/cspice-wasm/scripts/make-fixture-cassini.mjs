@@ -5,7 +5,7 @@
 // kernels/fixtures so the poc-cassini e2e test renders a real trajectory without
 // a multi-megabyte download. Prints the spacecraft center and a sample state.
 //
-// Run: node packages/spice/scripts/make-fixture-cassini.mjs
+// Run: node packages/cspice-wasm/scripts/make-fixture-cassini.mjs
 
 import { writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

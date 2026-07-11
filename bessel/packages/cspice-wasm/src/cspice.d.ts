@@ -1,8 +1,8 @@
 // Type declaration for the Emscripten-generated CSPICE glue (wasm/cspice.mjs).
 // The glue itself is a build artifact (eslint-disabled, ts-nocheck). We expose
-// only the runtime surface @bessel/spice uses.
+// only the runtime surface cspice-wasm uses.
 
-declare module '@bessel/spice/wasm/cspice.mjs' {
+declare module 'cspice-wasm/wasm/cspice.mjs' {
   export interface CSpiceFS {
     writeFile(path: string, data: Uint8Array): void;
     readFile(path: string): Uint8Array;
