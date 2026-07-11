@@ -38,7 +38,13 @@ import { tmpdir } from 'node:os';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CL = join(ROOT, 'cosmolabe');
-const BASELINE = join(ROOT, 'tests/golden/pre-merge');
+// BASELINE_DIR points capture (and compare) at a sibling baseline set under
+// tests/golden/; the default is the immutable day-zero set. A deliberate
+// re-baseline (the Session 4 re-point) captures into a sibling, never here:
+// the guard below makes ENVIRONMENT.md's rule mechanical.
+const BASELINE = process.env.BASELINE_DIR
+  ? join(ROOT, process.env.BASELINE_DIR)
+  : join(ROOT, 'tests/golden/pre-merge');
 const PINNED_TZ = 'America/Los_Angeles';
 
 // Render capture parameters: identical to the heritage Layer 4 script so the
@@ -58,6 +64,12 @@ const mode = process.argv[2];
 const flags = new Set(process.argv.slice(3));
 if (mode !== 'capture' && mode !== 'compare') {
   console.error('usage: node scripts/baseline.mjs capture|compare [--skip-build] [--renders-only] [--fingerprints-only]');
+  process.exit(2);
+}
+if (mode === 'capture' && BASELINE === join(ROOT, 'tests/golden/pre-merge')) {
+  console.error(
+    'baseline: capture must never target tests/golden/pre-merge again (it is immutable history); set BASELINE_DIR to a sibling under tests/golden/.',
+  );
   process.exit(2);
 }
 if (process.env.TZ !== PINNED_TZ) {

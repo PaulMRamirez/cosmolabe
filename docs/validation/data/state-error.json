@@ -17,8 +17,8 @@
       "center": "SATURN",
       "correction": "NONE",
       "epochs": 5,
-      "maxPosErrKm": 0.0000343,
-      "maxPosErrM": 0.0343,
+      "maxPosErrKm": 7.08e-8,
+      "maxPosErrM": 0.0000708,
       "poleErrDeg": null,
       "poleErrArcsec": null
     },
@@ -27,8 +27,8 @@
       "center": "SATURN",
       "correction": "NONE",
       "epochs": 5,
-      "maxPosErrKm": 0.0000434,
-      "maxPosErrM": 0.0434,
+      "maxPosErrKm": 1.03e-7,
+      "maxPosErrM": 0.000103,
       "poleErrDeg": null,
       "poleErrArcsec": null
     },
@@ -37,8 +37,8 @@
       "center": "SATURN",
       "correction": "NONE",
       "epochs": 5,
-      "maxPosErrKm": 0.0000571,
-      "maxPosErrM": 0.0571,
+      "maxPosErrKm": 7.66e-8,
+      "maxPosErrM": 0.0000766,
       "poleErrDeg": null,
       "poleErrArcsec": null
     },
@@ -47,8 +47,8 @@
       "center": "SATURN",
       "correction": "NONE",
       "epochs": 5,
-      "maxPosErrKm": 0.0000705,
-      "maxPosErrM": 0.0705,
+      "maxPosErrKm": 9.45e-8,
+      "maxPosErrM": 0.0000945,
       "poleErrDeg": null,
       "poleErrArcsec": null
     },
@@ -57,8 +57,8 @@
       "center": "SATURN",
       "correction": "NONE",
       "epochs": 5,
-      "maxPosErrKm": 0.000102,
-      "maxPosErrM": 0.102,
+      "maxPosErrKm": 1.06e-7,
+      "maxPosErrM": 0.000106,
       "poleErrDeg": null,
       "poleErrArcsec": null
     },
@@ -67,8 +67,8 @@
       "center": "SATURN",
       "correction": "NONE",
       "epochs": 5,
-      "maxPosErrKm": 0.000177,
-      "maxPosErrM": 0.177,
+      "maxPosErrKm": 1.16e-7,
+      "maxPosErrM": 0.000116,
       "poleErrDeg": null,
       "poleErrArcsec": null
     },
@@ -77,8 +77,8 @@
       "center": "SATURN",
       "correction": "NONE",
       "epochs": 5,
-      "maxPosErrKm": 0.00011,
-      "maxPosErrM": 0.11,
+      "maxPosErrKm": 6.55e-8,
+      "maxPosErrM": 0.0000655,
       "poleErrDeg": null,
       "poleErrArcsec": null
     }
