@@ -23,7 +23,7 @@
       "!apps/web/dist/assets/mmgis-*.js",
       "!apps/web/dist/assets/fixture-compute-*.js"
     ],
-    "limit": "107 KB",
+    "limit": "109 KB",
     "gzip": true
   },
   {

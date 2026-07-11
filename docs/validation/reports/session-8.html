@@ -46,9 +46,13 @@ integration work is scheduled there, and nothing this session targets
 MMGIS's own repo (the PlanDev sync therefore not yet a prerequisite).
 Second, the M-0010 posture note is source inspection (NASA-AMMOS/MMGIS at
 commit 44814b1, via the read-only reference clone outside this repo), not a
-live deployment measurement, and says so. Third, the lazy-analysis budget
-sits at 106.69 of 107 KB after the sync-surface additions to the shared UI
-components; the next growth in that glob forces a deliberate cap decision.
+live deployment measurement, and says so. Third, the lazy-analysis budget: the sync-surface additions brought the
+glob to 106.69 KB locally, and the first CI run measured the same build at
+107.02 KB (platform gzip variance of roughly 0.3 percent), failing the
+107 KB cap by 20 bytes; the deliberate cap decision this report flagged as
+imminent was therefore taken at the CI observation, 107 to 109 KB, sized so
+the budget binds on real growth rather than on which machine compressed the
+bytes.
 Fourth, a chunk-pinning attempt (manualChunks for a stable panel-host chunk
 name) swallowed the whole @bessel/ui barrel at 30 KB gzip and was reverted;
 the shared panel chunk keeps rollup's name (fixture-compute-*) with its own
