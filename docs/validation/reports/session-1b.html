@@ -1,0 +1,120 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 1B (workspace, CI, kernel logistics)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 1B</h1>
+<p>Workspace, CI, and kernel logistics. Adversarial cross-check of the goal file
+<code>docs/goals/SESSION-1B-WORKSPACE-AND-CI.goal.md</code> against observed
+evidence. Generated 2026-07-10 on branch <code>session-1b</code>. Every row was
+reproduced by running the command or reading the artifact, not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met locally; the one
+CI assertion is wired and pending its first run on the PR (it cannot be observed
+before the PR exists). No cosmolabe-heritage source was changed.</p>
+<p><strong>Residual risk and honest carryover.</strong> Two inherited
+<code>packages/core</code> tests hardcode the original author's local path
+<code>/Users/aplave/code/cosmographia</code> and fail on every other machine;
+the gate excludes exactly those two files by name (it does not edit them, per
+rule 2), and the proper fix (a skip-guard or a fetched fixture) is a baseline PR
+in Aaron-owned paths, recorded in the re-entry brief. cosmolabe ships no eslint
+dependency or config, so its lint is not yet wired; bessel's lint runs in the
+gate. <code>de425s.bsp</code> has been pruned from NAIF's public generic archive,
+so fetch-kernels obtains that one file with a single verified
+<code>git lfs fetch</code> rather than an HTTP download; all other kernels come
+from public NAIF and PDS URLs.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+
+<tr><td>Root <code>pnpm verify</code> green locally</td><td class="pass">PASS</td>
+<td>Full chain run end to end (pinned pnpm 9.15.0): <code>fetch-kernels: 13
+up-to-date, 0 failed</code>; bessel gate <code>Test Files 237 passed (237),
+Tests 1430 passed (1430)</code>, <code>build:web</code> ok, all seven size-limit
+budgets under limit; cosmolabe <code>build</code> ok, <code>Test Files 37 passed,
+Tests 312 passed, 1 skipped</code>. Exit 0.</td></tr>
+
+<tr><td>Root <code>pnpm verify</code> green in CI</td><td class="pend">WIRED, PENDING</td>
+<td><code>.github/workflows/ci.yml</code> runs the same <code>pnpm verify</code>
+on pull_request and push to main, with federated installs, <code>lfs: false</code>,
+<code>fetch-depth: 0</code> (so fetch-kernels reaches the tag and the one LFS
+object), concurrency, and pnpm pinned to 9.15.0. Not observable until the PR
+triggers the first run; the local run above exercises the identical script.</td></tr>
+
+<tr><td>Fresh clone with <code>GIT_LFS_SKIP_SMUDGE=1</code> plus fetch-kernels
+passes verify (stranger-cloneability without LFS bandwidth)</td><td class="pass">PASS</td>
+<td>Cloned this branch with <code>GIT_LFS_SKIP_SMUDGE=1</code> (LFS pointers not
+smudged). fetch-kernels produced <code>13 fetched, 0 failed</code>; all 13
+checksums validated against the manifest, including <code>de425s.bsp</code> via
+<code>git lfs fetch origin cosmolabe-pre-merge</code> and the synthetic
+<code>test_instruments.ti</code> via the git tag blob. The spice tests then ran
+green in that clone against the fetched kernels.</td></tr>
+
+<tr><td>Dash sweep clean on root docs and .claude</td><td class="pass">PASS</td>
+<td><code>grep -rnP '[\x{2013}\x{2014}]' .claude docs</code> (excluding the
+archived bessel heritage under <code>docs/goals/archive/</code>) returns no
+matches; the same sweep over every authored file (LICENSE, DCO, scripts,
+workflows, package.json, pnpm-workspace.yaml, commands) is also clean.</td></tr>
+
+<tr><td>Previously red spice tests green via fetched kernels</td><td class="pass">PASS</td>
+<td>Before fetch-kernels the four spice suites fail in <code>beforeAll</code>
+(kernels absent, removed under M-0009). After fetch-kernels: <code>Test Files 4
+passed (4), Tests 42 passed (42)</code>, including <code>lro-validation</code>
+whose Horizons cross-check asserts agreement under 5 km using the fetched LRO
+kernels.</td></tr>
+</table>
+
+<h2>Exit deliverables</h2>
+<table>
+<tr><th>Deliverable</th><th>Status</th><th>Evidence</th></tr>
+<tr><td>Name the exact CI check for branch protection</td><td class="pass">DONE</td>
+<td>The required check is <code>verify</code>, the single job in the <code>ci</code>
+workflow (<code>.github/workflows/ci.yml</code>); it appears as <code>ci / verify</code>
+in the PR checks list.</td></tr>
+<tr><td>Run scripts/review-on-return.sh and refresh the register</td><td class="pass">DONE</td>
+<td>Script run; the register (M-0001, M-0003, M-0005, M-0007, M-0008) is current.
+<code>docs/collab/RE-ENTRY-BRIEF.md</code> refreshed with the 1B carryover and the
+statement that no cosmolabe-heritage source changed.</td></tr>
+<tr><td>Run /verify-spec and commit the report</td><td class="pass">DONE</td>
+<td>This report, committed under <code>docs/validation/reports/</code>.</td></tr>
+<tr><td>Draft the Session 2 goal file</td><td class="pass">DONE</td>
+<td><code>docs/goals/SESSION-2-MEASUREMENT-RIG.goal.md</code>: pre-repoint baseline
+capture, purity lint on both cores, jitter scaffold, bake-off evidence for M-0001
+and M-0003.</td></tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Check</th></tr>
+<tr><td>2: mechanically minimal, no cosmolabe-heritage change</td><td class="pass">PASS</td>
+<td>The staged diff touches only root plumbing, the harness, and the bessel
+CLAUDE.md pointer; zero files under <code>cosmolabe/</code> source changed, and
+the incidental <code>cosmolabe/package-lock.json</code> edit from a local install
+was reverted. The two unrunnable heritage tests are excluded at the gate, not
+edited.</td></tr>
+<tr><td>7: kernels never committed</td><td class="pass">PASS</td>
+<td>Root <code>.gitignore</code> ignores both kernel directories; the staged set
+contains no <code>.bsp/.bc/.tls/.tpc/.tf</code> or node_modules. fetch-kernels
+writes only to gitignored paths.</td></tr>
+<tr><td>10: no em or en dashes anywhere</td><td class="pass">PASS</td>
+<td>Dash sweep clean across authored files and the commit message.</td></tr>
+<tr><td>1, 4, 5, 6, 9</td><td class="na">N/A</td>
+<td>No engine, authority, golden-image, model-purity, or units-at-contract
+surface was touched this session; these bind the seam and renderer work in
+Sessions 2 and 3.</td></tr>
+</table>
