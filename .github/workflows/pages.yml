@@ -1,15 +1,17 @@
 name: pages
 
-# Stubbed GitHub Pages deploy for the public validation page (docs/validation).
-# It carries the Pages OIDC permissions and single-deploy concurrency the real
-# deploy will use, so activating the page later is a content change, not a
-# permissions change. It does NOT deploy on push yet: the validation page is not
-# built until the validation harness lands (W1 onward, see
-# docs/validation/README.md). Trigger it manually (workflow_dispatch) to dry-run
-# the OIDC path; flip the trigger to `push: branches: [main]` when the page ships.
+# GitHub Pages deploy for the public validation page (docs/validation). The
+# page shipped in Session 6 (docs/validation/index.html, generated from the
+# committed tables by scripts/validation-page.mjs), so pushes to main deploy
+# it; workflow_dispatch remains for manual redeploys and branch previews.
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/validation/**'
+      - '.github/workflows/pages.yml'
 
 # The minimum a Pages deploy needs: read the repo, write the Pages artifact, mint
 # the OIDC token deploy-pages verifies.
