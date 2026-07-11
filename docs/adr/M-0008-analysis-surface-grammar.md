@@ -1,6 +1,6 @@
 # M-0008: Analysis surface grammar
 
-Status: Provisional (ratified for build in W3; review-on-return via live product walkthrough)
+Status: Accepted (provisional, review-on-return); demo evidence attached 2026-07-11 (Session 6)
 Date: 2026-07-10 | Deciders: Paul Ramirez; Aaron Plave by prior delegation (2026-07-10)
 Review-on-return: yes; the grammar ratification, reviewed via live product walkthrough
 
@@ -12,3 +12,7 @@ Four product kinds map to four canonical forms: intervals to timeline lanes, ser
 
 ## Consequences
 Acceptance heuristics in docs/design/03 section 10 gate UI PRs. Aaron reviews live in W5-plus, not from mocks.
+
+## Evidence addendum (Session 6, 2026-07-11)
+
+The grammar demo runs live in the bessel web app (the Jobs tab): all four product kinds from streamed JobHandle jobs over GS-2 (access lanes with an honestly empty Sun lane, the range strip chart materializing chunk by chunk, the ground track drape) and GS-4 (a published six-plane Walker set whose 288-cell coverage field resolves row by row on Earth). Provenance is visible grammar as decided: every card carries the Computed here chip whose popover shows the product's provenance block, and the kernel set hash it displays is the compute worker's own frames-tier hash, asserted equal by the observed Playwright run (e2e/tests/grammar.spec.ts, passing in 6.4 s against the built app) which also observes the partial streaming counts and a cooperative mid-sweep cancel from the tray control. The signature motion demanded here, analysis materializing from streamed partials, surfaced one real protocol requirement during the build: worker-hosted jobs must yield macrotasks at stream boundaries or cancel messages starve, now fixed in the coverage sweep and the job runner and recorded in the Session 6 report. The walkthrough review on Aaron's return stands (review-on-return unchanged).
