@@ -78,7 +78,12 @@ executioner.</p>
   run, progress, cancel, error with the cancelled flag) through
   <code>JobClient</code> over a same-thread fake worker and asserts the
   client surfaces <code>JobClientCancelled</code> at the second progress
-  event.</td>
+  event. One honest iteration: the pin's first version anchored the cancel
+  to a 40 ms wall-clock delay, which the first CI run correctly failed (the
+  slower runner produced zero partials before the cancel landed); the test
+  now queues the macrotask cancel after the first streamed partial, so it
+  measures the starvation property rather than racing the machine. Verified
+  five consecutive local runs plus the CI run after the fix.</td>
 </tr>
 <tr>
   <td>The panel mounts in a bare host page with fallback compute producing all four product kinds through the substrate</td>

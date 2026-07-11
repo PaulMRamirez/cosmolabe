@@ -63,14 +63,23 @@ describe('worker substrate conformance', () => {
   it('a macrotask-delivered cancel lands mid-stream (the starvation pin)', async () => {
     const handle = submitJob(env, bigFieldJob(et0));
     let partials = 0;
+    let cancelQueued = false;
     const consume = (async () => {
-      for await (const e of handle.progress) if (e.partial) partials++;
+      for await (const e of handle.progress) {
+        if (!e.partial) continue;
+        partials++;
+        // Deliver the cancel the way a worker message arrives: as a macrotask
+        // queued while the job computes, anchored to the stream (after the
+        // first partial) rather than to wall clock, so the test is not a race
+        // against a slow runner. If the sweep never yielded the event loop,
+        // this timeout could not fire until the job finished and the
+        // cancellation would be too late (partials would reach all 24 rows).
+        if (!cancelQueued) {
+          cancelQueued = true;
+          setTimeout(() => handle.cancel(), 0);
+        }
+      }
     })();
-    // Deliver the cancel the way a worker message arrives: as a macrotask
-    // queued while the job computes. If the sweep never yielded the event
-    // loop, this timeout could not fire until the job finished and the
-    // cancellation would be too late.
-    setTimeout(() => handle.cancel(), 40);
     await expect(handle.result).rejects.toThrow(JobCancelledError);
     await consume;
     // Mid-stream, honestly: the job neither finished nor died instantly.
