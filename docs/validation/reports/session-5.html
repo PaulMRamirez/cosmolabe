@@ -29,8 +29,8 @@ reading and is recorded in the re-entry brief.</p>
 
 <div class="summary">
 <p><strong>Verdict:</strong> every Verified-by assertion is met on observed
-evidence except CI, which cannot run until the PR exists and is recorded
-pending below. Both engines run as jobs from the conformance driver with
+evidence, CI included (the row below was amended to pass after the PR run was
+observed green). Both engines run as jobs from the conformance driver with
 streamed partials observed in deterministic order and cancellation honored;
 every emitted product carries authority exploratory and a kernel set hash
 equal to an independent frames layer's over the same bytes; the full root
@@ -96,9 +96,12 @@ do not read as intended permanence.</p>
 </tr>
 <tr>
   <td>pnpm verify green in CI</td>
-  <td class="pend">pending</td>
-  <td>CI runs on the PR; the branch had not been pushed at report time. This
-  row will be amended to the observed result, per the standing precedent.</td>
+  <td class="pass">pass</td>
+  <td>Amended after the PR run, per the standing precedent: the
+  <code>verify</code> check on PR #5 concluded success for head commit
+  b494945 (github.com/PaulMRamirez/cosmolabe/actions/runs/29159333944),
+  running the full chain including the compute conformance suite and the
+  strict seam.</td>
 </tr>
 <tr>
   <td>Seam harness still green in strict mode</td>
