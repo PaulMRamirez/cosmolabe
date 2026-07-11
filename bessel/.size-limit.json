@@ -19,14 +19,28 @@
       "!apps/web/dist/assets/porkchop.worker-*.js",
       "!apps/web/dist/assets/compute.worker-*.js",
       "!apps/web/dist/assets/ajv-lazy-*.js",
-      "!apps/web/dist/assets/embed-*.js"
+      "!apps/web/dist/assets/embed-*.js",
+      "!apps/web/dist/assets/mmgis-*.js",
+      "!apps/web/dist/assets/fixture-compute-*.js"
     ],
     "limit": "107 KB",
     "gzip": true
   },
   {
+    "name": "panel host shared chunk (rollup names it fixture-compute, gzip)",
+    "path": "apps/web/dist/assets/fixture-compute-*.js",
+    "limit": "8 KB",
+    "gzip": true
+  },
+  {
     "name": "embed host entry (panel mount, gzip)",
     "path": "apps/web/dist/assets/embed-*.js",
+    "limit": "8 KB",
+    "gzip": true
+  },
+  {
+    "name": "mmgis fixture host entry (gzip)",
+    "path": "apps/web/dist/assets/mmgis-*.js",
     "limit": "8 KB",
     "gzip": true
   },

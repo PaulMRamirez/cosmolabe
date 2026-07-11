@@ -63,12 +63,14 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
     rollupOptions: {
-      // Two HTML entries: the workbench (index) and the bare embed host page
+      // Three HTML entries: the workbench (index), the bare embed host page
       // that consumes @bessel/panel as a third party would (M-0007's smoke
-      // test surface).
+      // test surface), and the MMGIS-shaped fixture host (the flag-gated
+      // embed of the W4 criterion, with the host sync contract).
       input: {
         index: fileURLToPath(new URL('./index.html', import.meta.url)),
         embed: fileURLToPath(new URL('./embed.html', import.meta.url)),
+        mmgis: fileURLToPath(new URL('./mmgis.html', import.meta.url)),
       },
       output: {
         // Stable, greppable chunk file names so the size-limit globs target the
@@ -79,7 +81,11 @@ export default defineConfig({
         // their source-module names (e.g. AnalysisPanel-*.js), and the split
         // analysis code lands in analysis-ops-*.js / mcs-*.js.
         entryFileNames: (chunk) =>
-          chunk.name === 'embed' ? 'assets/embed-[hash].js' : 'assets/app-[hash].js',
+          chunk.name === 'embed'
+            ? 'assets/embed-[hash].js'
+            : chunk.name === 'mmgis'
+              ? 'assets/mmgis-[hash].js'
+              : 'assets/app-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         // Pin the always-loaded third-party code (the renderer and React) into one
         // vendor chunk. These are needed for first paint, so they stay eager; naming

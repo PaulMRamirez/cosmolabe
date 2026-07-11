@@ -105,13 +105,15 @@ export function TimeSeriesChart(props: TimeSeriesChartProps): JSX.Element {
       ) : null}
       {points ? <polyline className="bessel-chart-line" fill="none" points={points} /> : null}
       {cursorX !== null ? (
-        <line
+        // A 1px rect, not a <line>: a vertical line has a zero-width bounding
+        // box, which visibility checks (and hit tests) treat as invisible.
+        <rect
           className="bessel-chart-cursor"
-          x1={cursorX.toFixed(2)}
-          x2={cursorX.toFixed(2)}
-          y1={pad}
-          y2={h - pad}
-          stroke="#67e8f9"
+          x={(cursorX - 0.5).toFixed(2)}
+          y={pad}
+          width={1}
+          height={h - 2 * pad}
+          fill="#67e8f9"
           data-testid={`${props.testId ?? 'time-series-chart'}-cursor`}
           data-et={props.cursorEt}
         />
