@@ -12,8 +12,9 @@
     "install:all": "pnpm -C bessel install --frozen-lockfile && npm --prefix cosmolabe ci",
     "fetch-kernels": "bash scripts/fetch-kernels",
     "verify:purity": "node scripts/purity-lint.mjs",
+    "verify:goldens": "node scripts/golden-immutability.mjs",
     "verify:bessel": "pnpm -C bessel verify",
     "verify:cosmolabe": "npm --prefix cosmolabe run build && TZ=America/Los_Angeles npm --prefix cosmolabe run test -- --exclude '**/catalog-all-cosmographia.test.ts' --exclude '**/xyzv-parser.test.ts'",
-    "verify": "pnpm run fetch-kernels && pnpm run verify:purity && pnpm run verify:bessel && pnpm run verify:cosmolabe"
+    "verify": "pnpm run fetch-kernels && pnpm run verify:purity && pnpm run verify:goldens && pnpm run verify:bessel && pnpm run verify:cosmolabe"
   }
 }

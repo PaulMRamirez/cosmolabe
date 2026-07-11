@@ -19,7 +19,9 @@ Steps:
    0.1, gate 0.5 percent), and verifies SHA256SUMS. Report the per-file
    results honestly.
 3. To capture a new baseline set (only for a deliberate, reviewed re-baseline,
-   for example the Session 3 re-point): never overwrite `pre-merge/`. Create a
+   for example the Session 3 re-point): never overwrite `pre-merge/`. Its git
+   tree hash is pinned in `tests/golden/PRE-MERGE-TREE` and
+   `scripts/golden-immutability.mjs` fails `pnpm verify` on any drift. Create a
    sibling directory under `tests/golden/`, point the capture there, and attach
    the diff against the previous baselines to the PR for review. A golden shift
    without an attached, reviewed diff is a gate failure.
