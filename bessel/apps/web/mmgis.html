@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0e14" />
+    <title>MMGIS-shaped fixture host</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #10131a;
+        color: #e6e6e6;
+        font-family: system-ui, sans-serif;
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 16px;
+      }
+      main > header {
+        grid-column: 1 / -1;
+      }
+      .chip {
+        display: inline-block;
+        border: 1px solid #445;
+        border-radius: 4px;
+        padding: 2px 8px;
+        margin: 0 6px 6px 0;
+        font-size: 13px;
+        font-family: ui-monospace, monospace;
+      }
+      #time-control {
+        margin-top: 12px;
+      }
+      #time-control input[type='range'] {
+        width: 100%;
+      }
+      button {
+        background: #1c2230;
+        color: inherit;
+        border: 1px solid #445;
+        border-radius: 4px;
+        padding: 4px 10px;
+        cursor: pointer;
+      }
+      .note {
+        color: #9aa;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 data-testid="mmgis-host-title" style="margin: 0 0 4px">MMGIS-shaped fixture host</h1>
+        <p class="note">
+          A fixture in the shape of a surface GIS host (it owns the map and the time cursor),
+          honestly not MMGIS itself; the live integration routes through the PlanDev-MMGIS
+          effort. The embedded Bessel panel mounts only behind the bessel=1 flag.
+        </p>
+      </header>
+      <section>
+        <div id="mmgis-map-root"></div>
+        <div id="time-control">
+          <input
+            type="range"
+            id="time-slider"
+            data-testid="mmgis-time-slider"
+            min="0"
+            max="1"
+            step="1"
+            value="0"
+            disabled
+          />
+          <span class="chip" id="cursor-chip" data-testid="mmgis-cursor-chip">cursor: (panel off)</span>
+          <span class="chip" id="selection-chip" data-testid="mmgis-selection-chip">selection: none</span>
+          <button id="focus-host" data-testid="mmgis-focus-host">Focus host layer</button>
+        </div>
+      </section>
+      <section id="panel-container">
+        <div id="panel-host"></div>
+        <p class="note" id="panel-note" data-testid="mmgis-no-panel" hidden>
+          Bessel panel is off; append ?bessel=1 to mount it.
+        </p>
+      </section>
+    </main>
+    <script type="module" src="/src/mmgis-host.ts"></script>
+  </body>
+</html>

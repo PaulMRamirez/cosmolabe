@@ -29,3 +29,9 @@ Steps:
    executioner fails the gate summary by name; the fix is to reschedule the
    removal or decide permanence by ADR, never to let the item drift silently
    into architecture.
+7. Re-read docs/validation/BUDGET-LOG.md and diff it against the caps in
+   bessel/.size-limit.json over the window's git history: every move of an
+   existing cap must have a log line with its cause, and the gate summary
+   reports the window's cumulative drift per budget. A cap move without a
+   line fails the gate summary by name; new budgets are additions, not
+   moves, justified by their landing commit.

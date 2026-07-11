@@ -6,7 +6,7 @@
 // deterministic; the effect cleanup disposes the client, so unmounting the
 // panel tears the worker down.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Metric, Tag } from '@bessel/selene-design';
 import { GroundTrackMap, IntervalTimeline, ProgressRing, TimeSeriesChart } from '@bessel/ui';
 import {
@@ -16,6 +16,7 @@ import {
   type Provenance,
 } from '@bessel/compute';
 import type { HostDataAdapter, PanelJob } from './index.ts';
+import { HostBridge } from './host-bridge.ts';
 import { fieldToCells, layerToLonLat } from './mappers.ts';
 
 interface JobState {
@@ -77,7 +78,15 @@ function FieldMap({ product }: { readonly product: AnalysisProduct }): JSX.Eleme
   );
 }
 
-export function ProductView({ product }: { readonly product: AnalysisProduct }): JSX.Element | null {
+export function ProductView({
+  product,
+  cursorEt,
+  onPick,
+}: {
+  readonly product: AnalysisProduct;
+  readonly cursorEt?: number;
+  readonly onPick?: (et: number) => void;
+}): JSX.Element | null {
   const p = product.product;
   if (p.kind === 'intervals') {
     const spans = p.sets.flatMap((s) => s.intervals.flat());
@@ -92,6 +101,7 @@ export function ProductView({ product }: { readonly product: AnalysisProduct }):
             intervals={set.intervals.map(([a, b]) => [a, b] as [number, number])}
             span={span}
             testId={`panel-lane-${set.label}`}
+            cursorEt={cursorEt}
           />
         ))}
       </div>
@@ -107,6 +117,8 @@ export function ProductView({ product }: { readonly product: AnalysisProduct }):
             value={Array.from(s.values)}
             label={`${s.name} (${s.unit})`}
             testId={`panel-chart-${s.name.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`}
+            cursorEt={cursorEt}
+            onPick={onPick}
           />
         ))}
       </div>
@@ -125,11 +137,30 @@ export function ProductView({ product }: { readonly product: AnalysisProduct }):
   return <FieldMap product={product} />;
 }
 
-export function PanelSurface({ data }: { readonly data: HostDataAdapter }): JSX.Element {
+export function PanelSurface({
+  data,
+  bridge: bridgeProp,
+}: {
+  readonly data: HostDataAdapter;
+  readonly bridge?: HostBridge;
+}): JSX.Element {
   const [hostProducts, setHostProducts] = useState<readonly AnalysisProduct[]>([]);
   const [jobs, setJobs] = useState<readonly JobState[]>([]);
   const [fault, setFault] = useState<string | null>(null);
   const jobDefs = useMemo<readonly PanelJob[]>(() => data.compute?.jobs ?? [], [data]);
+  const bridge = useMemo(() => bridgeProp ?? new HostBridge(), [bridgeProp]);
+  useSyncExternalStore(bridge.subscribe, bridge.getVersion, bridge.getVersion);
+  const cursorEt = bridge.getCursor() ?? undefined;
+  const focusedKey = bridge.getFocused();
+  const onPick = (et: number): void => bridge.emitCursor(et);
+
+  // Host-to-panel focus: bring the focused product's card into view.
+  useEffect(() => {
+    if (focusedKey === null || typeof document === 'undefined') return;
+    document
+      .getElementById(`panel-product-${focusedKey}`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [focusedKey]);
 
   useEffect(() => {
     let disposed = false;
@@ -160,6 +191,17 @@ export function PanelSurface({ data }: { readonly data: HostDataAdapter }): JSX.
         });
         const { et0 } = await client.ready;
         if (compute.publish && et0 !== null) await client.publish(compute.publish(et0));
+        // The mounted content's time span, from the job requests themselves,
+        // handed to the host so its cursor control can scale (onSpan).
+        {
+          const spans = compute.jobs.map((j) => j.spec(et0 ?? 0).request.span);
+          if (spans.length > 0) {
+            bridge.emitSpan({
+              et0: Math.min(...spans.map((s) => s[0])),
+              et1: Math.max(...spans.map((s) => s[1])),
+            });
+          }
+        }
         for (let i = 0; i < compute.jobs.length; i++) {
           if (disposed) return;
           const def = compute.jobs[i]!;
@@ -196,7 +238,7 @@ export function PanelSurface({ data }: { readonly data: HostDataAdapter }): JSX.
       disposed = true;
       client?.dispose();
     };
-  }, [data, jobDefs]);
+  }, [data, jobDefs, bridge]);
 
   return (
     <div data-testid="panel-surface">
@@ -205,37 +247,96 @@ export function PanelSurface({ data }: { readonly data: HostDataAdapter }): JSX.
           {fault}
         </p>
       )}
-      {hostProducts.map((product, i) => (
-        <section key={i} data-testid="panel-host-product">
-          <ProvenanceChip provenance={product.provenance} />
-          <ProductView product={product} />
-        </section>
-      ))}
+      {hostProducts.map((product, i) => {
+        const key = `host-${i}`;
+        const label = hostProductLabel(product);
+        return (
+          <section
+            key={key}
+            id={`panel-product-${key}`}
+            data-testid="panel-host-product"
+            data-key={key}
+            data-focused={focusedKey === key}
+            style={{
+              border: focusedKey === key ? '1px solid #67e8f9' : '1px solid #3335',
+              borderRadius: 6,
+              padding: 10,
+              marginBottom: 10,
+            }}
+          >
+            <header
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+              data-testid={`panel-select-${key}`}
+              onClick={() =>
+                bridge.emitSelection({ key, label, authority: product.provenance.authority })
+              }
+            >
+              <strong style={{ flex: 1 }}>{label}</strong>
+            </header>
+            <ProvenanceChip provenance={product.provenance} />
+            <ProductView product={product} cursorEt={cursorEt} onPick={onPick} />
+          </section>
+        );
+      })}
       {jobs.map((job, i) => (
         <section
           key={job.label}
+          id={`panel-product-job-${i}`}
           data-testid={`panel-job-${i}`}
+          data-key={`job-${i}`}
+          data-focused={focusedKey === `job-${i}`}
           data-status={typeof job.status === 'object' ? 'error' : job.status}
           data-partials={job.partials}
-          style={{ border: '1px solid #3335', borderRadius: 6, padding: 10, marginBottom: 10 }}
+          style={{
+            border: focusedKey === `job-${i}` ? '1px solid #67e8f9' : '1px solid #3335',
+            borderRadius: 6,
+            padding: 10,
+            marginBottom: 10,
+          }}
         >
-          <header style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <header
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+            data-testid={`panel-select-job-${i}`}
+            onClick={() =>
+              bridge.emitSelection({
+                key: `job-${i}`,
+                label: job.label,
+                authority: job.product?.provenance.authority ?? 'exploratory',
+              })
+            }
+          >
             <ProgressRing pct={job.pct} active={job.status === 'running'} />
             <strong style={{ flex: 1 }}>{job.label}</strong>
             <Tag tone={job.status === 'done' ? 'green' : job.status === 'running' ? 'cyan' : 'neutral'}>
               {typeof job.status === 'object' ? 'error' : job.status}
             </Tag>
             {job.cancel && (
-              <button data-testid={`panel-cancel-${i}`} onClick={() => job.cancel?.()}>
+              <button
+                data-testid={`panel-cancel-${i}`}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  job.cancel?.();
+                }}
+              >
                 Cancel
               </button>
             )}
           </header>
           {typeof job.status === 'object' && <p style={{ color: '#f47067' }}>{job.status.error}</p>}
           {job.product && <ProvenanceChip provenance={job.product.provenance} />}
-          {job.product && <ProductView product={job.product} />}
+          {job.product && <ProductView product={job.product} cursorEt={cursorEt} onPick={onPick} />}
         </section>
       ))}
     </div>
   );
+}
+
+/** A human label for a host product: its first named payload, else the engine. */
+function hostProductLabel(product: AnalysisProduct): string {
+  const p = product.product;
+  if (p.kind === 'geometry' && p.layers[0]) return p.layers[0].label;
+  if (p.kind === 'intervals' && p.sets[0]) return p.sets[0].label;
+  if (p.kind === 'series' && p.series[0]) return p.series[0].name;
+  if (p.kind === 'field') return p.field.name;
+  return product.provenance.engine;
 }

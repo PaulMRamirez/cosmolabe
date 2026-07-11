@@ -2,6 +2,8 @@
 // link margin, solar intensity, ...). No charting library: a single scaled polyline.
 // (STK_PARITY_SPEC F5 / §4.10.)
 
+import type { MouseEvent as ReactMouseEvent } from 'react';
+
 export interface TimeSeriesChartProps {
   readonly et: Float64Array | readonly number[];
   readonly value: Float64Array | readonly number[];
@@ -13,6 +15,12 @@ export interface TimeSeriesChartProps {
    *  the margin = 0 link-closes line on a margin-vs-time plot. Included in the y-scale so it stays
    *  on-canvas. Drawn as a dashed line testid `${testId}-threshold`. */
   readonly threshold?: number;
+  /** Shared time cursor (ET seconds); drawn as a vertical line testid `${testId}-cursor` when
+   *  inside the data's time extent. */
+  readonly cursorEt?: number;
+  /** Click-to-pick: called with the ET at the clicked x position (the cursor-out direction of a
+   *  host sync surface). The chart maps clientX back through its own time scale. */
+  readonly onPick?: (et: number) => void;
 }
 
 export function TimeSeriesChart(props: TimeSeriesChartProps): JSX.Element {
@@ -23,6 +31,8 @@ export function TimeSeriesChart(props: TimeSeriesChartProps): JSX.Element {
 
   let points = '';
   let thresholdY: number | null = null;
+  let cursorX: number | null = null;
+  let tScale: { t0: number; dt: number } | null = null;
   if (n >= 2) {
     let t0 = Infinity;
     let t1 = -Infinity;
@@ -54,7 +64,21 @@ export function TimeSeriesChart(props: TimeSeriesChartProps): JSX.Element {
     if (props.threshold !== undefined && Number.isFinite(props.threshold)) {
       thresholdY = yOf(props.threshold);
     }
+    tScale = { t0, dt };
+    if (props.cursorEt !== undefined && props.cursorEt >= t0 && props.cursorEt <= t1) {
+      cursorX = pad + ((props.cursorEt - t0) / dt) * (w - 2 * pad);
+    }
   }
+
+  const handleClick =
+    props.onPick && tScale
+      ? (ev: ReactMouseEvent<SVGSVGElement>): void => {
+          const box = ev.currentTarget.getBoundingClientRect();
+          const x = ((ev.clientX - box.left) / box.width) * w;
+          const frac = Math.min(1, Math.max(0, (x - pad) / (w - 2 * pad)));
+          props.onPick!(tScale!.t0 + frac * tScale!.dt);
+        }
+      : undefined;
 
   return (
     <svg
@@ -65,6 +89,8 @@ export function TimeSeriesChart(props: TimeSeriesChartProps): JSX.Element {
       role="img"
       aria-label={props.label ?? 'Time series'}
       data-testid={props.testId ?? 'time-series-chart'}
+      onClick={handleClick}
+      style={handleClick ? { cursor: 'crosshair' } : undefined}
     >
       {thresholdY !== null ? (
         <line
@@ -78,6 +104,20 @@ export function TimeSeriesChart(props: TimeSeriesChartProps): JSX.Element {
         />
       ) : null}
       {points ? <polyline className="bessel-chart-line" fill="none" points={points} /> : null}
+      {cursorX !== null ? (
+        // A 1px rect, not a <line>: a vertical line has a zero-width bounding
+        // box, which visibility checks (and hit tests) treat as invisible.
+        <rect
+          className="bessel-chart-cursor"
+          x={(cursorX - 0.5).toFixed(2)}
+          y={pad}
+          width={1}
+          height={h - 2 * pad}
+          fill="#67e8f9"
+          data-testid={`${props.testId ?? 'time-series-chart'}-cursor`}
+          data-et={props.cursorEt}
+        />
+      ) : null}
     </svg>
   );
 }
