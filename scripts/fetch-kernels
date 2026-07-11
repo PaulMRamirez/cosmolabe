@@ -30,6 +30,13 @@
 # spice tests read; `--all` additionally restores the demo-only viewer kernels
 # named in the full LFS manifest.
 #
+# One entry postdates the merge capture: the GS-1 cruise fixture
+# 010420R_SCPSE_EP1_JP83.bsp (Session 3, the differential harness of ADR
+# M-0002). It was never in Aaron's tree, so its sha256 was computed from the
+# NAIF download at the time it was added (2026-07-10) rather than from an LFS
+# pointer; it is the smallest reconstructed cruise SCPSE NAIF publishes (8 MB,
+# Earth flyby through the post-Jupiter cruise).
+#
 # Usage: scripts/fetch-kernels [--all] [--force]
 
 set -euo pipefail
@@ -78,6 +85,7 @@ $SK/cassini/cas_v43.tf|09b1f6f27a74d3cc64b28ef91fcea02bed78fe63c93035b8434a6b67e
 $SK/cassini/cas00172.tsc|9aebd8d2783d06c12c33d2c5794a04a7bcde26c95efd4fee974acd9b356442f8|$CAS/sclk/cas00172.tsc|packages/spice/test-kernels/cassini/cas00172.tsc|0|test
 $SK/cassini/cas_iss_v10.ti|518c50a1c837f525e10ee71a97c9971ba419850ac05fcaa2df99cf3cddda5c68|$CAS/ik/cas_iss_v10.ti|packages/spice/test-kernels/cassini/cas_iss_v10.ti|0|test
 $SK/cassini/040629AP_SCPSE_04179_04185.bsp|281ecea43ba77317830815d2b4647b56625b13aef1c6635bf6de5fb7f8dab901|$CAS/spk/040629AP_SCPSE_04179_04185.bsp|packages/spice/test-kernels/cassini/040629AP_SCPSE_04179_04185.bsp|1|test
+$SK/cassini/010420R_SCPSE_EP1_JP83.bsp|6b91d6bef866ea307f9d778606b62007774eed33bc18b26421f320a8a2dff1fb|$CAS/spk/010420R_SCPSE_EP1_JP83.bsp|-|0|test
 $VK/naif0012.tls|678e32bdb5a744117a467cd9601cd6b373f0e9bc9bbde1371d5eee39600a039b|$GEN/lsk/naif0012.tls|apps/viewer/test-catalogs/kernels/naif0012.tls|0|test
 $VK/pck00011.tpc|3dff7b1dbeceaa01f25467767d3fa25816051c85d162d1edf04acb310ee28bb1|$GEN/pck/pck00011.tpc|apps/viewer/test-catalogs/kernels/pck00011.tpc|0|test
 $VK/de440s.bsp|c1c7feeab882263fc493a9d5a5b2ddd71b54826cdf65d8d17a76126b260a49f2|$GEN/spk/planets/de440s.bsp|apps/viewer/test-catalogs/kernels/de440s.bsp|1|test
