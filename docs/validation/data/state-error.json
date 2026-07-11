@@ -1,0 +1,86 @@
+{
+  "description": "Cosmolabe core state and orientation error vs SPICE truth on saturn-soi (GS-2 analog): per-leg relative position vs spkpos (ECLIPJ2000, correction NONE), max over the -12h..+12h sweep; composed pole vs the pxform IAU pole at the scene epoch.",
+  "scene": "saturn-soi",
+  "rows": [
+    {
+      "body": "Saturn",
+      "center": "SUN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0,
+      "maxPosErrM": 0,
+      "poleErrDeg": 0.000256,
+      "poleErrArcsec": 0.922
+    },
+    {
+      "body": "Mimas",
+      "center": "SATURN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0.0000343,
+      "maxPosErrM": 0.0343,
+      "poleErrDeg": null,
+      "poleErrArcsec": null
+    },
+    {
+      "body": "Enceladus",
+      "center": "SATURN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0.0000434,
+      "maxPosErrM": 0.0434,
+      "poleErrDeg": null,
+      "poleErrArcsec": null
+    },
+    {
+      "body": "Tethys",
+      "center": "SATURN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0.0000571,
+      "maxPosErrM": 0.0571,
+      "poleErrDeg": null,
+      "poleErrArcsec": null
+    },
+    {
+      "body": "Dione",
+      "center": "SATURN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0.0000705,
+      "maxPosErrM": 0.0705,
+      "poleErrDeg": null,
+      "poleErrArcsec": null
+    },
+    {
+      "body": "Rhea",
+      "center": "SATURN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0.000102,
+      "maxPosErrM": 0.102,
+      "poleErrDeg": null,
+      "poleErrArcsec": null
+    },
+    {
+      "body": "Titan",
+      "center": "SATURN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0.000177,
+      "maxPosErrM": 0.177,
+      "poleErrDeg": null,
+      "poleErrArcsec": null
+    },
+    {
+      "body": "Cassini",
+      "center": "SATURN",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxPosErrKm": 0.00011,
+      "maxPosErrM": 0.11,
+      "poleErrDeg": null,
+      "poleErrArcsec": null
+    }
+  ]
+}

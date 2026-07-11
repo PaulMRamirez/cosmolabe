@@ -1,0 +1,7 @@
+# Pinned git tree hash of tests/golden/pre-merge/, the immutable day-zero
+# baselines (CLAUDE.md rule 5). scripts/golden-immutability.mjs compares this
+# against the committed tree and the working copy on every pnpm verify: any
+# drift fails the gate. This file changes only if Aaron amends the baseline
+# record itself, as an explicit, reviewed edit; a new baseline set goes in a
+# sibling directory under tests/golden/, never here.
+ae11b53b2e15b5297b33f95acd659feb9005f786

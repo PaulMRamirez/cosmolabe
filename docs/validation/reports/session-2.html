@@ -1,0 +1,233 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 2 (measurement rig)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 2</h1>
+<p>The measurement rig: day-zero baselines, purity lint, jitter scaffold,
+bake-off evidence. Adversarial cross-check of
+<code>docs/goals/SESSION-2-MEASUREMENT-RIG.goal.md</code> against observed
+evidence. Generated 2026-07-10 on branch <code>session-2</code>. Every row was
+reproduced during this cross-check by running the command or reading the
+artifact, not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met, including CI:
+the <code>verify</code> check on PR #2 passed (run 29140300072). No
+cosmolabe-heritage source was changed: the session diff under
+<code>cosmolabe/</code> is empty. Three pre-merge amendments were applied after
+the first green run and re-verified: the deliberate divergence from the
+heritage goldens is stated explicitly in ENVIRONMENT.md and the re-entry brief,
+<code>baseline.mjs compare</code> asserts the pinned node version, and
+pre-merge baseline immutability is mechanical (pinned tree hash, gated in
+verify).</p>
+<p><strong>Residual risk and honest carryover.</strong> The five bake-off
+measurements land at honest scope: jitter and purity (the two decision-critical
+measurements) are measured; state and orientation error versus SPICE truth is
+quantified for the cosmolabe core (at most 0.18 m, 0.92 arcsec, inside the
+M-0002 tripwires) with the cross-core differential deferred to the Session 3
+harness; p95 frame time and memory high-water need physical devices and carry
+to the W4 device pass, recorded as such in both ADR addenda. The GS-1 through
+GS-4 fixtures do not exist as code yet: the measured scenes are analogs
+(saturn-soi is the GS-2 reference case at a measured 9.04 AU; a no-rebase
+heliocentric configuration stands in for the GS-1 float32 stress), stated
+plainly in the M-0001 addendum. The 0.5 device px jitter envelope is defined by
+this session in the M-0003 addendum, not inherited, and both ADRs stay
+review-on-return so the definitions and acceptances are Aaron's to veto. The
+jitter scaffold is a headless reproduction of the GPU float32 pipeline
+(quantized positions and matrix elements, float32 arithmetic chain), not a GPU
+measurement; the model is documented in the rig header. Render baselines
+recapture at 0.000 percent pixel difference but the two cassini-soi frames are
+not byte-stable run to run (sub-threshold antialiasing noise), so the
+reproduction claim for renders is pixelmatch-gated and says so in
+ENVIRONMENT.md; the fingerprint baselines are byte-for-byte. Byte-for-byte
+reproduction requires the exact node version recorded in ENVIRONMENT.md
+(v22.23.1); <code>baseline.mjs compare</code> now asserts it alongside the TZ
+pin (observed failing clearly under v26.3.0, passing under v22.23.1), while
+the jitter and state-error runners still assert only TZ (their tables proved
+byte-stable under the pinned node; tighten if that ever wobbles). Pre-merge
+immutability is no longer only a stated rule: the directory's git tree hash is
+pinned in <code>tests/golden/PRE-MERGE-TREE</code> and
+<code>verify:goldens</code> fails the gate on committed drift or any
+uncommitted change under the directory. Two findings
+in Aaron's paths are recorded and untouched: the committed cassini-soi visual
+goldens presuppose the author's full multiyear kernel set and do not reproduce
+from the repository as it stands, and the Session 1B fetch manifest missed
+eight Cassini text kernels the pre-merge tag held at the viewer path (restored
+root-side this session; without them the cassini-soi scene cannot initialize
+outside the author's machine).</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+
+<tr><td><code>tests/golden/pre-merge/</code> populated and checksummed</td><td class="pass">PASS</td>
+<td>Committed in <code>57ceee2</code>, the first Session 2 commit (day-zero
+ordering confirmed by <code>git log --reverse main..HEAD</code>): two
+fingerprint JSONs (byte-identical to the heritage committed goldens), three
+render PNGs, <code>environment.json</code>, <code>SHA256SUMS</code> over all
+six files. <code>baseline.mjs compare</code> reports
+<code>checksums verified (6 files)</code>.</td></tr>
+
+<tr><td><code>ENVIRONMENT.md</code> records the pinned environment and the planned Session 3 re-baseline</td><td class="pass">PASS</td>
+<td>Records TZ=America/Los_Angeles (with the why: the local-time epoch
+finding), node v22.23.1, npm 10.9.8, pnpm 9.15.0, macOS 15.6 darwin-arm64,
+Playwright 1.60.0, Chromium 148.0.7778.96, SwiftShader, viewport, thresholds,
+settle; states the Session 3 shift lands only as a deliberate, reviewed
+re-baseline in a sibling directory, never a silent one or an edit in place;
+and states explicitly that the cassini-soi baselines are rendered from the
+fetchable kernel set and deliberately differ from the heritage goldens (which
+presuppose the author's full kernel set), the baselines being the reproducible
+truth and the goldens a recorded finding, neither a regression of the other.</td></tr>
+
+<tr><td>A <code>/baseline</code> compare shows the captured renders reproduce</td><td class="pass">PASS</td>
+<td>Re-run fresh during this cross-check:
+<code>TZ=America/Los_Angeles node scripts/baseline.mjs compare --skip-build</code>
+recaptured both families to a temp dir and reported fingerprints byte-identical,
+<code>cassini-soi--Ring_Plane_View.png (0.000% diff)</code>,
+<code>cassini-soi--SOI_2004-07-01_.png (0.000% diff)</code>,
+<code>earth-moon.png (0.000% diff, byte-identical)</code>, checksums verified,
+exit "captured baselines reproduce". Compare also asserts the pinned
+environment: under node v26.3.0 it refuses with a clear message naming the
+pinned v22.23.1, and passes under the pinned version.</td></tr>
+
+<tr><td>Purity lint fails on a planted DOM import in each core, passes once removed</td><td class="pass">PASS</td>
+<td>Two independent drills observed. Drill 1: <code>import 'react'</code> plus
+<code>document</code> planted in <code>bessel/packages/propagator</code> and
+<code>cosmolabe/packages/core</code>: 4 violations, exit 1. Drill 2 (fresh
+locations, this cross-check): plant in <code>bessel/packages/state</code> and a
+<code>window</code>-only plant in <code>cosmolabe/packages/core</code>: 3
+violations, exit 1. After removal both times:
+<code>purity-lint: clean (215 files across 23 audited directories)</code>, exit 0.</td></tr>
+
+<tr><td>Purity lint wired into <code>pnpm verify</code></td><td class="pass">PASS</td>
+<td><code>verify</code> chain is <code>fetch-kernels &amp;&amp; verify:purity
+&amp;&amp; verify:goldens &amp;&amp; verify:bessel &amp;&amp; verify:cosmolabe</code>
+(root <code>package.json</code>); a violation exits 1 and fails the chain. The
+full gate ran green with the stage in place.</td></tr>
+
+<tr><td>Jitter scaffold produces its table on the bake-off scenes, numbers inside the M-0003 tier envelopes</td><td class="pass">PASS</td>
+<td><code>docs/validation/data/jitter.json</code>: 24 rows (8 configurations by
+3 tiers). Gated modes: origin tracked at most 5.0e-5 px, origin parent at most
+0.048 px, all inside the 0.5 device px envelope the M-0003 addendum defines;
+the rig itself asserts the envelope (vitest expect per gated row). No-rebase
+counterfactual: 107 to 187 px at 9.04 AU, reported ungated. Rerunning the
+scaffold during this cross-check regenerated the committed table
+byte-identically (<code>git diff</code> empty).</td></tr>
+
+<tr><td>M-0001 and M-0003 carry the evidence tables with provisional-decision tags intact</td><td class="pass">PASS</td>
+<td>Both ADRs gained an "Evidence addendum (Session 2, 2026-07-10)" section
+replacing the pending-evidence placeholders; both status lines read Accepted
+(provisional, review-on-return); <code>grep '^Review-on-return: yes'</code>
+matches both files, and <code>scripts/review-on-return.sh</code> still lists
+them in the register. The spine decision applies the pre-stated rule:
+cosmolabe's core loses neither jitter (shared floating-origin defense) nor
+purity (0 violations versus 5 DOM couplings in bessel scene via
+<code>--spine-audit</code>).</td></tr>
+
+<tr><td>Root <code>pnpm verify</code> green locally</td><td class="pass">PASS</td>
+<td>Full chain exit 0 under pinned pnpm 9.15.0 and node 22: fetch-kernels,
+purity lint, bessel gate through all seven size budgets (web shell 284.31 kB of
+345 kB, CSPICE WASM 360.53 kB of 4 MB), cosmolabe build plus
+<code>Test Files 37 passed, Tests 312 passed | 1 skipped</code>. Re-run after
+the pre-merge amendments with both new stages in the chain: purity clean,
+<code>golden-immutability: matches the pinned tree ae11b53b2e15</code>, bessel
+237 test files, cosmolabe 37, exit 0.</td></tr>
+
+<tr><td>Root <code>pnpm verify</code> green in CI</td><td class="pass">PASS</td>
+<td>The <code>verify</code> check on PR #2 passed in 2m5s
+(<code>actions/runs/29140300072</code>), running the identical
+<code>pnpm verify</code> including the new purity stage; the kernel cache key
+rolled correctly with the manifest change. Later pushes (the report update and
+the pre-merge amendments) rerun the identical gate; the check status on the PR
+tip is authoritative and was observed green after each push.</td></tr>
+</table>
+
+<h2>Exit deliverables</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+
+<tr><td>review-on-return register refreshed</td><td class="pass">PASS</td>
+<td><code>scripts/review-on-return.sh</code> run: five flagged ADRs, zero new
+commits in Aaron-owned paths since <code>cosmolabe-pre-merge</code> (Session 2
+adds none). <code>docs/collab/RE-ENTRY-BRIEF.md</code> updated: register
+reflects the two evidence-attached acceptances, a Session 2 paragraph points at
+the baselines and the compare command as the re-point diff anchor, and the
+irreproducible-goldens finding is a new named finding.</td></tr>
+
+<tr><td>/verify-spec run and report committed</td><td class="pass">PASS</td>
+<td>This report, <code>docs/validation/reports/session-2.html</code>, committed
+on the session branch.</td></tr>
+
+<tr><td><code>SESSION-3-SEAM.goal.md</code> drafted</td><td class="pass">PASS</td>
+<td>Drafted per the Exit spec: extract <code>cspice-wasm</code> and
+<code>frames</code> to the M-0002 contracts, differential harness call-parity
+green on GS-1 and GS-2 at relative 1e-12, pipeline tripwires (1 m, 5 arcsec)
+measured; no re-point until green; baselines must stay green.</td></tr>
+</table>
+
+<h2>Iron rules on the session diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+
+<tr><td>1: no CSPICE above <code>frames</code></td><td class="pass">PASS</td>
+<td>No product-tier code added or changed. The rigs are measurement code and
+drive the unmodified heritage harness the existing tests already drive; they
+add no CSPICE call to any product path.</td></tr>
+
+<tr><td>2: heritage diffs mechanically minimal</td><td class="pass">PASS</td>
+<td><code>git diff main..HEAD -- cosmolabe/</code> is empty: zero
+cosmolabe-heritage changes. Both heritage findings (visual goldens, missing
+manifest kernels) were recorded, not fixed in place; the kernel restoration is
+root-owned (<code>scripts/fetch-kernels</code>).</td></tr>
+
+<tr><td>4: <code>authority: 'host'</code> host-only</td><td class="na">N/A</td>
+<td>No occurrence of <code>authority</code> in the session diff.</td></tr>
+
+<tr><td>5: golden-image discipline</td><td class="pass">PASS</td>
+<td>No visual change; the immutable baseline directory now exists with the
+compare tool green, and the <code>/baseline</code> command documents that a
+golden shift without a reviewed diff is a gate failure. Immutability is
+mechanical: the directory's tree hash is pinned in
+<code>tests/golden/PRE-MERGE-TREE</code> and <code>verify:goldens</code> fails
+the gate on drift; observed failing on an uncommitted edit (naming the file)
+and on a pin mismatch (showing both hashes), passing when restored.</td></tr>
+
+<tr><td>6: model-layer purity lint-enforced</td><td class="pass">PASS</td>
+<td>Enforced in the gate for 23 directories across both cores; clean; drills
+observed failing and recovering (rows above).</td></tr>
+
+<tr><td>7: kernels never committed</td><td class="pass">PASS</td>
+<td><code>git diff --name-only main..HEAD</code> contains no kernel file
+(checked against .bsp .bc .tls .tpc .tsc .tf .ti); the manifest change adds
+download records, and fetched kernels land in gitignored paths.</td></tr>
+
+<tr><td>9: SPICE km at the contracts</td><td class="pass">PASS</td>
+<td>Fingerprints record km (documented in the schema); the jitter rig converts
+km to scene units at the simulated render boundary with the conversion constant
+named and cited to <code>UniverseRenderer.ts</code>.</td></tr>
+
+<tr><td>10: dash sweep on new prose</td><td class="pass">PASS</td>
+<td><code>git diff main..HEAD</code> added lines contain zero em or en dashes
+(checked with a codepoint grep across the whole session diff, docs, code,
+commit-authored files).</td></tr>
+</table>
+
+<p>Report generated by the Session 2 verify-spec pass; reproduction commands
+for every table above: <code>scripts/baseline.mjs compare</code>,
+<code>scripts/purity-lint.mjs</code>, <code>scripts/jitter-scaffold.mjs</code>,
+<code>scripts/state-error.mjs</code>, <code>pnpm verify</code>, each under
+<code>TZ=America/Los_Angeles</code> and the ENVIRONMENT.md toolchain.</p>
