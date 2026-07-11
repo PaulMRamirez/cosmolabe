@@ -15,6 +15,7 @@
     "verify:goldens": "node scripts/golden-immutability.mjs",
     "verify:bessel": "pnpm -C bessel verify",
     "verify:cosmolabe": "npm --prefix cosmolabe run build && TZ=America/Los_Angeles npm --prefix cosmolabe run test -- --exclude '**/catalog-all-cosmographia.test.ts' --exclude '**/xyzv-parser.test.ts'",
-    "verify": "pnpm run fetch-kernels && pnpm run verify:purity && pnpm run verify:goldens && pnpm run verify:bessel && pnpm run verify:cosmolabe"
+    "verify:seam": "TZ=America/Los_Angeles node scripts/seam.mjs",
+    "verify": "pnpm run fetch-kernels && pnpm run verify:purity && pnpm run verify:goldens && pnpm run verify:bessel && pnpm run verify:cosmolabe && pnpm run verify:seam"
   }
 }
