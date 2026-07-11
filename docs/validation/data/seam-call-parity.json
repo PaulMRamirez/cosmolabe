@@ -1,5 +1,5 @@
 {
-  "description": "Differential harness, call-parity mode (M-0002): identical CSPICE invocations through both wrappers, cosmolabe @cosmolabe/spice (timecraftjs) as reference vs the frames tier over cspice-wasm, identical kernel bytes, gate relative 1e-12. maxRelDelta is the worst epoch: vector-norm relative for spkezr position and velocity (plus relative light time under corrections), relative for str2et, max elementwise (unit scale) for pxform.",
+  "description": "Differential harness, call-parity mode (M-0002): identical CSPICE invocations through both wrappers, cosmolabe @cosmolabe/spice (timecraftjs) as reference vs the frames tier over cspice-wasm, identical kernel bytes, gate relative 1e-12, all four golden scenarios. maxRelDelta is the worst epoch: vector-norm relative for spkezr position and velocity (plus relative light time under corrections), relative for str2et, max elementwise (unit scale) for pxform.",
   "gateRelative": 1e-12,
   "toolkit": {
     "cosmolabe": "CSPICE_N0066",
@@ -27,6 +27,28 @@
         "cassini/040629AP_SCPSE_04179_04185.bsp"
       ],
       "kernelSetHash": "035e18772ee7aa6a0cbb3001ae383090b2c0ce5f215c8e3968e06c9d61831acd"
+    },
+    "GS-3": {
+      "fixture": "lunar south pole site, authored TK frame over IAU_MOON, de425s ephemerides",
+      "epoch": "2004-07-01T00:00:00",
+      "sweep": "epoch -14d..+14d (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "de425s.bsp"
+      ],
+      "kernelSetHash": "f095ebe51131c8745e20ccf2d1cf7cd260363f46232b3bcc6923c4873f635c5b"
+    },
+    "GS-4": {
+      "fixture": "six-plane Walker LEO constellation, rig-generated Type 13 SPKs via writeSpkType13",
+      "epoch": "2004-07-01T00:00:00",
+      "sweep": "epoch -45min..+45min (5 samples)",
+      "kernels": [
+        "naif0012.tls",
+        "pck00010.tpc",
+        "de425s.bsp"
+      ],
+      "kernelSetHash": "f282a1ddb0c29c756ec799138e2a7dc7dddff241c20c6ac5315fa71ed207298b"
     }
   },
   "rows": [
@@ -367,6 +389,312 @@
       "scenario": "GS-2",
       "call": "pxform",
       "detail": "J2000 -> IAU_SATURN",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "str2et",
+      "detail": "2004-07-01T00:00:00",
+      "correction": null,
+      "epochs": 1,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "MOON wrt EARTH @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "MOON wrt EARTH @ J2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "MOON wrt EARTH @ J2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "MOON wrt EARTH @ J2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "MOON wrt EARTH @ J2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ ECLIPJ2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ ECLIPJ2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ ECLIPJ2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ ECLIPJ2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ ECLIPJ2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ SEAM_GS3_SITE",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ SEAM_GS3_SITE",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ SEAM_GS3_SITE",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ SEAM_GS3_SITE",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "spkezr",
+      "detail": "SUN wrt MOON @ SEAM_GS3_SITE",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "pxform",
+      "detail": "J2000 -> IAU_MOON",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "pxform",
+      "detail": "ECLIPJ2000 -> IAU_MOON",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "pxform",
+      "detail": "IAU_MOON -> SEAM_GS3_SITE",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-3",
+      "call": "pxform",
+      "detail": "ECLIPJ2000 -> SEAM_GS3_SITE",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "str2et",
+      "detail": "2004-07-01T00:00:00",
+      "correction": null,
+      "epochs": 1,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9000 wrt EARTH @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9001 wrt EARTH @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9002 wrt EARTH @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9003 wrt EARTH @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9004 wrt EARTH @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9005 wrt EARTH @ J2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9000 wrt EARTH @ ECLIPJ2000",
+      "correction": "NONE",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9000 wrt EARTH @ ECLIPJ2000",
+      "correction": "LT",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9000 wrt EARTH @ ECLIPJ2000",
+      "correction": "LT+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9000 wrt EARTH @ ECLIPJ2000",
+      "correction": "CN",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "spkezr",
+      "detail": "-9000 wrt EARTH @ ECLIPJ2000",
+      "correction": "CN+S",
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "pxform",
+      "detail": "J2000 -> IAU_EARTH",
+      "correction": null,
+      "epochs": 5,
+      "maxRelDelta": 0,
+      "pass": true
+    },
+    {
+      "scenario": "GS-4",
+      "call": "pxform",
+      "detail": "ECLIPJ2000 -> J2000",
       "correction": null,
       "epochs": 5,
       "maxRelDelta": 0,

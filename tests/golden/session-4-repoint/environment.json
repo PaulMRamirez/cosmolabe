@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-07-11T07:08:48.711Z",
+  "tz": "America/Los_Angeles",
+  "node": "v22.23.1",
+  "platform": "darwin-arm64",
+  "playwright": "1.60.0",
+  "chromium": "148.0.7778.96",
+  "webgl": "SwiftShader (software), --use-gl=swiftshader",
+  "viewport": {
+    "width": 1024,
+    "height": 768
+  },
+  "deviceScaleFactor": 1,
+  "pixelmatch": {
+    "threshold": 0.1,
+    "maxDiffFraction": 0.005
+  },
+  "settleMs": 6000
+}

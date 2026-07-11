@@ -8,7 +8,11 @@
  */
 import * as THREE from 'three';
 import { Universe, loadCatalogFromUrl, type ResolvedCatalogGraph, type ResolvedKernel } from '@cosmolabe/core';
-import { Spice, type SpiceInstance } from '@cosmolabe/spice';
+import type { SpiceInstance } from '@cosmolabe/spice';
+// Session 4 re-point (ADR M-0002): the runtime SPICE instance is the frames
+// tier's heritage adapter over cspice-wasm; timecraftjs is off the state path.
+import { createHeritageSpice } from '@cosmolabe/frames';
+import cspiceWasmUrl from 'cspice-wasm/wasm/cspice.wasm?url';
 import { UniverseRenderer, SpiceCacheWorker, ScreenshotPlugin, VideoRecordPlugin, OrbitalInfoPlugin } from '@cosmolabe/three';
 import SpiceCacheRelayWorker from '../workers/spice-cache-relay.ts?worker';
 import { parseMetaKernel } from './metakernel';
@@ -109,7 +113,7 @@ async function fetchWithProgress(
 async function ensureSpice(): Promise<SpiceInstance> {
   if (!spice) {
     setLoadingState({ label: 'Initializing SPICE...' });
-    spice = await Spice.init();
+    spice = await createHeritageSpice({ locateFile: () => cspiceWasmUrl });
   }
   return spice;
 }

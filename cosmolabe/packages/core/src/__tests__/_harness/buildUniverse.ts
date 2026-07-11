@@ -5,7 +5,8 @@
  * tests can assert on the same numeric state the renderer consumes
  * (`absolutePositionOf`, `rotationAt`, `subPointOf`).
  */
-import { Spice } from '@cosmolabe/spice';
+import type { SpiceInstance } from '@cosmolabe/spice';
+import { createHeritageSpice } from '@cosmolabe/frames';
 import { Universe } from '../../Universe.js';
 import type { CatalogJson } from '../../catalog/CatalogLoader.js';
 import { furnishKernels, SPICE_TEST_KERNELS } from './kernels.js';
@@ -13,7 +14,7 @@ import { furnishKernels, SPICE_TEST_KERNELS } from './kernels.js';
 export interface BuiltScene {
   universe: Universe;
   /** undefined for SPICE-free (analytical) scenes. */
-  spice: Spice | undefined;
+  spice: SpiceInstance | undefined;
   /** Ephemeris time (s past J2000 TDB) the universe is set to. */
   et: number;
   bodyNames: string[];
@@ -32,11 +33,13 @@ const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
 
 /** Build a Universe from a catalog + (optional) kernels and set it to `defaultTime`. */
 export async function buildUniverseFromCatalog(opts: BuildOptions): Promise<BuiltScene> {
-  let spice: Spice | undefined;
+  let spice: SpiceInstance | undefined;
   let et: number;
 
   if (opts.kernels && opts.kernels.length > 0) {
-    spice = await Spice.init();
+    // Session 4 re-point: the harness builds over the frames tier (ADR
+    // M-0002), the same SPICE path the viewer runtime injects.
+    spice = await createHeritageSpice();
     await furnishKernels(spice, opts.kernels, opts.kernelRoot ?? SPICE_TEST_KERNELS);
     et = spice.str2et(opts.defaultTime);
   } else {

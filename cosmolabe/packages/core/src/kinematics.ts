@@ -16,8 +16,11 @@ import type { InertialFrameName, Quaternion } from './rotations/RotationModel.js
 
 export type Vec3 = [number, number, number];
 
-// J2000 mean obliquity (IAU 1976), in radians.
-const OBLIQUITY_J2000_RAD = (23.4392911 * Math.PI) / 180;
+// J2000 mean obliquity (IAU 1976), in radians: 84381.448 arcsec, the exact
+// value SPICE's ECLIPJ2000 frame is built from. A truncated 23.4392911 degree
+// literal here diverged from SPICE by 1.94e-10 rad, which the M-0002
+// differential harness measured as 87 to 95 m at 5.6 AU (GS-1).
+const OBLIQUITY_J2000_RAD = (84381.448 / 3600) * (Math.PI / 180);
 const OBLIQUITY_COS = Math.cos(OBLIQUITY_J2000_RAD);
 const OBLIQUITY_SIN = Math.sin(OBLIQUITY_J2000_RAD);
 // Half-angle terms for the equivalent quaternion form (see frameAlignmentQuat).

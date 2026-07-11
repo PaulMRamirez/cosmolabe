@@ -1,14 +1,20 @@
 /**
  * Web Worker for off-main-thread trajectory cache building.
  *
- * Initializes its own timecraftjs SPICE instance, loads kernels from URLs
+ * Initializes its own SPICE instance (the frames tier's heritage adapter,
+ * ADR M-0002), loads kernels from URLs
  * (browser HTTP cache makes re-fetching instant), and builds trajectory
  * caches using adaptive sampling + Visvalingam-Whyatt simplification.
  *
  * Results are transferred back via Transferable Float64Arrays (zero-copy).
  */
 
-import { Spice, type SpiceInstance } from '@cosmolabe/spice';
+import type { SpiceInstance } from '@cosmolabe/spice';
+// Session 4 re-point (ADR M-0002): the cache worker's SPICE instance is the
+// frames tier's heritage adapter over cspice-wasm; timecraftjs is off the
+// state path. The ?url import hands Vite's emitted wasm asset to locateFile.
+import { createHeritageSpice } from '@cosmolabe/frames';
+import cspiceWasmUrl from 'cspice-wasm/wasm/cspice.wasm?url';
 import { TrajectoryCache, type TrajectoryCacheConfig, type CoverageWindow } from '../TrajectoryCache.js';
 
 let spice: SpiceInstance | null = null;
@@ -19,7 +25,7 @@ self.onmessage = async (event: MessageEvent) => {
   switch (msg.type) {
     case 'init': {
       try {
-        spice = await Spice.init();
+        spice = await createHeritageSpice({ locateFile: () => cspiceWasmUrl });
         (self as unknown as Worker).postMessage({ type: 'ready' });
       } catch (e) {
         (self as unknown as Worker).postMessage({
