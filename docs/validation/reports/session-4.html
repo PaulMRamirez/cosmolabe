@@ -59,6 +59,28 @@ config was touched for it. Fifth, @cosmolabe/spice (timecraftjs) remains in
 the tree as the heritage reference and the harness's parity lane; deleting it
 is Aaron's decision on return, per M-0002's consequence that it retires from
 the runtime, which it has.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge, each tightening a
+carryover item above. The heritage adapter gained a charter: its doc block
+now enumerates the exact correction, frame, epoch, shape, and window choice
+every adapted method makes (each inherited from measured heritage behavior),
+a dedicated charter test block pins every row (16 adapter tests total), and
+one fidelity divergence the charter work uncovered was fixed: the adapter had
+stripped a trailing Z in utc2et where heritage passes it verbatim, and it now
+matches, with both the strip (str2et) and the loud failure (utc2et) pinned.
+The charter also records the dissolution plan: core call sites migrate to
+explicit StateQuery as Class B work at the packages restructure, the adapter
+shrinks toward zero, and any residue that earns permanence is decided by ADR
+with Aaron; the re-entry brief carries this as its adapter-boundary
+paragraph. Timecraftjs retirement is now stated precisely for the W2 gate:
+the dependency is not unused (the @cosmolabe/spice unit suite, five core test
+fixtures, and the harness's parity reference lane construct it, and the
+inventory is named in the brief and the Session 5 gate step), so it stays,
+while the built viewer bundle demonstrably ships cspice.wasm and no
+timecraftjs asm chunk. And the brief gained a temporary-wiring inventory
+marking the symlink bridge, the @bessel/spice facade, and the adapter as
+scaffolding until the restructure, each with its recorded end state.
+<code>pnpm verify</code> was re-run green after the amendments.</p>
 </div>
 
 <h2>Verified-by assertions</h2>
