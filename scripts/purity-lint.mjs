@@ -60,6 +60,7 @@ const AUDIT_DIRS = [
 const REQUIRED_AUDIT = [
   'bessel/packages/cspice-wasm/src',
   'bessel/packages/frames/src',
+  'bessel/packages/compute/src',
   'cosmolabe/packages/core/src',
 ];
 for (const dir of REQUIRED_AUDIT) {

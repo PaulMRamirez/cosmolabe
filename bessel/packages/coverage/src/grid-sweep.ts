@@ -9,7 +9,7 @@
 
 import { windowUnionAll, type EphemerisTime, type Window } from '@bessel/timeline';
 import { computeElevationAccess, type Facility } from '@bessel/access';
-import type { AberrationCorrection, SpiceEngine } from '@bessel/spice';
+import { JobCancelledError, type AberrationCorrection, type SpiceEngine } from '@bessel/spice';
 import { figureOfMerit, type FigureOfMerit } from './index.ts';
 
 /** A uniform lat/lon coverage grid over a central body. */
@@ -44,6 +44,18 @@ export interface GridSweepRequest {
   readonly abcorr?: AberrationCorrection;
   /** Optional monotonic progress callback in [0,1] over the swept cells. */
   readonly onProgress?: (fraction: number) => void;
+  /**
+   * Optional per-cell callback fired as each cell completes, in row-major
+   * order, carrying the cell payload. The compute plane (M-0004) streams
+   * field partials from this hook; onProgress remains fraction-only.
+   */
+  readonly onCell?: (cell: CoverageCell, done: number, total: number) => void;
+  /**
+   * Optional cooperative cancellation, checked between cells. When the signal
+   * aborts, the sweep throws JobCancelledError rather than returning a
+   * partial grid.
+   */
+  readonly signal?: AbortSignal;
 }
 
 /** One swept cell: its center, per-asset FOM, and N-fold simultaneous coverage. */
@@ -191,6 +203,7 @@ export async function sweepCoverageGrid(
   for (let r = 0; r < g.latCount; r++) {
     const latRad = cellCenter(g.latMin, g.latMax, g.latCount, r);
     for (let c = 0; c < g.lonCount; c++) {
+      if (req.signal?.aborted) throw new JobCancelledError();
       const lonRad = cellCenter(g.lonMin, g.lonMax, g.lonCount, c);
       const facility: Facility = {
         body: g.body,
@@ -208,8 +221,10 @@ export async function sweepCoverageGrid(
       const anyAsset = windowUnionAll(perAsset);
       const fom = figureOfMerit(anyAsset, req.span);
       const nFoldCoverage = nFoldFractions(perAsset, req.span);
-      cells.push({ latRad, lonRad, rowIndex: r, colIndex: c, fom, nFoldCoverage });
+      const cell: CoverageCell = { latRad, lonRad, rowIndex: r, colIndex: c, fom, nFoldCoverage };
+      cells.push(cell);
       done++;
+      req.onCell?.(cell, done, total);
       req.onProgress?.(done / total);
     }
   }
