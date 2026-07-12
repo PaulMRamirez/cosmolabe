@@ -76,7 +76,7 @@ import { type EditableMcs, mcsEditorReducer } from './mcs-editor.ts';
 // [ux-p2-orbit] The Lambert porkchop axis builder + state type (co-located in this lazy analysis
 // chunk). [ux-p3-conjunction] The CPU-bound grid solve moved to a dedicated worker, so the sweep no
 // longer runs here; only the SPICE body-state sampling stays on the main thread.
-import { linspace, type SampledState } from './porkchop.ts';
+import { linspace, type SampledState } from '@bessel/mission';
 import type { SpacecraftSource } from '../store/index.ts';
 import { runOdDemo } from './od.ts';
 import { centerMu } from './center-mu.ts';

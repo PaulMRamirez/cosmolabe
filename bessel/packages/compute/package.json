@@ -12,6 +12,7 @@
   "dependencies": {
     "@bessel/access": "workspace:*",
     "@bessel/coverage": "workspace:*",
+    "@bessel/mission": "workspace:*",
     "@bessel/timeline": "workspace:*",
     "@cosmolabe/frames": "workspace:*",
     "cspice-wasm": "workspace:*"

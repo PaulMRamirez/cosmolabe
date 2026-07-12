@@ -10,6 +10,7 @@
 // BesselEngine.runGrammarJob.
 
 import { Tag, Metric } from '@bessel/selene-design';
+import type { AnalysisProduct } from '@bessel/compute';
 import { IntervalTimeline, ProgressRing, TimeSeriesChart } from '@bessel/ui';
 import type { BesselEngine } from '../engine/index.ts';
 import { useStore, type AppStore } from '../store/index.ts';
@@ -27,6 +28,7 @@ const JOBS: readonly { kind: GrammarJobKind; title: string; form: string; scenar
   { kind: 'gs2-track', title: 'Ground track', form: 'in-scene drape', scenario: 'GS-2' },
   { kind: 'gs4-field', title: 'Walker coverage field', form: 'heatmap drape', scenario: 'GS-4' },
   { kind: 'gs4-access', title: 'Walker site passes', form: 'timeline lanes', scenario: 'GS-4' },
+  { kind: 'porkchop', title: 'Earth to Mars porkchop', form: 'grid heatmap', scenario: 'P1' },
 ];
 
 /** Timeline lanes for one access card, from the keyed intervals view. */
@@ -188,6 +190,61 @@ export function GrammarPanel({ engine, store }: GrammarPanelProps): JSX.Element 
       <JobCard engine={engine} store={store} {...JOBS[4]!}>
         <LaneStack kind="gs4-access" intervals={grammar.intervals} />
       </JobCard>
+
+      <JobCard engine={engine} store={store} {...JOBS[5]!}>
+        {grammar.porkchopProduct && <PorkchopHeatmap product={grammar.porkchopProduct} />}
+      </JobCard>
     </div>
+  );
+}
+
+/** The porkchop inspector's flat heatmap: the grid-domain field of M-0004
+ *  amendment 1, one rect per (departure, TOF) cell, colored by departure
+ *  delta-v normalized over the finite cells; NaN (unswept or a Lambert gap)
+ *  stays dim. Not a scene drape: the grid domain has no body surface. */
+function PorkchopHeatmap({ product }: { readonly product: AnalysisProduct }): JSX.Element | null {
+  const p = product.product;
+  if (p.kind !== 'field' || p.field.domain !== 'grid') return null;
+  const field = p.field;
+  const w = 288;
+  const h = 140;
+  const cw = w / field.x.count;
+  const ch = h / field.y.count;
+  const finite = Array.from(field.values).filter((v) => Number.isFinite(v));
+  const lo = finite.length > 0 ? Math.min(...finite) : 0;
+  const span = (finite.length > 0 ? Math.max(...finite) : 1) - lo || 1;
+  const cells: JSX.Element[] = [];
+  for (let j = 0; j < field.y.count; j++) {
+    for (let i = 0; i < field.x.count; i++) {
+      const v = field.values[j * field.x.count + i]!;
+      const t = Number.isFinite(v) ? Math.min(1, Math.max(0, (v - lo) / span)) : null;
+      cells.push(
+        <rect
+          key={`${j}-${i}`}
+          x={i * cw}
+          y={h - (j + 1) * ch}
+          width={cw}
+          height={ch}
+          fill={t === null ? '#8883' : `hsl(${210 - 170 * t} 80% ${25 + 35 * t}%)`}
+        />,
+      );
+    }
+  }
+  return (
+    <figure style={{ margin: 0 }}>
+      <svg
+        width={w}
+        height={h}
+        role="img"
+        aria-label={field.name}
+        data-testid="grammar-porkchop-map"
+        data-finite={finite.length}
+      >
+        {cells}
+      </svg>
+      <figcaption data-testid="grammar-porkchop-note" style={{ fontSize: 12 }}>
+        {field.x.name} by {field.y.name}; min {finite.length > 0 ? lo.toFixed(2) : '?'} {field.unit}
+      </figcaption>
+    </figure>
   );
 }

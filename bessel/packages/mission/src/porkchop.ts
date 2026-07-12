@@ -8,7 +8,7 @@
 // Kept pure and bounded: the caller pre-samples the body states (so no spkezr in the hot loop)
 // and chooses a modest grid; this module is the tested geometry over @bessel/mission lambert.
 
-import { lambert, type Vec3 } from '@bessel/mission';
+import { lambert, type Vec3 } from './lambert.ts';
 
 /** A pre-sampled body state (km, km/s) about the central body at one grid epoch. */
 export interface SampledState {
@@ -74,6 +74,54 @@ export interface PorkchopBest {
 const sub = (a: Vec3, b: Vec3): Vec3 => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
 const mag = (a: Vec3): number => Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
 
+/** One solved departure column: its nodes plus each node's solved departure
+ *  velocity (null on a Lambert gap), so a caller can stream column by column
+ *  (the compute plane's porkchopJob) or fold columns into the full sweep. */
+export interface PorkchopColumn {
+  readonly nodes: readonly PorkchopNode[];
+  readonly v1s: readonly (Vec3 | null)[];
+}
+
+/** Solve one departure column of the porkchop grid: Lambert from the departure
+ *  state to each arrival state over the TOF axis, recording departure delta-v
+ *  with null gaps on non-convergence. The single source of the node math for
+ *  both the synchronous sweep and the streamed job. */
+export function solvePorkchopColumn(
+  departureIndex: number,
+  departureEt: number,
+  dep: SampledState,
+  arrivalRow: readonly SampledState[],
+  tofSec: readonly number[],
+  mu: number,
+): PorkchopColumn {
+  if (arrivalRow.length !== tofSec.length) {
+    throw new Error(
+      `porkchop: arrival row length ${arrivalRow.length} != TOF axis ${tofSec.length}`,
+    );
+  }
+  const nodes: PorkchopNode[] = [];
+  const v1s: (Vec3 | null)[] = [];
+  for (let j = 0; j < tofSec.length; j++) {
+    const arr = arrivalRow[j]!;
+    let deltaVKmS: number | null = null;
+    let v1: Vec3 | null = null;
+    try {
+      const sol = lambert(dep.position, arr.position, tofSec[j]!, mu);
+      const dv = mag(sub(sol.v1, dep.velocity));
+      if (Number.isFinite(dv)) {
+        deltaVKmS = dv;
+        v1 = sol.v1;
+      }
+    } catch {
+      // A degenerate or non-converging node: leave it as a contour gap.
+      deltaVKmS = null;
+    }
+    nodes.push({ departureIndex, tofIndex: j, departureEt, tofSec: tofSec[j]!, deltaVKmS });
+    v1s.push(v1);
+  }
+  return { nodes, v1s };
+}
+
 /** Build a closed-interval sample axis of `count` (>= 2) strictly increasing values from `lo`
  *  to `hi`. Fails loud when the range is empty or the count is below two (an unsweepable axis). */
 export function linspace(lo: number, hi: number, count: number): number[] {
@@ -125,36 +173,25 @@ export function sweepPorkchop(
     if (arrRow.length !== nt) {
       throw new Error(`porkchop: arrivalStates row ${i} length ${arrRow.length} != ${nt}`);
     }
+    const column = solvePorkchopColumn(i, grid.departureEt[i]!, dep, arrRow, grid.tofSec, mu);
     for (let j = 0; j < nt; j++) {
-      const departureEt = grid.departureEt[i]!;
-      const tofSec = grid.tofSec[j]!;
-      const arr = arrRow[j]!;
-      let deltaVKmS: number | null = null;
-      let v1: Vec3 | null = null;
-      try {
-        const sol = lambert(dep.position, arr.position, tofSec, mu);
-        v1 = sol.v1;
-        const dv = mag(sub(sol.v1, dep.velocity));
-        if (Number.isFinite(dv)) deltaVKmS = dv;
-      } catch {
-        // A degenerate or non-converging node: leave it as a contour gap.
-        deltaVKmS = null;
-      }
-      nodes.push({ departureIndex: i, tofIndex: j, departureEt, tofSec, deltaVKmS });
-      if (deltaVKmS !== null && v1 !== null) {
-        if (deltaVKmS < min) {
-          min = deltaVKmS;
+      const node = column.nodes[j]!;
+      const v1 = column.v1s[j];
+      nodes.push(node);
+      if (node.deltaVKmS !== null && v1) {
+        if (node.deltaVKmS < min) {
+          min = node.deltaVKmS;
           best = {
-            departureIndex: i,
-            tofIndex: j,
-            departureEt,
-            tofSec,
-            deltaVKmS,
+            departureIndex: node.departureIndex,
+            tofIndex: node.tofIndex,
+            departureEt: node.departureEt,
+            tofSec: node.tofSec,
+            deltaVKmS: node.deltaVKmS,
             departureVelocity: v1,
             departureDeltaV: sub(v1, dep.velocity),
           };
         }
-        if (deltaVKmS > max) max = deltaVKmS;
+        if (node.deltaVKmS > max) max = node.deltaVKmS;
       }
     }
     // One departure column finished: yield progress so the worker can post a tick. The total is

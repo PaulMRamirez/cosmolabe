@@ -3,7 +3,7 @@
 // field as a flat heatmap grid; the in-scene drapes belong to scene hosts
 // through the render-binding interface (the inventoried weld).
 
-import type { GeoLayer, ScalarField } from '@bessel/compute';
+import type { Field, GeoLayer } from '@bessel/compute';
 
 /** Body-fixed polyline positions (km) to planetocentric lon/lat (radians). */
 export function layerToLonLat(layer: GeoLayer): { lon: Float64Array; lat: Float64Array } {
@@ -27,12 +27,21 @@ export interface FieldCellRect {
   readonly value: number | null;
 }
 
-/** Row-major field values to renderable cells (NaN marked unresolved). */
-export function fieldToCells(field: ScalarField): FieldCellRect[] {
+/** Column and row counts of either field domain (M-0004 amendment 1). */
+export function fieldCounts(field: Field): { cols: number; rows: number } {
+  return field.domain === 'grid'
+    ? { cols: field.x.count, rows: field.y.count }
+    : { cols: field.lonCount, rows: field.latCount };
+}
+
+/** Row-major field values to renderable cells (NaN marked unresolved),
+ *  domain-agnostic: body drapes and named-axes grids share the layout. */
+export function fieldToCells(field: Field): FieldCellRect[] {
+  const { cols, rows } = fieldCounts(field);
   const out: FieldCellRect[] = [];
-  for (let r = 0; r < field.latCount; r++) {
-    for (let c = 0; c < field.lonCount; c++) {
-      const v = field.values[r * field.lonCount + c]!;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = field.values[r * cols + c]!;
       out.push({ row: r, col: c, value: Number.isFinite(v) ? v : null });
     }
   }

@@ -13,7 +13,7 @@ import {
   type PorkchopProgress,
   type PorkchopRequest,
 } from './porkchop-protocol.ts';
-import type { PorkchopResult } from './engine/porkchop.ts';
+import type { PorkchopResult } from '@bessel/mission';
 
 /** A cancellation error so the caller can distinguish a user cancel from a real failure. */
 export class PorkchopCancelled extends Error {

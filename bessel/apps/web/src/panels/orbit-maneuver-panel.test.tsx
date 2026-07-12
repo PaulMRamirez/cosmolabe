@@ -12,7 +12,7 @@ import { MissionPanel } from './MissionPanel.tsx';
 import { LambertPorkchopCard } from './LambertPorkchopCard.tsx';
 import { OdPanel } from './OdPanel.tsx';
 import { createAppStore, type AppStore } from '../store/index.ts';
-import type { PorkchopResult } from '../engine/porkchop.ts';
+import type { PorkchopResult } from '@bessel/mission';
 
 const propagate = (store: AppStore): string =>
   renderToStaticMarkup(createElement(PropagatePanel, { engine: null, store }));

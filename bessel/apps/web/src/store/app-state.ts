@@ -3,6 +3,7 @@
 // mirror refs) into one object that both React (via useStore) and the imperative
 // BesselEngine (via getState/setState) share.
 
+import type { AnalysisProduct } from '@bessel/compute';
 import type { BodyState, CatalogEntry, Readouts, TimeSystem, VisualizationSettings } from '@bessel/ui';
 import type { PredictedVsActual } from '@bessel/state';
 import type { TimelineAnnotation } from '@bessel/timeline';
@@ -21,7 +22,7 @@ import { createStore, type Store } from './create-store.ts';
 // [ux-p2-orbit] Type-only imports (erased at build, no runtime store->engine cycle): the
 // porkchop sweep result the Lambert card publishes, and the editable MCS the builder edits and
 // the "send to MCS" hop appends to, lifted into the store so the two cards share one design.
-import type { PorkchopResult } from '../engine/porkchop.ts';
+import type { PorkchopResult } from '@bessel/mission';
 import type { EditableMcs } from '../engine/mcs-editor.ts';
 import { defaultEditableMcs } from '../engine/mcs-editor.ts';
 
@@ -40,7 +41,13 @@ export type AnalyzeTab =
 
 // ── M-0008 grammar demo (Session 6): job views and product views ─────────────
 
-export type GrammarJobKind = 'gs2-access' | 'gs2-series' | 'gs2-track' | 'gs4-field' | 'gs4-access';
+export type GrammarJobKind =
+  | 'gs2-access'
+  | 'gs2-series'
+  | 'gs2-track'
+  | 'gs4-field'
+  | 'gs4-access'
+  | 'porkchop';
 export type GrammarJobStatus = 'idle' | 'running' | 'done' | 'cancelled' | { readonly error: string };
 
 /** The provenance block a legend chip's popover shows, straight from the product. */
@@ -85,6 +92,9 @@ export interface GrammarState {
   readonly trackPoints: number;
   readonly fieldCellsResolved: number;
   readonly fieldCellsTotal: number;
+  /** The porkchop inspector's grid-field product (M-0004 amendment 1), kept
+   *  whole so the card renders the flat heatmap from the product itself. */
+  readonly porkchopProduct: AnalysisProduct | null;
 }
 
 const idleGrammarJob: GrammarJobView = { status: 'idle', pct: 0, partials: 0, provenance: null };
@@ -97,12 +107,14 @@ export const initialGrammarState: GrammarState = {
     'gs2-track': idleGrammarJob,
     'gs4-field': idleGrammarJob,
     'gs4-access': idleGrammarJob,
+    porkchop: idleGrammarJob,
   },
   intervals: {},
   series: null,
   trackPoints: 0,
   fieldCellsResolved: 0,
   fieldCellsTotal: 0,
+  porkchopProduct: null,
 };
 
 /** Per-tool run status: a compute action is idle, running, succeeded, or failed loudly. */

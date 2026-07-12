@@ -10,6 +10,7 @@
 import type { AccessJobRequest } from './access-job.ts';
 import type { CoverageJobRequest } from './coverage-job.ts';
 import type { GroundTrackJobRequest } from './ground-track-job.ts';
+import type { PorkchopJobRequest } from './porkchop-job.ts';
 import type { SeriesJobRequest } from './series-job.ts';
 import type { AnalysisProduct } from './product.ts';
 
@@ -17,7 +18,8 @@ export type JobSpec =
   | { readonly kind: 'access'; readonly request: AccessJobRequest }
   | { readonly kind: 'coverage'; readonly request: CoverageJobRequest }
   | { readonly kind: 'series'; readonly request: SeriesJobRequest }
-  | { readonly kind: 'groundTrack'; readonly request: GroundTrackJobRequest };
+  | { readonly kind: 'groundTrack'; readonly request: GroundTrackJobRequest }
+  | { readonly kind: 'porkchop'; readonly request: PorkchopJobRequest };
 
 /** A synthetic Type 13 SPK publication in wire form (structured-cloneable). */
 export interface WireSpkPublication {

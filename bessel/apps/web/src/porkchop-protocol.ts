@@ -9,7 +9,7 @@
 // central-body GM; the worker only runs the pure, CPU-bound sweepPorkchop grid solve and yields a
 // per-departure-column progress tick. Cancellation is by the main thread terminating the worker.
 
-import type { PorkchopResult, PorkchopGrid, SampledState } from './engine/porkchop.ts';
+import type { PorkchopResult, PorkchopGrid, SampledState } from '@bessel/mission';
 
 /** A porkchop sweep request handed to the worker: the grid axes, the central-body GM, the
  *  pre-sampled departure/arrival body states (SPICE-free in the worker), and the contour label. */

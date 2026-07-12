@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { createAppStore } from '../store/index.ts';
 import { sendPorkchopToMcs } from './analysis-ops.ts';
-import type { PorkchopResult } from './porkchop.ts';
+import type { PorkchopResult } from '@bessel/mission';
 
 function seededPorkchop(deltaVKmS: number): PorkchopResult {
   return {

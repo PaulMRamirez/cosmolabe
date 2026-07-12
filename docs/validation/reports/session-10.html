@@ -1,0 +1,285 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 10 (the W4 gate assessment and the porkchop inspector)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 10</h1>
+<p>The W4 gate assessment (held open on the device items alone) and the
+porkchop inspector, the W3 stretch three windows standing, carried on the
+grid field domain of M-0004 amendment 1. Adversarial cross-check of
+<code>docs/goals/SESSION-10-W4-GATE-AND-PORKCHOP.goal.md</code> against
+observed evidence, binding ADRs M-0004 (amended here, with its own
+review-on-return flag), M-0008 (the P1 pull list and the heatmap form),
+and the /gate duties including the new budget-log step. Generated
+2026-07-11 on branch <code>session-10</code>. Every row was reproduced
+during this cross-check by running the command or reading the artifact,
+not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence, including CI (amended after observation, per the standing
+precedent; green on the first run). The
+schema question the goal flagged was answered by amendment, not silent
+reinterpretation: M-0004 amendment 1 generalizes the field domain to a
+discriminated union whose body-surface case keeps every pre-amendment
+product valid unchanged, and the snapshots moved in the same commit.</p>
+<p><strong>Residual risk and honest carryover.</strong> First, W4 remains
+open: the device items are the sole blocker, hardware in hand the sole
+trigger, and the device-truth goal their standing home. Second, the
+bespoke mission-design porkchop worker is deliberately not retired: it
+carries the best-node solution and the send-to-MCS hop the grid product
+does not, so its remainder is named inside the ad hoc invocation
+convergence ledger entry (restructure), while its node math is already
+converged onto the promoted shared module. Third, ScalarField's optional
+'body' discriminator means a field payload without a domain key is a body
+drape by definition; producers are not forced to stamp it, which is the
+compatibility choice, and the amendment records it. Fourth, one plan
+promise surfaced as unbuilt during the exit sweep: the nightly Horizons
+spot-check of design 04's risk register exists nowhere in the workflows;
+Session 11 owns it by name in the ledger and the drafted goal. Fifth, the
+demo's porkchop card renders its own local heatmap rather than importing
+the panel's FieldMap, a deliberate duplication to keep the panel package
+out of the workbench chunk graph; both consume the identical product
+shape.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Three amendments landed on the branch before merge, re-verified with
+<code>pnpm verify</code>. First, pick-to-load named honestly: this report
+and M-0008's P1 status now record the porkchop inspector as
+half-evidenced (the grid heatmap and streamed materialization observed;
+pick-to-load, selecting a grid node to load its solution, not
+delivered), with a ledger entry under the scene-bearing panel entry as
+executioner, noting that its landing shrinks the bespoke mission-design
+worker's remainder to the send-to-MCS hop alone. Second, the optional
+'body' discriminator gets an expiry: the ledger records that the field
+union's discriminator becomes required on both members at the packages
+restructure (schema v1, when breaking is free), and M-0004 amendment 1
+records the intent in one sentence. Third, the coverage clauses: the
+demo card's duplicated local heatmap is confirmed covered by the
+demo-tab temporary-wiring entry (it dies with the workbench tab), and
+porkchopJob's cancellation posture at production grid sizes is stated in
+its doc block (per-column check; worst case one column, one state batch
+plus tof.count Lambert solves, linear in the TOF axis) and pinned by a
+new scale assertion: a 60 by 60 grid cancels after the first streamed
+column, far short of the sweep.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>/gate run on W4 with the held-open state recorded and every duty green</td>
+  <td class="pass">pass</td>
+  <td>The brief's window-gates section opens with the W4 assessment: two
+  criteria met on cited observed evidence (panel mount, PR #7 and #8; the
+  MMGIS embed, PR #8), the stretch met (CCSDS, PR #9), the device items
+  carried by name with their trigger and home, and the window explicitly
+  held open rather than closed by prose. Scaffolding duty: all five
+  executioners re-asserted. Budget duty (step 7's first exercise): both
+  post-W3 cap moves carry log lines with causes, cumulative drift plus 5
+  KB on one budget, and the three added budgets are additions justified by
+  their landing commits.</td>
+</tr>
+<tr>
+  <td>porkchopJob emits a field-kind product behind JobHandle with streamed partials and cancel, pinned by unit test</td>
+  <td class="pass">pass</td>
+  <td>Three tests in <code>porkchop-job.test.ts</code> against real
+  fixture states (Earth to Mars barycenter about the Sun, the
+  mission-design panel's fixture-safe window): six column partials plus
+  the runner's final echo, each a grid field with the stated axes; the
+  first partial's unswept tail is NaN; the final surface resolves at
+  least 20 of 30 finite cells with a physically plausible minimum
+  delta-v; a cancel issued at the first partial lands cooperatively
+  (JobCancelledError, fewer than six columns); and the wire encoding
+  round-trips the grid domain bit-exact, NaN included. Provenance:
+  'exploratory', engine 'porkchop', correction and mu explicit in the
+  request.</td>
+</tr>
+<tr>
+  <td>The M-0004 schema decision recorded (fit or amendment)</td>
+  <td class="pass">pass</td>
+  <td>Amendment, recorded in the ADR: Field = ScalarField | GridField,
+  the body drape as the optional-discriminator case (every pre-amendment
+  producer and product valid unchanged), the grid carrying two named
+  axes; not a fifth kind because the canonical heatmap form is unchanged.
+  The amendment carries its own review-on-return flag (the register now
+  shows seven flagged ADRs) and the compute api-surface snapshot moved in
+  the same commit: SnapField mirrors, the JobSpec kinds pin gaining
+  'porkchop', the request-keys pin, and the export list.</td>
+</tr>
+<tr>
+  <td>The inspector card observed by Playwright</td>
+  <td class="pass">pass</td>
+  <td>The extended grammar spec passes (1.6 s in the three-spec run): the
+  sixth card runs to done with at least two streamed partials asserted
+  from data-partials, the flat heatmap renders with at least 80 finite
+  cells asserted from data-finite, and the caption carries the axis name
+  and unit. The embed and mmgis specs still pass on the same build (the
+  field-union changes touched the panel's shared rendering).</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green locally</td>
+  <td class="pass">pass</td>
+  <td>Run from the repository root after the final commit set: exit 0;
+  1519 unit tests across 255 files, including the moved porkchop sweep
+  tests now in @bessel/mission and the updated api-surface snapshots.</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green in CI</td>
+  <td class="pass">pass</td>
+  <td>Amended after observation, per precedent: the <code>verify</code>
+  check passes on the PR head in 2m19s (run 29173051792, first run,
+  observed via <code>gh pr checks 10</code>).</td>
+</tr>
+<tr>
+  <td>Strict seam green</td>
+  <td class="pass">pass</td>
+  <td>Observed: exit 0; call-parity GREEN on GS-1 through GS-4, pipeline
+  within tripwires on every row.</td>
+</tr>
+<tr>
+  <td>Baseline compare green against the session-4-repoint anchor</td>
+  <td class="pass">pass</td>
+  <td>Observed under the pinned node v22.23.1 with TZ pinned: all three
+  renders at 0.000 percent, checksums verified on 6 files.</td>
+</tr>
+<tr>
+  <td>Carryover ledger updated</td>
+  <td class="pass">pass</td>
+  <td>Read back in the brief: the porkchop stretch closed as executed
+  with the mission-design worker's remainder named; the Session 10
+  paragraph records the amendment and the promotion; the unbuilt nightly
+  Horizons promise is ledgered with Session 11 as its named owner.</td>
+</tr>
+</table>
+
+<h2>Step assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>The node math reused behind JobHandle, not duplicated beside it</td>
+  <td class="pass">pass</td>
+  <td>The pure sweep moved from apps/web into @bessel/mission (git
+  rename, 74 percent similarity) beside its lambert solver;
+  solvePorkchopColumn is extracted as the single source, the synchronous
+  sweep folds through it, and porkchopJob streams through it. The app's
+  five porkchop import sites repoint to the package; the moved sweep
+  tests pass in their new home.</td>
+</tr>
+<tr>
+  <td>The bespoke worker protocol retired or its remainder named</td>
+  <td class="pass">pass</td>
+  <td>Named, not retired, with the reason stated in the ledger and the
+  commit: the mission-design path carries the best-node solution and the
+  send-to-MCS hop the grid product does not; its JobHandle convergence
+  stays inside the ad hoc invocation entry at the restructure.</td>
+</tr>
+<tr>
+  <td>API surface changes additive, snapshots moved deliberately</td>
+  <td class="pass">pass</td>
+  <td>New exports (porkchopJob, the Field family, the serialized grid)
+  land beside the existing surface; the one widening (the field payload
+  union) is exactly what amendment 1 sanctions, and both the compute
+  snapshot and the panel consumers moved in the same commits. The interop
+  snapshot is untouched (its shapes do not carry the field).</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>1: CSPICE only under frames; correction explicit</td>
+  <td class="pass">pass</td>
+  <td>porkchopJob samples through ctx.frames.states with correction
+  explicit in the request and mu explicit at the call site (no constants
+  table inside the job); the demo spec states correction 'NONE'.</td>
+</tr>
+<tr>
+  <td>2: mechanically minimal heritage diffs</td>
+  <td class="pass">pass</td>
+  <td><code>git diff --stat main...HEAD -- cosmolabe/</code> is empty.</td>
+</tr>
+<tr>
+  <td>3: seam gate</td>
+  <td class="pass">pass</td>
+  <td>Strict seam row above; nothing in the diff touches cspice-wasm,
+  frames, or core state paths.</td>
+</tr>
+<tr>
+  <td>4: authority 'host' only from host data adapters</td>
+  <td class="pass">pass</td>
+  <td>porkchopJob is an engine and emits through submitJob
+  ('exploratory', pinned by its own test); the two adapter construction
+  sites are unchanged.</td>
+</tr>
+<tr>
+  <td>5: golden-image pass</td>
+  <td class="pass">pass</td>
+  <td>Baseline compare row above; the session's visual surface is the
+  demo card, evidenced by Playwright.</td>
+</tr>
+<tr>
+  <td>6: model-layer purity</td>
+  <td class="pass">pass</td>
+  <td>Purity lint passes inside verify; @bessel/mission (which gained the
+  sweep) and @bessel/compute are audited packages and carry no view
+  imports.</td>
+</tr>
+<tr>
+  <td>7: kernels never committed</td>
+  <td class="pass">pass</td>
+  <td>No kernel-extension files in the diff; the job tests fetch from the
+  kernels cache at runtime.</td>
+</tr>
+<tr>
+  <td>9: SPICE kilometers and ET seconds at the contracts</td>
+  <td class="pass">pass</td>
+  <td>The grid axes state their units explicitly (departure epoch in ET
+  s, time of flight in s, values in km/s), which is the amendment's whole
+  point: named axes instead of reinterpreted radians.</td>
+</tr>
+<tr>
+  <td>10: no em or en dashes</td>
+  <td class="pass">pass</td>
+  <td>Dash sweep over every file in the session diff: clean.</td>
+</tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>review-on-return run; register and brief refreshed</td>
+  <td class="pass">pass</td>
+  <td>Script run 2026-07-11: the flagged set is seven (M-0004 amendment 1
+  joined); the commits in Aaron-owned paths remain the Session 4 pair.
+  The brief gains the W4 assessment paragraph, the Session 10 paragraph,
+  the register update, and the ledger changes.</td>
+</tr>
+<tr>
+  <td>verify-spec report committed</td>
+  <td class="pass">pass</td>
+  <td>This file, <code>docs/validation/reports/session-10.html</code>.</td>
+</tr>
+<tr>
+  <td>Next goal drafted</td>
+  <td class="pass">pass</td>
+  <td><code>docs/goals/SESSION-11-HORIZONS-NIGHTLY.goal.md</code>: the
+  nightly Horizons spot-check, a design 04 risk-register promise that
+  exists nowhere in the tree, with the honest-network posture stated
+  (an unreachable service is a named skip, never a lane that pretends to
+  have run). Device-truth preempts, as ever.</td>
+</tr>
+</table>

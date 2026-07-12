@@ -17,7 +17,10 @@
 
 export type {
   AnalysisProduct,
+  Field,
+  FieldAxis,
   GeoLayer,
+  GridField,
   IntervalSet,
   Product,
   Provenance,
@@ -40,6 +43,7 @@ export { accessJob, type AccessJobRequest } from './access-job.ts';
 export { coverageJob, type CoverageJobRequest } from './coverage-job.ts';
 export { seriesJob, type SeriesJobRequest, type SeriesProviderSpec } from './series-job.ts';
 export { groundTrackJob, type GroundTrackJobRequest } from './ground-track-job.ts';
+export { porkchopJob, type PorkchopJobRequest } from './porkchop-job.ts';
 export {
   encodeAnalysisProduct,
   decodeAnalysisProduct,
@@ -47,7 +51,9 @@ export {
   decodeF64,
   type EncodedF64,
   type SerializedAnalysisProduct,
+  type SerializedField,
   type SerializedGeoLayer,
+  type SerializedGridField,
   type SerializedProduct,
   type SerializedScalarField,
   type SerializedTimeSeries,

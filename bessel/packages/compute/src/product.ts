@@ -35,8 +35,12 @@ export interface GeoLayer {
   readonly positions: Float64Array;
 }
 
-/** A scalar field over a uniform lat/lon domain: a heatmap drape. */
+/** A scalar field over a uniform lat/lon body domain: a heatmap drape. The
+ *  domain 'body' case of the field kind (M-0004 amendment 1); the
+ *  discriminator is optional so every pre-amendment producer and product
+ *  stays valid unchanged. */
 export interface ScalarField {
+  readonly domain?: 'body';
   readonly name: string;
   readonly unit: string;
   /** The central body and its body-fixed frame the domain lies on. */
@@ -57,11 +61,40 @@ export interface ScalarField {
   readonly values: Float64Array;
 }
 
+/** A named uniform axis of a grid-domain field (units stated per axis). */
+export interface FieldAxis {
+  readonly name: string;
+  readonly unit: string;
+  readonly min: number;
+  readonly max: number;
+  readonly count: number;
+}
+
+/**
+ * A scalar field over a uniform 2D grid of two named axes: the generalized
+ * field domain of M-0004 amendment 1, of which the body-surface drape is the
+ * special case. Same canonical visual form (the heatmap of M-0008), not a
+ * fifth kind: a porkchop (departure epoch by time of flight) is the first
+ * producer. Row-major values (y row by x column), length y.count * x.count;
+ * NaN marks unresolved cells exactly as in ScalarField.
+ */
+export interface GridField {
+  readonly domain: 'grid';
+  readonly name: string;
+  readonly unit: string;
+  readonly x: FieldAxis;
+  readonly y: FieldAxis;
+  readonly values: Float64Array;
+}
+
+/** The field kind's payload: a body-surface drape or a named-axes grid. */
+export type Field = ScalarField | GridField;
+
 export type Product =
   | { kind: 'intervals'; sets: IntervalSet[] }
   | { kind: 'series'; series: TimeSeries[] }
   | { kind: 'geometry'; layers: GeoLayer[] }
-  | { kind: 'field'; field: ScalarField };
+  | { kind: 'field'; field: Field };
 
 /** Column or layer name to unit string, for the render boundary's conversions. */
 export type UnitMap = Readonly<Record<string, string>>;

@@ -12,6 +12,7 @@
 
 import type {
   AnalysisProduct,
+  FieldAxis,
   GeoLayer,
   Product,
   Provenance,
@@ -40,6 +41,7 @@ export interface SerializedGeoLayer {
 }
 
 export interface SerializedScalarField {
+  readonly domain?: 'body';
   readonly name: string;
   readonly unit: string;
   readonly body: string;
@@ -53,11 +55,24 @@ export interface SerializedScalarField {
   readonly values: EncodedF64;
 }
 
+/** The grid-domain field of M-0004 amendment 1 in wire form (axes are plain
+ *  JSON; only the cell values byte-encode). */
+export interface SerializedGridField {
+  readonly domain: 'grid';
+  readonly name: string;
+  readonly unit: string;
+  readonly x: FieldAxis;
+  readonly y: FieldAxis;
+  readonly values: EncodedF64;
+}
+
+export type SerializedField = SerializedScalarField | SerializedGridField;
+
 export type SerializedProduct =
   | Extract<Product, { kind: 'intervals' }>
   | { kind: 'series'; series: SerializedTimeSeries[] }
   | { kind: 'geometry'; layers: SerializedGeoLayer[] }
-  | { kind: 'field'; field: SerializedScalarField };
+  | { kind: 'field'; field: SerializedField };
 
 export interface SerializedAnalysisProduct {
   readonly product: SerializedProduct;

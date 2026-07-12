@@ -81,4 +81,21 @@ test('grammar demo: streamed partials, canonical forms, provenance, cancel', asy
   );
   await expect(page.getByTestId('grammar-lanes-gs4-access')).toBeVisible();
   await expect(page.getByTestId('grammar-lane--975000')).toBeVisible();
+
+  // The porkchop inspector (M-0008 P1, the grid field domain of M-0004
+  // amendment 1): the Earth to Mars delta-v surface streams column partials
+  // and resolves into the flat heatmap with its finite-cell count and the
+  // minimum delta-v caption.
+  await page.getByTestId('grammar-run-porkchop').click();
+  const porkchopCard = page.getByTestId('grammar-card-porkchop');
+  await expect(porkchopCard).toHaveAttribute('data-status', 'done', { timeout: 240_000 });
+  const porkchopPartials = Number(await porkchopCard.getAttribute('data-partials'));
+  expect(porkchopPartials).toBeGreaterThanOrEqual(2);
+  await expect(page.getByTestId('grammar-porkchop-map')).toBeVisible();
+  const finiteCells = Number(
+    await page.getByTestId('grammar-porkchop-map').getAttribute('data-finite'),
+  );
+  expect(finiteCells).toBeGreaterThanOrEqual(80);
+  await expect(page.getByTestId('grammar-porkchop-note')).toContainText('departure epoch');
+  await expect(page.getByTestId('grammar-porkchop-note')).toContainText('km/s');
 });

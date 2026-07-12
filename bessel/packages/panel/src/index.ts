@@ -143,4 +143,4 @@ export {
   type MmgisComputedLayer,
 } from './mmgis-adapter.ts';
 export { PanelSurface, ProductView, ProvenanceChip } from './PanelSurface.tsx';
-export { fieldToCells, layerToLonLat, type FieldCellRect } from './mappers.ts';
+export { fieldCounts, fieldToCells, layerToLonLat, type FieldCellRect } from './mappers.ts';
