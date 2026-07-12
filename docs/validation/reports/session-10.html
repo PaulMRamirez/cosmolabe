@@ -29,8 +29,8 @@ not by trusting prose.</p>
 
 <div class="summary">
 <p><strong>Verdict:</strong> every Verified-by assertion is met on observed
-evidence except CI, which structurally requires the PR run (recorded
-pending below and amended when observed, per the standing precedent). The
+evidence, including CI (amended after observation, per the standing
+precedent; green on the first run). The
 schema question the goal flagged was answered by amendment, not silent
 reinterpretation: M-0004 amendment 1 generalizes the field domain to a
 discriminated union whose body-surface case keeps every pre-amendment
@@ -117,9 +117,10 @@ shape.</p>
 </tr>
 <tr>
   <td><code>pnpm verify</code> green in CI</td>
-  <td class="pend">pending</td>
-  <td>Structurally requires the PR run; amended when observed, per
-  precedent.</td>
+  <td class="pass">pass</td>
+  <td>Amended after observation, per precedent: the <code>verify</code>
+  check passes on the PR head in 2m19s (run 29173051792, first run,
+  observed via <code>gh pr checks 10</code>).</td>
 </tr>
 <tr>
   <td>Strict seam green</td>
