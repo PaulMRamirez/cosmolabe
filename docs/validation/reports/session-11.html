@@ -49,10 +49,31 @@ contract change), and only a tolerance breach is the red alarm; weakening
 any of the three re-trains alarm fatigue. Third, the spot-check is not in
 the pnpm verify gate, deliberately (network stays out of the merge gate);
 its cadence is the cron plus whatever manual dispatches sessions make.
-Fourth, the committed table snapshots one run and goes stale by a day at a
-time; that is by design (the page regenerates from the last committed
-table, the nightly regenerates the table), and the generatedAt field says
+Fourth, the committed table is a session-refreshed snapshot and goes stale
+by a day at a time; that is by design (the nightly checks and alarms,
+sessions refresh the committed snapshot), and the generatedAt field says
 so.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Two amendments landed on the branch before merge, re-verified with
+<code>pnpm verify</code>. First, the nightly never pushes, and its outputs
+land where humans look: every run (green or red) uploads the regenerated
+table as a run artifact and writes it into the job step summary; a
+tolerance breach or contract-change failure opens (or appends to) the
+pinned tracking issue carrying the offending rows and the run link, with
+issues write permission granted to the workflow; and the horizons-nightly
+status badge is embedded on the validation page and in the new root
+README, reflecting the latest run without any push. The committed table
+remains a session-refreshed snapshot, which its generatedAt already states
+honestly, and the report and page wording is corrected from "the nightly
+regenerates the table" to "the nightly checks and alarms; sessions refresh
+the committed snapshot." Second, the September walkthrough gets built
+exactly once: the review-packets spec is folded into SESSION-12-REENTRY's
+goal (one packet per flagged ADR: the decision in three sentences, in-repo
+evidence links, what changed since, the question Aaron is asked, the veto
+shape and its cost, an agenda ordered by dependency and descending veto
+cost, and device-pending slots named); no separate SESSION-REVIEW-PACKETS
+goal was ever committed, so there was nothing to retire, recorded here so
+the absence is deliberate rather than an oversight.</p>
 </div>
 
 <h2>Verified-by assertions</h2>

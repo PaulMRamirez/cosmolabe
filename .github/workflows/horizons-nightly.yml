@@ -5,8 +5,16 @@ name: horizons-nightly
 # paths agree with each other; this lane proves neither has drifted from the
 # world, comparing frames-tier states over the fetched golden-scenario
 # kernels against JPL Horizons at fixed TDB epochs (tests/rig/horizons.rig.ts,
-# driven by scripts/horizons.mjs). Exit semantics, honestly: a tolerance
-# breach is red (the real alarm); an unreachable Horizons is a named skip
+# driven by scripts/horizons.mjs).
+#
+# The nightly never pushes. Green runs upload the regenerated table as a run
+# artifact and write it into the step summary; the committed table in
+# docs/validation/data/ is a session-refreshed snapshot (its generatedAt
+# states when), and the workflow status badge on the validation page and the
+# README reflects the latest run without any push. Exit semantics, honestly:
+# a tolerance breach or an API contract change fails the run AND lands where
+# a human looks, by opening (or updating) the pinned tracking issue with the
+# offending rows and the run link; an unreachable Horizons is a named skip
 # (a notice annotation and a green run that says SKIPPED), so the lane never
 # trains alarm fatigue on network weather and never pretends a run happened.
 
@@ -15,6 +23,10 @@ on:
     # 09:17 UTC, off-peak for the JPL service (about 1 am Pacific).
     - cron: '17 9 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
 
 concurrency:
   group: horizons-nightly
@@ -59,3 +71,63 @@ jobs:
 
       - name: Horizons spot-check
         run: node scripts/horizons.mjs
+
+      # The regenerated table goes to the places a human looks, never to a
+      # push: the run artifact and the step summary, on green and red alike
+      # (the rig writes the table before it asserts, so a breach run still
+      # carries its rows; a pre-comparison failure carries no table and the
+      # guards below tolerate that).
+      - name: Publish the table to the step summary
+        if: always()
+        run: |
+          if [ -f docs/validation/data/horizons-spot-check.json ]; then
+            {
+              echo '## Horizons spot-check table (this run)'
+              echo '```json'
+              cat docs/validation/data/horizons-spot-check.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No table was written: the run failed before comparison.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the table as a run artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizons-spot-check
+          path: docs/validation/data/horizons-spot-check.json
+          if-no-files-found: ignore
+
+      # Red lands where a human looks: a tolerance breach or a contract
+      # change opens the pinned tracking issue (or appends to it if open),
+      # carrying the offending rows and the run link. Unreachable never
+      # reaches this step (the script exits 0 on the named skip).
+      - name: Alarm on breach (open or update the tracking issue)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title='horizons-nightly: frames-tier states disagree with Horizons (or the API contract changed)'
+          body_file=$(mktemp)
+          {
+            echo 'The nightly Horizons spot-check failed: a tolerance breach or an API contract change. (An unreachable service is a named skip and never lands here.)'
+            echo ''
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo ''
+            if [ -f docs/validation/data/horizons-spot-check.json ]; then
+              echo 'Offending rows:'
+              echo '```json'
+              node -e 'const t = require("./docs/validation/data/horizons-spot-check.json"); console.log(JSON.stringify({ status: t.status, generatedAt: t.generatedAt, offending: (t.rows ?? []).filter((r) => !r.pass) }, null, 2));'
+              echo '```'
+            else
+              echo 'No table was written: the failure happened before comparison (a contract change, a kernel fetch, or an install failure); see the run log.'
+            fi
+          } > "$body_file"
+          existing=$(gh issue list --state open --search 'in:title horizons-nightly:' --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file "$body_file"
+          else
+            new_url=$(gh issue create --title "$title" --body-file "$body_file")
+            gh issue pin "$new_url" || true
+          fi

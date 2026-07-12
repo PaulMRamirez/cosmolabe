@@ -200,13 +200,19 @@ Toolkits: cosmolabe CSPICE_N0066, cspice-wasm CSPICE_N0066.</p>
 </div>
 
 <h2>Horizons spot-check (external truth, nightly)</h2>
+<p><a href="https://github.com/PaulMRamirez/cosmolabe/actions/workflows/horizons-nightly.yml"><img
+  src="https://github.com/PaulMRamirez/cosmolabe/actions/workflows/horizons-nightly.yml/badge.svg"
+  alt="horizons-nightly status"></a></p>
 <p>Horizons spot-check (design 04 risk nine): frames-tier states over the fetched golden-scenario kernels vs JPL Horizons geometric ICRF states at the same TDB epochs. Physical-agreement tolerances per body: the GS-2 lane compares the 040629AP predict fixture against the reconstructed cassini_merge, so its baseline delta is a fixture property and the bound catches drift; the planet lane compares de440s against the Horizons planetary source and is expected sub-km. Kernels: naif0012.tls, 040629AP_SCPSE_04179_04185.bsp, de440s.bsp.</p>
 <p>The internal lanes above prove the two SPICE paths agree with each other;
 this lane proves neither has drifted from the world. Reproduce:
-<code>node scripts/horizons.mjs</code> (live network); the
-<code>horizons-nightly</code> workflow reruns it on a daily schedule, where a
-tolerance breach is red and an unreachable service is a named skip, never a
-silent green.</p>
+<code>node scripts/horizons.mjs</code> (live network). The nightly checks
+and alarms; sessions refresh the committed snapshot below (its generatedAt
+states when). The nightly never pushes: green runs carry the regenerated
+table in the run artifact and step summary, a tolerance breach or contract
+change opens the pinned tracking issue with the offending rows, an
+unreachable service is a named skip, and the badge above reflects the
+latest run.</p>
 <div class="scroll">
 <table>
 <tr><th>lane</th><th>target</th><th>observer</th><th>epochUtc</th><th>dPosKm</th><th>dVelKmS</th><th>tolPosKm</th><th>tolVelKmS</th><th>pass</th><th>horizonsSource</th></tr>

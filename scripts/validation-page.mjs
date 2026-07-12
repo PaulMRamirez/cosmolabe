@@ -46,9 +46,10 @@ const horizons = table('horizons-spot-check.json');
 
 const horizonsSection =
   horizons.status === 'skipped-unreachable'
-    ? `<p class="gate">The committed table records a named skip (Horizons was
-unreachable when it was last generated: ${esc(horizons.reason)}); the nightly
-lane regenerates it.</p>`
+    ? `<p class="gate">The committed snapshot records a named skip (Horizons was
+unreachable when it was last generated: ${esc(horizons.reason)}); the badge
+above reflects the latest nightly run, and the next session refreshes this
+snapshot.</p>`
     : `<div class="scroll">
 ${renderRows(
   horizons.rows.map((r) => ({
@@ -135,13 +136,19 @@ ${renderRows(jitter.rows, ['scenario', 'target', 'originMode', 'tier', 'absMaxPx
 </div>
 
 <h2>Horizons spot-check (external truth, nightly)</h2>
+<p><a href="https://github.com/PaulMRamirez/cosmolabe/actions/workflows/horizons-nightly.yml"><img
+  src="https://github.com/PaulMRamirez/cosmolabe/actions/workflows/horizons-nightly.yml/badge.svg"
+  alt="horizons-nightly status"></a></p>
 <p>${esc(horizons.description ?? '')}</p>
 <p>The internal lanes above prove the two SPICE paths agree with each other;
 this lane proves neither has drifted from the world. Reproduce:
-<code>node scripts/horizons.mjs</code> (live network); the
-<code>horizons-nightly</code> workflow reruns it on a daily schedule, where a
-tolerance breach is red and an unreachable service is a named skip, never a
-silent green.</p>
+<code>node scripts/horizons.mjs</code> (live network). The nightly checks
+and alarms; sessions refresh the committed snapshot below (its generatedAt
+states when). The nightly never pushes: green runs carry the regenerated
+table in the run artifact and step summary, a tolerance breach or contract
+change opens the pinned tracking issue with the offending rows, an
+unreachable service is a named skip, and the badge above reflects the
+latest run.</p>
 ${horizonsSection}
 
 <h2>Scope, stated honestly</h2>
