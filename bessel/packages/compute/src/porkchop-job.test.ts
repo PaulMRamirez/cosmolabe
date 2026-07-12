@@ -101,6 +101,29 @@ describe('porkchopJob (field kind, grid domain, M-0004 amendment 1)', () => {
     expect(partials).toBeLessThan(6);
   });
 
+  it('cancels within one column at a production-scale grid (60 by 60, the scale assertion)', async () => {
+    // The posture stated in the job doc block, pinned at scale: the cancel
+    // check is per departure column, so a cancel issued at the first
+    // streamed partial must land far short of the 60-column sweep.
+    const handle = submitJob(
+      env,
+      porkchopJob({
+        ...request(et0),
+        departure: { start: et0, end: et0 + 30 * DAY, count: 60 },
+        tof: { start: 90 * DAY, end: 150 * DAY, count: 60 },
+      }),
+    );
+    let partials = 0;
+    const consume = (async () => {
+      for await (const e of handle.progress) {
+        if (e.partial && ++partials === 1) handle.cancel();
+      }
+    })();
+    await expect(handle.result).rejects.toThrow(JobCancelledError);
+    await consume;
+    expect(partials).toBeLessThan(5);
+  });
+
   it('round-trips the grid domain through the wire encoding bit-exact', async () => {
     const handle = submitJob(env, porkchopJob(request(et0)));
     const final = await handle.result;

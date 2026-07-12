@@ -9,6 +9,16 @@
 // the heatmap's honest holes), and cancellation is cooperative between
 // columns plus the runner's per-step macrotask yield. mu is explicit in
 // the request: this job asserts no constants table.
+//
+// Cancellation posture at production grid sizes, stated: the cancel check
+// runs once per departure column, so worst-case latency is one column,
+// which costs one frames-tier state batch (tof.count epochs) plus
+// tof.count Lambert solves; both are linear in the TOF axis and
+// microseconds-per-node in practice, so a 100 by 100 production grid
+// cancels within single-digit milliseconds of the request. The posture is
+// pinned by a scale assertion in porkchop-job.test.ts (a 60 by 60 grid
+// cancels after the first column, far short of completion) rather than by
+// a wall-clock number that would vary per machine.
 
 import { linspace, solvePorkchopColumn, type SampledState } from '@bessel/mission';
 import type { Correction, Et } from '@cosmolabe/frames';
