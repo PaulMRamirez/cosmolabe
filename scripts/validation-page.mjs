@@ -42,6 +42,23 @@ const parity = table('seam-call-parity.json');
 const pipeline = table('seam-pipeline.json');
 const stateError = table('state-error.json');
 const jitter = table('jitter.json');
+const horizons = table('horizons-spot-check.json');
+
+const horizonsSection =
+  horizons.status === 'skipped-unreachable'
+    ? `<p class="gate">The committed table records a named skip (Horizons was
+unreachable when it was last generated: ${esc(horizons.reason)}); the nightly
+lane regenerates it.</p>`
+    : `<div class="scroll">
+${renderRows(
+  horizons.rows.map((r) => ({
+    ...r,
+    dPosKm: Number(r.dPosKm).toFixed(6),
+    dVelKmS: Number(r.dVelKmS).toExponential(3),
+  })),
+  ['lane', 'target', 'observer', 'epochUtc', 'dPosKm', 'dVelKmS', 'tolPosKm', 'tolVelKmS', 'pass', 'horizonsSource'],
+)}
+</div>`;
 
 const badge = parity.allPass && pipeline.allWithinTripwires
   ? '<span class="pass">GREEN</span>'
@@ -117,12 +134,23 @@ ${renderRows(stateError.rows, ['body', 'center', 'correction', 'epochs', 'maxPos
 ${renderRows(jitter.rows, ['scenario', 'target', 'originMode', 'tier', 'absMaxPx', 'frameJitterMaxPx', 'gated', 'pass'])}
 </div>
 
+<h2>Horizons spot-check (external truth, nightly)</h2>
+<p>${esc(horizons.description ?? '')}</p>
+<p>The internal lanes above prove the two SPICE paths agree with each other;
+this lane proves neither has drifted from the world. Reproduce:
+<code>node scripts/horizons.mjs</code> (live network); the
+<code>horizons-nightly</code> workflow reruns it on a daily schedule, where a
+tolerance breach is red and an unreachable service is a named skip, never a
+silent green.</p>
+${horizonsSection}
+
 <h2>Scope, stated honestly</h2>
 <p>This is the skeleton of the page described in docs/validation/README.md.
-Present: the M-0002 differential harness over the four golden scenarios and
-the Session 2 measurement rig tables. Future scope, named as such and not yet
-claimed: SGP4 conformance against SGP4-VER, HPOP force-model fixtures against
-GMAT, Horizons cross-checks, OD synthetic-truth recovery, and RF closed-form
+Present: the M-0002 differential harness over the four golden scenarios, the
+Session 2 measurement rig tables, and the nightly Horizons spot-check
+(external truth over the golden-scenario kernels). Future scope, named as
+such and not yet claimed: SGP4 conformance against SGP4-VER, HPOP force-model
+fixtures against GMAT, OD synthetic-truth recovery, and RF closed-form
 checks.</p>
 `;
 

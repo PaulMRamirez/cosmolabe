@@ -199,10 +199,31 @@ Toolkits: cosmolabe CSPICE_N0066, cspice-wasm CSPICE_N0066.</p>
 </table>
 </div>
 
+<h2>Horizons spot-check (external truth, nightly)</h2>
+<p>Horizons spot-check (design 04 risk nine): frames-tier states over the fetched golden-scenario kernels vs JPL Horizons geometric ICRF states at the same TDB epochs. Physical-agreement tolerances per body: the GS-2 lane compares the 040629AP predict fixture against the reconstructed cassini_merge, so its baseline delta is a fixture property and the bound catches drift; the planet lane compares de440s against the Horizons planetary source and is expected sub-km. Kernels: naif0012.tls, 040629AP_SCPSE_04179_04185.bsp, de440s.bsp.</p>
+<p>The internal lanes above prove the two SPICE paths agree with each other;
+this lane proves neither has drifted from the world. Reproduce:
+<code>node scripts/horizons.mjs</code> (live network); the
+<code>horizons-nightly</code> workflow reruns it on a daily schedule, where a
+tolerance breach is red and an unreachable service is a named skip, never a
+silent green.</p>
+<div class="scroll">
+<table>
+<tr><th>lane</th><th>target</th><th>observer</th><th>epochUtc</th><th>dPosKm</th><th>dVelKmS</th><th>tolPosKm</th><th>tolVelKmS</th><th>pass</th><th>horizonsSource</th></tr>
+<tr><td>GS-2</td><td>CASSINI</td><td>SATURN</td><td>2004-07-01T02:48:00</td><td>95.535855</td><td>7.176e-3</td><td>500</td><td>0.05</td><td class="pass">true</td><td>cassini_merge</td></tr>
+<tr><td>GS-2</td><td>CASSINI</td><td>SATURN</td><td>2004-07-01T04:48:00</td><td>181.367670</td><td>2.206e-2</td><td>500</td><td>0.05</td><td class="pass">true</td><td>cassini_merge</td></tr>
+<tr><td>GS-4 era</td><td>EARTH</td><td>SUN</td><td>2004-07-01T00:00:00</td><td>0.000100</td><td>5.092e-11</td><td>2</td><td>0.00001</td><td class="pass">true</td><td>DE441</td></tr>
+<tr><td>GS-4 era</td><td>EARTH</td><td>SUN</td><td>2004-07-31T00:00:00</td><td>0.000398</td><td>4.681e-11</td><td>2</td><td>0.00001</td><td class="pass">true</td><td>DE441</td></tr>
+<tr><td>GS-4 era</td><td>MARS BARYCENTER</td><td>SUN</td><td>2004-07-01T00:00:00</td><td>0.000066</td><td>6.483e-12</td><td>2</td><td>0.00001</td><td class="pass">true</td><td>DE441</td></tr>
+<tr><td>GS-4 era</td><td>MARS BARYCENTER</td><td>SUN</td><td>2004-07-31T00:00:00</td><td>0.000307</td><td>2.986e-11</td><td>2</td><td>0.00001</td><td class="pass">true</td><td>DE441</td></tr>
+</table>
+</div>
+
 <h2>Scope, stated honestly</h2>
 <p>This is the skeleton of the page described in docs/validation/README.md.
-Present: the M-0002 differential harness over the four golden scenarios and
-the Session 2 measurement rig tables. Future scope, named as such and not yet
-claimed: SGP4 conformance against SGP4-VER, HPOP force-model fixtures against
-GMAT, Horizons cross-checks, OD synthetic-truth recovery, and RF closed-form
+Present: the M-0002 differential harness over the four golden scenarios, the
+Session 2 measurement rig tables, and the nightly Horizons spot-check
+(external truth over the golden-scenario kernels). Future scope, named as
+such and not yet claimed: SGP4 conformance against SGP4-VER, HPOP force-model
+fixtures against GMAT, OD synthetic-truth recovery, and RF closed-form
 checks.</p>

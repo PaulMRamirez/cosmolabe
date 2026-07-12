@@ -1,0 +1,61 @@
+name: horizons-nightly
+
+# The nightly Horizons spot-check (design 04 risk register, item nine): the
+# external-truth lane. The differential harness in ci proves the two SPICE
+# paths agree with each other; this lane proves neither has drifted from the
+# world, comparing frames-tier states over the fetched golden-scenario
+# kernels against JPL Horizons at fixed TDB epochs (tests/rig/horizons.rig.ts,
+# driven by scripts/horizons.mjs). Exit semantics, honestly: a tolerance
+# breach is red (the real alarm); an unreachable Horizons is a named skip
+# (a notice annotation and a green run that says SKIPPED), so the lane never
+# trains alarm fatigue on network weather and never pretends a run happened.
+
+on:
+  schedule:
+    # 09:17 UTC, off-peak for the JPL service (about 1 am Pacific).
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: horizons-nightly
+  cancel-in-progress: false
+
+jobs:
+  spot-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Same checkout posture as ci: fetch-depth 0 for the pre-merge tag's
+      # blobs (fetch-kernels reads them), lfs false with the one LFS binary
+      # pulled on demand by the script.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      - name: Cache fetched kernels
+        uses: actions/cache@v4
+        with:
+          path: |
+            cosmolabe/packages/spice/test-kernels
+            cosmolabe/apps/viewer/test-catalogs/kernels
+          key: kernels-${{ hashFiles('scripts/fetch-kernels') }}
+          restore-keys: |
+            kernels-
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The rig runs on cosmolabe's vitest and imports the bessel seam
+      # packages by source path through the rig config's aliases; no bessel
+      # install is needed (their sources import only cspice-wasm, aliased,
+      # and node builtins).
+      - name: Install cosmolabe (npm ci)
+        run: npm --prefix cosmolabe ci
+
+      - name: Fetch kernels
+        run: bash scripts/fetch-kernels
+
+      - name: Horizons spot-check
+        run: node scripts/horizons.mjs
