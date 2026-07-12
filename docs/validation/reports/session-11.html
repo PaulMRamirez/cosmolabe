@@ -1,0 +1,237 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>verify-spec: Session 11 (the nightly Horizons spot-check)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8888; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #8882; }
+  code { font-family: ui-monospace, monospace; font-size: 0.92em; }
+  .pass { color: #1a7f37; font-weight: 600; } .na { color: #888; font-weight: 600; }
+  .pend { color: #9a6700; font-weight: 600; }
+  .summary { border-left: 3px solid #888; padding: 0.5rem 1rem; background: #8881; }
+  td:first-child { white-space: nowrap; }
+</style>
+
+<h1>verify-spec report: Session 11</h1>
+<p>The nightly Horizons spot-check: the external-truth lane of design 04's
+risk register (item nine), promised at planning time and built by no session
+until this one. Adversarial cross-check of
+<code>docs/goals/SESSION-11-HORIZONS-NIGHTLY.goal.md</code> against observed
+evidence. Generated 2026-07-11 on branch <code>session-11</code>. Every row
+was reproduced during this cross-check by running the command or reading the
+artifact, not by trusting prose.</p>
+
+<div class="summary">
+<p><strong>Verdict:</strong> every Verified-by assertion is met on observed
+evidence except one that is structurally post-merge: CI is green (amended
+after observation, first run), and the first workflow run's blocker is
+recorded exactly as the goal's honest-network posture demands: GitHub
+registers workflow_dispatch only from the default branch, so the branch
+dispatch 404s by construction and the observed run happens after merge (the
+Pages precedent; Session 12 owns the observation by name). The lane itself
+ran observed-green locally against live Horizons, which is the substantive
+evidence: six rows, all inside their stated bounds.</p>
+<p><strong>Residual risk and honest carryover.</strong> First, the observed
+deltas are worth reading for what they say about the fixtures: the planet
+lane agrees with Horizons DE441 at 0.1 to 0.4 meters (de440s and DE441 are
+nearly identical in the modern era), while the Cassini lane's 95.5 and
+181.4 km deltas are the a priori 040629AP predict measured against the
+reconstructed cassini_merge, a fixture property now recorded in the table
+rather than an anomaly someone rediscovers later; the 500 km bound is
+chosen 2.8x above the fixed-epoch baseline so drift of the baseline's own
+order still trips it. Second, the nightly lane's failure taxonomy is
+deliberate and worth holding to: unreachable is a named skip (notice, exit
+0), a surprising response shape from a reachable service fails loudly (a
+contract change), and only a tolerance breach is the red alarm; weakening
+any of the three re-trains alarm fatigue. Third, the spot-check is not in
+the pnpm verify gate, deliberately (network stays out of the merge gate);
+its cadence is the cron plus whatever manual dispatches sessions make.
+Fourth, the committed table is a session-refreshed snapshot and goes stale
+by a day at a time; that is by design (the nightly checks and alarms,
+sessions refresh the committed snapshot), and the generatedAt field says
+so.</p>
+<p><strong>Pre-merge amendments (2026-07-11, recorded at the human gate).</strong>
+Two amendments landed on the branch before merge, re-verified with
+<code>pnpm verify</code>. First, the nightly never pushes, and its outputs
+land where humans look: every run (green or red) uploads the regenerated
+table as a run artifact and writes it into the job step summary; a
+tolerance breach or contract-change failure opens (or appends to) the
+pinned tracking issue carrying the offending rows and the run link, with
+issues write permission granted to the workflow; and the horizons-nightly
+status badge is embedded on the validation page and in the new root
+README, reflecting the latest run without any push. The committed table
+remains a session-refreshed snapshot, which its generatedAt already states
+honestly, and the report and page wording is corrected from "the nightly
+regenerates the table" to "the nightly checks and alarms; sessions refresh
+the committed snapshot." Second, the September walkthrough gets built
+exactly once: the review-packets spec is folded into SESSION-12-REENTRY's
+goal (one packet per flagged ADR: the decision in three sentences, in-repo
+evidence links, what changed since, the question Aaron is asked, the veto
+shape and its cost, an agenda ordered by dependency and descending veto
+cost, and device-pending slots named); no separate SESSION-REVIEW-PACKETS
+goal was ever committed, so there was nothing to retire, recorded here so
+the absence is deliberate rather than an oversight.</p>
+</div>
+
+<h2>Verified-by assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>Spot-check green locally against live Horizons with the deltas table committed and tolerances stated per body</td>
+  <td class="pass">pass</td>
+  <td>Observed: <code>node scripts/horizons.mjs</code> exits 0 with six
+  green rows against the live API (sources reported by Horizons itself:
+  cassini_merge for the spacecraft, DE441 for the planets). Tolerances are
+  per body with provenance recorded in the rig (planet bounds four orders
+  above the sub-meter observation; the Cassini bound 2.8x the observed
+  predict-vs-reconstruction baseline at the two pinned epochs). The table
+  (<code>docs/validation/data/horizons-spot-check.json</code>) is committed
+  and mirrors the seam tables' posture: epochs (UTC and JD TDB), bodies,
+  tolerances, deltas, sources, and the API endpoint. Epoch mapping is exact
+  (ET to JD TDB, both TDB, quoted to 10 decimals).</td>
+</tr>
+<tr>
+  <td>The scheduled workflow present, manually dispatched once, and observed green (or its blocker recorded honestly)</td>
+  <td class="pend">blocker recorded</td>
+  <td>The workflow is present (<code>.github/workflows/horizons-nightly.yml</code>,
+  cron 09:17 UTC plus workflow_dispatch, the ci checkout and kernel-cache
+  posture, cosmolabe-only install with the reason stated inline). The
+  dispatch was attempted and the blocker observed exactly: GitHub returns
+  HTTP 404 for a workflow not yet on the default branch, so the first
+  observed run is structurally post-merge, per the Pages precedent from
+  Session 6. Session 12's goal owns the observation and this row's
+  amendment by name.</td>
+</tr>
+<tr>
+  <td>The validation page carrying the lane</td>
+  <td class="pass">pass</td>
+  <td>Regenerated from the committed table: the page gains the
+  "Horizons spot-check (external truth, nightly)" section with the six
+  rows, the reproduce command, the skip semantics stated, and Horizons
+  moves from the future-scope list to present scope. The skipped-unreachable
+  table state renders as its own honest banner rather than an empty
+  table.</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green locally</td>
+  <td class="pass">pass</td>
+  <td>Run from the repository root after the final commit set: exit 0. The
+  spot-check is deliberately not part of the gate (network stays out of
+  the merge gate); nothing added here runs under verify.</td>
+</tr>
+<tr>
+  <td><code>pnpm verify</code> green in CI</td>
+  <td class="pass">pass</td>
+  <td>Amended after observation, per precedent: the <code>verify</code>
+  check passes on the PR head in 2m18s (run 29174159477, first run,
+  observed via <code>gh pr checks 11</code>).</td>
+</tr>
+<tr>
+  <td>Strict seam green</td>
+  <td class="pass">pass</td>
+  <td>Observed: exit 0; call-parity GREEN on GS-1 through GS-4, pipeline
+  within tripwires on every row.</td>
+</tr>
+<tr>
+  <td>Baseline compare green against the session-4-repoint anchor</td>
+  <td class="pass">pass</td>
+  <td>Observed under the pinned node v22.23.1 with TZ pinned: all three
+  renders at 0.000 percent, checksums verified on 6 files.</td>
+</tr>
+<tr>
+  <td>Carryover ledger updated</td>
+  <td class="pass">pass</td>
+  <td>Read back in the brief: the Horizons promise closed as executed with
+  the one post-merge observation owed and owned by Session 12; the Session
+  11 paragraph records the observed deltas and their meaning.</td>
+</tr>
+</table>
+
+<h2>Iron rules on the diff</h2>
+<table>
+<tr><th>Rule</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>1: CSPICE only under frames; correction explicit</td>
+  <td class="pass">pass</td>
+  <td>The rig queries states exclusively through the frames tier with
+  correction 'NONE' explicit, matched to Horizons' geometric (VEC_CORR
+  NONE) states.</td>
+</tr>
+<tr>
+  <td>2: mechanically minimal heritage diffs</td>
+  <td class="pass">pass</td>
+  <td><code>git diff --stat main...HEAD -- cosmolabe/</code> is empty.</td>
+</tr>
+<tr>
+  <td>3: seam gate</td>
+  <td class="pass">pass</td>
+  <td>Strict seam row above; nothing in the diff touches cspice-wasm,
+  frames, or core state paths (the rig only consumes them read-only by
+  source path, the seam rig's own pattern).</td>
+</tr>
+<tr>
+  <td>4: authority 'host' only from host data adapters</td>
+  <td class="pass">pass</td>
+  <td>No products are constructed in this session's diff; the two adapter
+  sites are unchanged.</td>
+</tr>
+<tr>
+  <td>5: golden-image pass</td>
+  <td class="pass">pass</td>
+  <td>Baseline compare row above; no visual surface changed (the
+  validation page is generated HTML, not a golden render).</td>
+</tr>
+<tr>
+  <td>6: model-layer purity</td>
+  <td class="pass">pass</td>
+  <td>Purity lint passes inside verify; the diff adds no package code.</td>
+</tr>
+<tr>
+  <td>7: kernels never committed</td>
+  <td class="pass">pass</td>
+  <td>No kernel files in the diff; the rig reads the fetch cache (the SOI
+  SCPSE and de440s paths are both inside the ci kernel cache, so the
+  nightly pays no extra downloads on a warm cache).</td>
+</tr>
+<tr>
+  <td>9: SPICE kilometers and ET seconds at the contracts</td>
+  <td class="pass">pass</td>
+  <td>Both sides compare in kilometers and kilometers per second; the one
+  time conversion (ET to JD TDB) is exact and documented in the rig with
+  its quantization stated (about 9 microseconds, sub-meter at planetary
+  speeds).</td>
+</tr>
+<tr>
+  <td>10: no em or en dashes</td>
+  <td class="pass">pass</td>
+  <td>Dash sweep over every file in the session diff: clean.</td>
+</tr>
+</table>
+
+<h2>Exit assertions</h2>
+<table>
+<tr><th>Assertion</th><th>Status</th><th>Evidence observed</th></tr>
+<tr>
+  <td>review-on-return run; register and brief refreshed</td>
+  <td class="pass">pass</td>
+  <td>Script run 2026-07-11: the flagged set is unchanged at seven; the
+  commits in Aaron-owned paths remain the Session 4 pair. The brief gains
+  the Session 11 paragraph and the ledger close.</td>
+</tr>
+<tr>
+  <td>verify-spec report committed</td>
+  <td class="pass">pass</td>
+  <td>This file, <code>docs/validation/reports/session-11.html</code>.</td>
+</tr>
+<tr>
+  <td>Next goal drafted</td>
+  <td class="pass">pass</td>
+  <td><code>docs/goals/SESSION-12-REENTRY.goal.md</code>: the W5 re-entry
+  package (the post-merge workflow observation, the demo script replacing
+  the brief's placeholder with a rehearsed walkthrough, the register and
+  ledger sweep, and the W5 gate), device-truth preempting as ever.</td>
+</tr>
+</table>

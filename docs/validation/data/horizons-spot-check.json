@@ -1,0 +1,104 @@
+{
+  "description": "Horizons spot-check (design 04 risk nine): frames-tier states over the fetched golden-scenario kernels vs JPL Horizons geometric ICRF states at the same TDB epochs. Physical-agreement tolerances per body: the GS-2 lane compares the 040629AP predict fixture against the reconstructed cassini_merge, so its baseline delta is a fixture property and the bound catches drift; the planet lane compares de440s against the Horizons planetary source and is expected sub-km. Kernels: naif0012.tls, 040629AP_SCPSE_04179_04185.bsp, de440s.bsp.",
+  "status": "ok",
+  "api": "https://ssd.jpl.nasa.gov/api/horizons.api",
+  "generatedAt": "2026-07-12T00:36:34.423Z",
+  "cases": [
+    {
+      "lane": "GS-2",
+      "target": "CASSINI",
+      "note": "fixture 040629AP predict SCPSE vs Horizons reconstructed cassini_merge; baseline delta is a fixture property, the bound catches drift"
+    },
+    {
+      "lane": "GS-4 era",
+      "target": "EARTH",
+      "note": "de440s vs the Horizons planetary source; expected sub-km"
+    },
+    {
+      "lane": "GS-4 era",
+      "target": "MARS BARYCENTER",
+      "note": "de440s vs the Horizons planetary source; expected sub-km"
+    }
+  ],
+  "rows": [
+    {
+      "lane": "GS-2",
+      "target": "CASSINI",
+      "observer": "SATURN",
+      "epochUtc": "2004-07-01T02:48:00",
+      "jdTdb": "2453187.6174095380",
+      "dPosKm": 95.53585513046274,
+      "dVelKmS": 0.007176214830237457,
+      "tolPosKm": 500,
+      "tolVelKmS": 0.05,
+      "pass": true,
+      "horizonsSource": "cassini_merge"
+    },
+    {
+      "lane": "GS-2",
+      "target": "CASSINI",
+      "observer": "SATURN",
+      "epochUtc": "2004-07-01T04:48:00",
+      "jdTdb": "2453187.7007428715",
+      "dPosKm": 181.3676704073228,
+      "dVelKmS": 0.022058885418989253,
+      "tolPosKm": 500,
+      "tolVelKmS": 0.05,
+      "pass": true,
+      "horizonsSource": "cassini_merge"
+    },
+    {
+      "lane": "GS-4 era",
+      "target": "EARTH",
+      "observer": "SUN",
+      "epochUtc": "2004-07-01T00:00:00",
+      "jdTdb": "2453187.5007428718",
+      "dPosKm": 0.00009969081365603422,
+      "dVelKmS": 5.091599909833563e-11,
+      "tolPosKm": 2,
+      "tolVelKmS": 0.00001,
+      "pass": true,
+      "horizonsSource": "DE441"
+    },
+    {
+      "lane": "GS-4 era",
+      "target": "EARTH",
+      "observer": "SUN",
+      "epochUtc": "2004-07-31T00:00:00",
+      "jdTdb": "2453217.5007428620",
+      "dPosKm": 0.0003980191645197554,
+      "dVelKmS": 4.681395770870245e-11,
+      "tolPosKm": 2,
+      "tolVelKmS": 0.00001,
+      "pass": true,
+      "horizonsSource": "DE441"
+    },
+    {
+      "lane": "GS-4 era",
+      "target": "MARS BARYCENTER",
+      "observer": "SUN",
+      "epochUtc": "2004-07-01T00:00:00",
+      "jdTdb": "2453187.5007428718",
+      "dPosKm": 0.00006644838640011462,
+      "dVelKmS": 6.482612285234021e-12,
+      "tolPosKm": 2,
+      "tolVelKmS": 0.00001,
+      "pass": true,
+      "horizonsSource": "DE441"
+    },
+    {
+      "lane": "GS-4 era",
+      "target": "MARS BARYCENTER",
+      "observer": "SUN",
+      "epochUtc": "2004-07-31T00:00:00",
+      "jdTdb": "2453217.5007428620",
+      "dPosKm": 0.0003071675190341574,
+      "dVelKmS": 2.986290231605199e-11,
+      "tolPosKm": 2,
+      "tolVelKmS": 0.00001,
+      "pass": true,
+      "horizonsSource": "DE441"
+    }
+  ],
+  "allPass": true
+}
