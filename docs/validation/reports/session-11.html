@@ -26,8 +26,8 @@ artifact, not by trusting prose.</p>
 
 <div class="summary">
 <p><strong>Verdict:</strong> every Verified-by assertion is met on observed
-evidence except two that are structurally post-branch: CI (pending the PR
-run, amended when observed) and the first workflow run, whose blocker is
+evidence except one that is structurally post-merge: CI is green (amended
+after observation, first run), and the first workflow run's blocker is
 recorded exactly as the goal's honest-network posture demands: GitHub
 registers workflow_dispatch only from the default branch, so the branch
 dispatch 404s by construction and the observed run happens after merge (the
@@ -103,9 +103,10 @@ so.</p>
 </tr>
 <tr>
   <td><code>pnpm verify</code> green in CI</td>
-  <td class="pend">pending</td>
-  <td>Structurally requires the PR run; amended when observed, per
-  precedent.</td>
+  <td class="pass">pass</td>
+  <td>Amended after observation, per precedent: the <code>verify</code>
+  check passes on the PR head in 2m18s (run 29174159477, first run,
+  observed via <code>gh pr checks 11</code>).</td>
 </tr>
 <tr>
   <td>Strict seam green</td>
