@@ -17,7 +17,9 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 const distDir = resolve(root, 'dist');
-const wasmDir = resolve(root, '../../packages/cspice-wasm/wasm');
+// cspice-wasm is an external dependency since ADR M-0012; the facade package
+// depends on it, so its installed copy is the stable place to find the artifacts.
+const wasmDir = resolve(root, '../../packages/spice/node_modules/cspice-wasm/wasm');
 
 // Keep the Emscripten loader external and point it at a sibling file in dist so
 // its import.meta.url based wasm lookup resolves cspice.wasm next to main.js.

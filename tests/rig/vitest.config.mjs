@@ -10,9 +10,10 @@
 // measurement tables to paths given via RIG_* environment variables. They are
 // not part of the cosmolabe suite and never run under the trees' own configs.
 //
-// The Session 3 seam rig additionally imports the bessel seam packages
-// (packages/frames, packages/cspice-wasm) by relative source path; their
-// internal bare-specifier imports of cspice-wasm resolve through the aliases
+// The Session 3 seam rig additionally imports the frames tier
+// (packages/frames) by relative source path. cspice-wasm is an external
+// dependency since ADR M-0012, installed by the bessel workspace for the frames
+// tier; the rig's and the tier's bare-specifier imports of it resolve through the aliases
 // below (computed with the URL global, still zero imports). Order matters:
 // the wasm subpath must match before the bare package name, or the prefix
 // rewrite would mangle it.
@@ -23,9 +24,9 @@ export default {
     alias: [
       {
         find: 'cspice-wasm/wasm/cspice.mjs',
-        replacement: bessel('packages/cspice-wasm/wasm/cspice.mjs'),
+        replacement: bessel('packages/frames/node_modules/cspice-wasm/wasm/cspice.mjs'),
       },
-      { find: 'cspice-wasm', replacement: bessel('packages/cspice-wasm/src/index.ts') },
+      { find: 'cspice-wasm', replacement: bessel('packages/frames/node_modules/cspice-wasm/dist/index.js') },
     ],
   },
   test: {

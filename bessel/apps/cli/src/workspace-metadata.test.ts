@@ -44,15 +44,16 @@ describe('workspace metadata', () => {
     expect(broken, `library packages missing exports/types: ${broken.join(', ')}`).toEqual([]);
   });
 
-  it('holds the architecture package count (31 packages, 4 apps) so additions are deliberate', async () => {
+  it('holds the architecture package count (30 packages, 4 apps) so additions are deliberate', async () => {
     const libs = await readPackages('packages');
     const apps = await readPackages('apps');
-    // 31 = the 27 of the pre-merge architecture plus the two Session 3 seam
-    // packages of ADR M-0002 (cspice-wasm, extracted from the spice layer
-    // with @bessel/spice remaining as a facade, and @cosmolabe/frames) plus
-    // the Session 5 compute plane of ADR M-0004 (@bessel/compute) plus the
-    // Session 7 embeddable analysis surface of ADR M-0007 (@bessel/panel).
-    expect(libs.length).toBe(31);
+    // 30 = the 27 of the pre-merge architecture plus the Session 3 frames tier
+    // of ADR M-0002 (@cosmolabe/frames) plus the Session 5 compute plane of ADR
+    // M-0004 (@bessel/compute) plus the Session 7 embeddable analysis surface
+    // of ADR M-0007 (@bessel/panel). cspice-wasm was the 31st until ADR M-0012
+    // moved it to its own repository; it is now an external dependency, with
+    // @bessel/spice remaining as the facade over it.
+    expect(libs.length).toBe(30);
     expect(apps.length).toBe(4);
     // The headless automation, OD, and seam additions must be present.
     const names = new Set(libs.map((p) => p.pkg.name));
@@ -60,7 +61,6 @@ describe('workspace metadata', () => {
       '@bessel/sdk',
       '@bessel/od',
       '@bessel/pal-node',
-      'cspice-wasm',
       '@bessel/compute',
       '@bessel/panel',
       '@cosmolabe/frames',

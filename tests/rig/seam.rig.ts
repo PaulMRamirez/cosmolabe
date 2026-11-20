@@ -54,7 +54,7 @@ import {
 import {
   createSpiceBindings,
   type SpiceBindings,
-} from '../../bessel/packages/cspice-wasm/src/index.ts';
+} from 'cspice-wasm';
 
 const OUT = resolve(process.env.RIG_OUT ?? 'docs/validation/data');
 const GATE_REL = 1e-12; // call-parity, M-0002

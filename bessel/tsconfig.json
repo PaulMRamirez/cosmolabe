@@ -4,9 +4,6 @@
     "baseUrl": ".",
     "types": ["node"],
     "paths": {
-      "cspice-wasm": ["./packages/cspice-wasm/src/index.ts"],
-      "cspice-wasm/worker": ["./packages/cspice-wasm/src/worker.ts"],
-      "cspice-wasm/worker-core": ["./packages/cspice-wasm/src/worker-core.ts"],
       "@cosmolabe/frames": ["./packages/frames/src/index.ts"],
       "@bessel/compute": ["./packages/compute/src/index.ts"],
       "@bessel/spice": ["./packages/spice/src/index.ts"],
@@ -52,7 +49,6 @@
     "node_modules",
     "**/dist",
     "**/out",
-    "vendor",
-    "packages/cspice-wasm/wasm"
+    "vendor"
   ]
 }
