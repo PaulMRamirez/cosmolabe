@@ -13,6 +13,6 @@
   },
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "cspice-wasm": "github:PaulMRamirez/cspice-wasm#656c2f610b3d61b29b5eecc6fcc306ee741d908c"
+    "cspice-wasm": "github:PaulMRamirez/cspice-wasm#824248400a598f93be57f0a996c70f312a8cab7c"
   }
 }
