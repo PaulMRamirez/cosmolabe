@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Link the seam packages of the merged monorepo (ADR M-0002) into this npm
-// tree: @cosmolabe/frames and cspice-wasm live in the bessel pnpm workspace
-// at ../bessel/packages, and the two trees keep separate installs until the
+// tree: @cosmolabe/frames lives in the bessel pnpm workspace at
+// ../bessel/packages, cspice-wasm is the external dependency that workspace
+// installs for it (ADR M-0012), and the two trees keep separate installs until the
 // packages/ restructure, so a postinstall symlink is the bridge. npm ci wipes
 // node_modules and then runs this hook, so the links survive reinstalls.
 // Consumers resolve the packages' built dist through their exports maps;
@@ -16,7 +17,7 @@ const besselPackages = resolve(cosmolabeRoot, '../bessel/packages');
 
 const LINKS = [
   { from: join(cosmolabeRoot, 'node_modules/@cosmolabe/frames'), to: join(besselPackages, 'frames') },
-  { from: join(cosmolabeRoot, 'node_modules/cspice-wasm'), to: join(besselPackages, 'cspice-wasm') },
+  { from: join(cosmolabeRoot, 'node_modules/cspice-wasm'), to: join(besselPackages, 'frames/node_modules/cspice-wasm') },
 ];
 
 if (!existsSync(besselPackages)) {

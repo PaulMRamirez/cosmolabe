@@ -28,13 +28,12 @@
  *                            construction, the renderer is DOM territory.
  * Test files are excluded: purity binds the shipped model layer.
  *
- * The Session 3 seam packages, bessel/packages/cspice-wasm and
- * bessel/packages/frames (ADR M-0002), are audited mechanically, not
- * incidentally: they appear in REQUIRED_AUDIT below, so the gate fails loudly
- * if either directory goes missing from the discovered set rather than
- * silently shrinking the audit. The emscripten glue lives under
- * packages/cspice-wasm/wasm, outside src, and is a build artifact, not model
- * code; the audit binds the typed wrapper and the frames tier themselves.
+ * The frames tier, bessel/packages/frames (ADR M-0002), is audited
+ * mechanically, not incidentally: it appears in REQUIRED_AUDIT below, so the
+ * gate fails loudly if the directory goes missing from the discovered set
+ * rather than silently shrinking the audit. cspice-wasm left this audit when
+ * ADR M-0012 moved it to its own repository; it has no runtime dependencies,
+ * and its purity is that repository's concern.
  *
  * Usage: node scripts/purity-lint.mjs [--list] [--spine-audit]
  */
@@ -58,7 +57,6 @@ const AUDIT_DIRS = [
 // cosmolabe spine. A rename or move that drops one of these from AUDIT_DIRS
 // fails the gate instead of silently narrowing it.
 const REQUIRED_AUDIT = [
-  'bessel/packages/cspice-wasm/src',
   'bessel/packages/frames/src',
   'bessel/packages/compute/src',
   'cosmolabe/packages/core/src',

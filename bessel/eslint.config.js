@@ -15,7 +15,6 @@ export default tseslint.config(
       '**/playwright-report/**',
       '**/test-results/**',
       'vendor/**',
-      'packages/cspice-wasm/wasm/**',
       'apps/*/ios/**',
       'apps/*/android/**',
       '**/*.config.js',

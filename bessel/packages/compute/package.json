@@ -15,6 +15,6 @@
     "@bessel/mission": "workspace:*",
     "@bessel/timeline": "workspace:*",
     "@cosmolabe/frames": "workspace:*",
-    "cspice-wasm": "workspace:*"
+    "cspice-wasm": "github:PaulMRamirez/cspice-wasm#824248400a598f93be57f0a996c70f312a8cab7c"
   }
 }

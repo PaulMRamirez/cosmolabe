@@ -55,14 +55,25 @@ jobs:
           restore-keys: |
             kernels-
 
+      # Pin pnpm to bessel's packageManager version, as ci does.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: bessel/pnpm-lock.yaml
 
-      # The rig runs on cosmolabe's vitest and imports the bessel seam
-      # packages by source path through the rig config's aliases; no bessel
-      # install is needed (their sources import only cspice-wasm, aliased,
-      # and node builtins).
+      # The rig runs on cosmolabe's vitest and imports the frames tier by
+      # source path through the rig config's aliases. Since ADR M-0012
+      # cspice-wasm is an external dependency that the bessel workspace
+      # installs for the frames tier, so the bessel install is needed here:
+      # the rig aliases and the cosmolabe postinstall link both point at it.
+      - name: Install bessel (pnpm, frozen lockfile)
+        run: pnpm -C bessel install --frozen-lockfile
+
       - name: Install cosmolabe (npm ci)
         run: npm --prefix cosmolabe ci
 

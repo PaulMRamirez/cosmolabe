@@ -34,7 +34,7 @@
     "@bessel/compute": "workspace:*",
     "@bessel/panel": "workspace:*",
     "@bessel/spice": "workspace:*",
-    "cspice-wasm": "workspace:*",
+    "cspice-wasm": "github:PaulMRamirez/cspice-wasm#824248400a598f93be57f0a996c70f312a8cab7c",
     "@bessel/state": "workspace:*",
     "@bessel/terrain": "workspace:*",
     "@bessel/timeline": "workspace:*",
