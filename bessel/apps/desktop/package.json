@@ -15,7 +15,7 @@
     "@bessel/pal-electron": "workspace:*",
     "@bessel/scene": "workspace:*",
     "@bessel/spice": "workspace:*",
-    "cspice-wasm": "github:PaulMRamirez/cspice-wasm#e9915d7af7a0d7ac4a4f30d95765033c80c68eb8",
+    "cspice-wasm": "github:PaulMRamirez/cspice-wasm#439f69a8fbc0b2bb11a00d7b0866622a0ca773e7",
     "three": "^0.171.0"
   },
   "devDependencies": {
